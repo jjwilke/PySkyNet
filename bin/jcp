@@ -1,0 +1,13 @@
+#! /usr/bin/env python
+
+from PyBib import *
+
+#entry JCP guidelines
+order(JournalArticle, 'authors', 'journal', 'volume', 'pages', 'year')
+set('authors', JournalArticle, delim = ',', lastname = false, finaldelim = true, finishdelim = ",")
+set('volume', JournalArticle, style = 'bold')
+set('pages', JournalArticle) #no style modification
+set('year', JournalArticle, parentheses = true, finishdelim = ".")
+set('journal', JournalArticle, finishdelim = ".") #defaults are fine
+
+
