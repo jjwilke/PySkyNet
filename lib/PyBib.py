@@ -391,11 +391,13 @@ class Record(object):
     def setDefaults(cls):
         if not JournalArticle.order: #not yet formatted
             order(JournalArticle, 'authors', 'journal', 'volume', 'pages', 'year')
-            set('authors', JournalArticle, delim = ',', lastname = false, finaldelim = true, finishdelim = ",")
-            set('volume', JournalArticle, style = 'bold')
-            set('pages', JournalArticle) #no style modification
-            set('year', JournalArticle, parentheses = true, finishdelim = ".")
-            set('journal', JournalArticle, finishdelim = ".") #defaults are fine
+            set('authors', JournalArticle, delim = ',', lastname = false, finaldelim = true, finishdelim = "")
+            set('volume', JournalArticle, style = 'normal', finishdelim = "")
+            set('pages', JournalArticle, finishdelim = "") #no style modification
+            set('year', JournalArticle, parentheses = false, finishdelim = "")
+            set('journal', JournalArticle, finishdelim = "") #defaults are fine
+            set('title', JournalArticle, finishdelim = "") #defaults are fine
+            set('label', JournalArticle, finishdelim = "") #defaults are fine
 
     setDefaults = classmethod(setDefaults)
 

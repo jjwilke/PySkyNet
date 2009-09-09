@@ -111,8 +111,6 @@ class PyRefTable:
 
         self.table = PyGtkTable(entrylist, *cols)
 
-        self.setBibpy()
-
     def addReferences(self, refs):
         entrylist = []
         for entry in refs:
@@ -157,16 +155,6 @@ class PyRefTable:
             del self.entries[idx]
             del self.entrymap[label]
         self.table.removeSelected()
-
-    def setBibpy(cls):
-        set('authors', JournalArticle, delim = ',', lastname = true, finaldelim = false)
-        set('volume', JournalArticle, style = 'normal', finishdelim="")
-        set('pages', JournalArticle, finishdelim="") #no style modification
-        set('year', JournalArticle, parentheses = false, finishdelim = "")
-        set('journal', JournalArticle, finishdelim = "") #defaults are fine
-        set('title', JournalArticle, finishdelim = "")
-        set('label', JournalArticle, finishdelim = "")
-    setBibpy = classmethod(setBibpy)
 
 
 if __name__ == "__main__":

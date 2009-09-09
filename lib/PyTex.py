@@ -66,7 +66,6 @@ def walkForBibs(folder):
         allbib = args
         xmlfiles = [elem for elem in files if elem.endswith('xml')]
         for file in xmlfiles:
-            print file
             allbib.buildRecords(file)
         os.chdir(topdir)
 
@@ -130,11 +129,9 @@ class CiteThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        print "listening"
         while not self.stopthread.isSet():
             try:
                 objlist = self.server.acceptObject()
-                print "Received %d objects" % len(objlist)
                 if objlist: #if we got a list of objects
                     self.citation.addReferences(objlist)
                     
@@ -234,12 +231,10 @@ def loadCitation():
 
     #use the citation object to generate the new reference
     entries = citeobj.getEntries()
-    print entries
     labels = []
     for entry in entries:
         labels.append(str(entry.getAttribute("label")))
     newtext = "\cite{%s}" % ",".join(labels)
-    print newtext, str(newtext.__class__)
     PyVim.replace(cword, newtext)
 
 if __name__ == "__main__":
