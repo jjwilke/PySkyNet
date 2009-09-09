@@ -518,6 +518,10 @@ class Bibliography:
             n += 1
         return "\n".join(str_arr)
 
+    def update(self, bib):
+        for entry in bib:
+            self.records[entry.getAttribute("label")] = entry
+
     def hasCitation(self, entry):
         label = entry.getAttribute("label")
         return label in self.records

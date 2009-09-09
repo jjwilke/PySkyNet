@@ -76,18 +76,43 @@ def walkForBibs(folder):
 
     return allbib
 
-def loadBibliography():
-    if hasattr(PyTexGlobals, "bib"):
-        return #already loaded
+def openBibFile(file):
+    bibobj = None
+    if file.endswith("xml"):
+        import PyBib
+        bibobj = PyBib.Bibliography()
+        bibobj.buildRecords(file)
+    else:
+        import PySave
+        try:
+            bibobj = PySave.load(file)
+        except Exception, error:
+            pass
 
-    import os.path, PySave
-    file = os.path.join(os.path.expanduser("~"), "Documents", "pybib", "allrefs.pickle")
-    bib = PySave.load(file)
-    setattr(PyTexGlobals, "bib", bib)
+    return bibobj
+
+def loadBibliography(bibpath):
+
+    import os.path
+    bibobj = None
+    if os.path.isdir(bibpath):
+        bibobj = walkForBibs(bibpath)
+    else:
+        bibobj = openBibFile(file)
+
+    if not bibobj:
+        return #nothing there
+
+    if hasattr(PyTexGlobals, "bib"):
+        oldbib = getattr(PyTexGlobals, "bib")
+        oldbib.update(bibobj)
+        setattr(PyTexGlobals, "bib", oldbib)
+    else:
+        setattr(PyTexGlobals, "bib", bibobj)
 
 def startLatex():
     import gtk
-    loadBibliography()
+    loadBibliography("/Users/jjwilke/Documents/Projects")
     cite = CiteManager()
     gtk.main()
 
@@ -164,6 +189,21 @@ class Citation:
 
     def getEntries(self):
         return self.table.getEntries()
+
+def processInitFlag(flag):
+    opts = flag.lower().strip().split()
+    name = opts[0]
+    options = opts[1:]
+
+    if name == "bibliography":
+        if not options:
+            return #nothing there
+        loadBibliography(options[0])
+    
+
+def init(flags):
+    for flag in flags:
+        processInitFlag(flag)
 
 def loadCitation():
     import PyVim, re

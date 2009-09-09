@@ -98,5 +98,34 @@ def commentLine():
     resetXY()
     vim.current.buffer[line] = newline
 
+def initParse():
+    filename = vim.current.buffer.name
+    if not filename:
+        return
+
+    import PyTex
+    method_map = {
+        "tex", "PyTex.init",
+    }
+    
+    import os.path
+    prefix, suffix = os.path.split(filename)
+    if not suffix:
+        return #can't identify
+
+    flags = []
+    for line in vim.current.buffer:
+        if "%PyVim" in line:
+            clean = line.replace("%PyVim","").strip()
+            flags.append(clean)
+
+    method = None
+    try:
+        method = method_map[suffix]
+    except KeyError:
+        return #no init fxn yet
+
+    method(flags)
+
 resetXY()
 
