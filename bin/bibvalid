@@ -1,0 +1,18 @@
+#! /usr/bin/env python
+
+import PyBib, sys, os.path
+
+if len(sys.argv) < 2:
+    sys.exit("Please give me a file to validate")
+
+file = sys.argv[1]
+if not os.path.isfile(file):
+    sys.exit("File does not exist")
+
+bib = PyBib.Bibliography()
+ret = bib.buildRecords("file", check=True)
+if ret == -1: #error
+    sys.exit("Not a valid xml file")
+
+
+
