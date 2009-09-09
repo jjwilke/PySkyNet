@@ -9,8 +9,10 @@ file = sys.argv[1]
 if not os.path.isfile(file):
     sys.exit("File does not exist")
 
+fields = sys.argv[2:]
+
 bib = PyBib.Bibliography()
-ret = bib.buildRecords("file", check=True)
+ret = bib.buildRecords(file, True, fields)
 if ret == -1: #error
     sys.exit("Not a valid xml file")
 

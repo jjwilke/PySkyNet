@@ -7,7 +7,32 @@ class BibPyError(Exception):
     def __init__(self, msg):
         Exception.__init__(self, msg)
 
-class RecordEntryError(BibPyError): pass
+class RecordEntryError(BibPyError):
+
+    def __init__(self, field, msg):
+        self.field = field
+        BibPyError.__init__(self, msg)
+    
+    def getField(self):
+        return self.field
+
+class MissingDataError(BibPyError):
+    def __init__(self, descr, *xargs): #all the missing data is xargs
+        self.descr = descr
+        self.errors = xargs[:]
+        msg = "%s\nis missing the following fields:\n%s" % (descr, "\n".join(xargs))
+        BibPyError.__init__(self, msg)
+
+    def __iter__(self):
+        return iter(self.errors)
+
+    def getDescription(self):
+        return self.descr
+
+    def hasError(self, error):
+        return error in self.errors
+
+class RecordClassError(BibPyError): pass
 class RecordTypeError(BibPyError): pass
 class RecordAttributeError(BibPyError): pass
 class BibformatUnspecifiedError(BibPyError): pass
@@ -197,6 +222,7 @@ class Volume(Entry): pass
 class Pages(Entry): pass
 class Year(Entry): pass
 class Journal(Entry): pass
+class FullJournalTitle(Entry): pass
 
 class Author:
     
@@ -214,7 +240,7 @@ class Author:
         try:
             self._lastname, self._initials = map( lambda x: x.strip(), author.split(",") )
         except ValueError:
-            raise RecordEntryError("%s is not a valid author entry" % author)
+            raise RecordEntryError("author", "%s is not a valid author entry" % author)
 
     def __str__(self):
         return "%s, %s" % (self.lastname(), self.initials())
@@ -321,6 +347,7 @@ class JournalArticle(RecordObject):
         'pages' : Pages,
         'year' : Year,
         'journal' : Journal,
+        'full-title' : FullJournalTitle,
         'label' : Label,
     }
     
@@ -332,7 +359,7 @@ class JournalArticle(RecordObject):
                 classinst = classtype(kwargs[entry])
                 self.entries[entry] = classinst
             except KeyError:
-                raise RecordEntryError('%s does not have a class implemented' % entry)
+                raise RecordClassError('%s does not have a class implemented' % entry)
 
     def citekey(self):
         return self.citekey(self)
@@ -459,12 +486,14 @@ class Bibliography:
         'pages',
         'short-title',
         'abbr-1', #the abbreviated journal title
+        'secondary-title',
         XMLRequest(topname = 'ref-type', attrname = 'name'),
     ]
 
     mapnames = {
         'abbr-1' : 'journal',
         'short-title' : 'label',
+        'secondary-title' : 'full-title',
     }
 
     def __init__(self):
@@ -557,20 +586,29 @@ class Bibliography:
         else:
             raise XMLRequestError("invalid xml request input %s" % entry)
 
-    def buildRecords(self, bibfile, check=false):
+    def buildRecords(self, bibfile, check=False, xargerrors=[]):
         xmldoc = None
         try:
             xmldoc = minidom.parse(bibfile)
         except Exception, error: #not a valid xmldoc
+            print error
             return -1
 
         xmlrecords = xmldoc.getElementsByTagName('record')
         for rec in xmlrecords:
             try:
                 self.addRecord(rec)
-            except RecordEntryError, error:
-                if check: #if we are doing a full check, print the errors
-                    sys.stderr.write("record error\n%s\n" % error)
+            except MissingDataError, error:
+                errormsgs = []
+                if not check:
+                    continue
+                for field in error:
+                    if not xargerrors or field in xargerrors: #this is a field we are trying to validate
+                        errormsgs.append("invalid field %s" % field)
+
+                if errormsgs:
+                    errormsgs.insert(0, error.getDescription())
+                    sys.stderr.write("%s\n" % "\n".join(errormsgs))
 
     def addRecord(self, xmlrec):
         kwargs = {}
@@ -579,10 +617,10 @@ class Bibliography:
             try:
                 self.addEntry(attr, xmlrec, kwargs)
             except RecordEntryError, error:
-                errors.append(str(error))
+                errors.append(error.getField())
 
         if errors:
-            raise RecordEntryError("records\n%s\n is not valid\n%s" % (kwargs, "\n".join(errors))) 
+            raise MissingDataError(str(kwargs), *errors)
 
         #get the label
         label = kwargs['label']
@@ -607,7 +645,7 @@ class Bibliography:
             data = req.getData(recnode)
             kwargs[mapname] = data
         except XMLRequestError, error:
-            raise RecordEntryError("entry does not have attribute %s" % req.topname)
+            raise RecordEntryError(req.topname, "entry does not have attribute %s" % req.topname)
             
 
 
