@@ -558,7 +558,12 @@ class Bibliography:
             raise XMLRequestError("invalid xml request input %s" % entry)
 
     def buildRecords(self, bibfile, check=false):
-        xmldoc = minidom.parse(bibfile)
+        xmldoc = None
+        try:
+            xmldoc = minidom.parse(bibfile)
+        except Exception, error: #not a valid xmldoc
+            return -1
+
         xmlrecords = xmldoc.getElementsByTagName('record')
         for rec in xmlrecords:
             try:

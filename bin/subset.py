@@ -1,9 +1,16 @@
-import os
+import os, sys
 from PyBib import *
 
 home = os.environ["HOME"]
 
-xmldata = home + "/Documents/Projects/R12/R12.xml"
+#xmldata = home + "/Documents/Projects/R12/R12.xml"
+#xmldata = home + "/notxml"
+xmlfolder = home + "/Documents/Projects"
+ 
+import PyTex
+bib = PyTex.walkForBibs(xmlfolder)
+print bib
+sys.exit()
 
 bib = Bibliography()
 bib.buildRecords(xmldata, check=True)

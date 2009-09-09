@@ -57,6 +57,25 @@ class CiteManager:
                 if nfailed == 5: #too many failures
                     raise error
 
+def walkForBibs(folder):
+
+    def checkFolder(args, dirname, files):
+        import glob, os
+        topdir = os.getcwd()
+        os.chdir(dirname)
+        allbib = args
+        xmlfiles = [elem for elem in files if elem.endswith('xml')]
+        for file in xmlfiles:
+            print file
+            allbib.buildRecords(file)
+        os.chdir(topdir)
+
+    import os.path, PyBib
+    allbib = PyBib.Bibliography()
+    os.path.walk(folder, checkFolder, allbib)
+
+    return allbib
+
 def loadBibliography():
     if hasattr(PyTexGlobals, "bib"):
         return #already loaded
