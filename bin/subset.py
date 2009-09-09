@@ -15,7 +15,6 @@ sys.exit()
 bib = Bibliography()
 bib.buildRecords(xmldata, check=True)
 
-print bib
 
 sub = bib.subset("au=werner")
 

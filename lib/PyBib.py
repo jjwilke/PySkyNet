@@ -405,6 +405,7 @@ class Record(object):
 class XMLRequest:
 
     LOOKUP_TABLE = {
+        u'\xd8' : r'\O',
         u'\xe1' : r'\`{o}',
         u'\xe4' : r'\"{a}',
         u'\xf6' : r'\"{o}',
@@ -518,7 +519,8 @@ class Bibliography:
             rec = self.records[label]
             str_arr.append("%d. %s" % (n, rec.bibitem()))
             n += 1
-        return "\n".join(str_arr)
+        textstr =  "\n".join(str_arr)
+        return textstr
 
     def update(self, bib):
         for entry in bib:

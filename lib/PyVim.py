@@ -103,15 +103,18 @@ def initParse():
     if not filename:
         return
 
+
     import PyTex
     method_map = {
-        "tex", "PyTex.init",
+        "tex": PyTex.init,
     }
     
     import os.path
-    prefix, suffix = os.path.split(filename)
-    if not suffix:
-        return #can't identify
+    folder, file = os.path.split(filename)
+    splitname = file.split(".")
+    if len(splitname) == 1: #cannot identiy suffix
+        return
+    suffix = splitname[-1]
 
     flags = []
     for line in vim.current.buffer:
