@@ -1,6 +1,18 @@
 
 class PyTexGlobals:
     pass
+
+class TableFilter:
+    
+    def __init__(self, table, key):
+        self.table = table
+        self.key = key
+
+    def matches(self, key):
+        return self.key == key
+
+    def getTable(self):
+        return self.table
     
 class CiteManager:
     
@@ -10,19 +22,29 @@ class CiteManager:
         import PySave, os.path, PyRef
         import pygtk
         import gtk
+        import PyBib
+        import PyGui
 
-        bib = getattr(PyTexGlobals, "bib")
-        if not bib:
-            sys.exit("Invalid bibliography %s" % file)
-        self.table = PyRef.PyRefTable(bib, bib.labels(), "label", "journal", "year", "volume", "pages", "authors", "title")
-
+        self.bib = PyBib.Bibliography()
+        self.table = PyRef.PyRefTable(self.bib, self.bib.labels(), "label", "journal", "year", "volume", "pages", "authors", "title")
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.connect("destroy", self.close)
         self.window.set_title("References")
 
         hbox = gtk.HBox(False)
-        entry = gtk.Entry(100)
-        hbox.pack_start(entry, True)
+
+        #file buttons
+        load_button = gtk.Button("Load Bibliography")
+        load_button.connect("clicked", self.load)
+        hbox.pack_start(load_button, False)
+        upd_button = gtk.Button("Update Bibliography")
+        upd_button.connect("clicked", self.update)
+        hbox.pack_start(upd_button, False)
+
+        self.entry = gtk.Entry(100)
+        self.entry.connect("key-release-event", self.filter)
+        self.filterstr = ''
+        hbox.pack_start(self.entry, True)
         button = gtk.Button("Insert References")
         button.connect("clicked", self.insert_refs)
         hbox.pack_end(button, False)
@@ -35,6 +57,86 @@ class CiteManager:
         vbox.pack_start(self.scrollwindow)
         self.window.add(vbox)
         self.window.show_all()
+        
+        self.tables = [ TableFilter(self.table, self.filterstr) ]
+
+    def filter(self, widget, data=None):
+        text =  self.entry.get_text()
+        cmds = text.strip().split()
+        filterstrs = []
+        for cmd in cmds:
+            splitcmd = cmd.split("=")
+            if len(splitcmd) != 2:
+                continue
+            attr, val = splitcmd
+            if not attr or not val:
+                continue #also not valid
+
+            filterstrs.append("%s=%s" % (attr, val))
+
+        filterstr = " ".join(filterstrs)
+        if filterstr == self.filterstr:
+            return #nothing to do
+        else:
+            self.filterstr = filterstr
+            self.scrollwindow.remove(self.table.getTree())
+            #check to see if the filterstr exists in the current set
+            exists = False
+            for table in self.tables:
+                if table.matches(filterstr):
+                    exists = True
+                    break
+
+            if exists: #pop back until we get the match
+                match = False
+                while self.tables:
+                    filter = self.tables.pop()
+                    if filter.matches(filterstr):
+                        self.table = filter.getTable()
+                        self.scrollwindow.add(self.table.getTree())
+                        self.window.show_all()
+                        self.tables.append(filter)
+                        return
+            else: #does not exist, make a new one
+                import PyBib
+                newtable = None
+                try:
+                    newtable =  self.table.filter(filterstr)
+                except PyBib.BadMatchAttribute, error:
+                    print error
+                    #build blank table
+                    newtable = self.table.subset([]) #build null table
+                newfilter = TableFilter(newtable, filterstr)
+                self.table = newtable
+                self.tables.append(newfilter)
+                self.scrollwindow.add(self.table.getTree())
+                self.window.show_all()
+                return
+
+    def updateBib(self, files):
+        import PyBib, os.path
+        if isinstance(files, str): #single file
+            files = [files]
+
+        for file in files:
+            bib = loadBibliography(file)
+            if bib:
+                self.table.addReferences(bib)
+
+    def loadBib(self, files):
+        pass
+
+    def update(self, widget, data=None):
+        import PyGui
+        import os
+        home = os.environ["HOME"]
+        filesel = PyGui.FileSelect(home, self.updateBib)
+
+    def load(self, widget, data=None):
+        import PyGui
+        import os
+        home = os.environ["HOME"]
+        filesel = PyGui.FileSelect(home, self.loadBib)
 
     def close(self, widget, data=None):
         import gtk
@@ -60,7 +162,7 @@ class CiteManager:
 def walkForBibs(folder):
 
     def checkFolder(args, dirname, files):
-        import glob, os
+        import glob, os, os.path
         topdir = os.getcwd()
         os.chdir(dirname)
         allbib = args
@@ -91,16 +193,20 @@ def openBibFile(file):
     return bibobj
 
 def loadBibliography(bibpath):
-
+    
     import os.path
     bibobj = None
     if os.path.isdir(bibpath):
         bibobj = walkForBibs(bibpath)
     else:
-        bibobj = openBibFile(file)
+        bibobj = openBibFile(bibpath)
 
+    return bibobj
+
+def setBiblography(bibpath):
+    bibobj = loadBibliography(bibpath)
     if not bibobj:
-        return #nothing there
+        return #nothing to do
 
     if hasattr(PyTexGlobals, "bib"):
         oldbib = getattr(PyTexGlobals, "bib")
@@ -111,8 +217,8 @@ def loadBibliography(bibpath):
 
 def startLatex():
     import gtk
-    loadBibliography("/Users/jjwilke/Documents/Projects")
     cite = CiteManager()
+    cite.updateBib("/Users/jjwilke/Documents/Projects")
     gtk.main()
 
 import threading

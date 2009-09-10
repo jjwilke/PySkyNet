@@ -16,7 +16,7 @@ bib = Bibliography()
 bib.buildRecords(xmldata, check=True)
 
 
-sub = bib.subset("au=werner")
+sub = bib.filter("au=werner")
 
 import PySave, os.path
 path = os.path.join(os.path.expanduser("~"), "Documents", "pybib", "allrefs.pickle")

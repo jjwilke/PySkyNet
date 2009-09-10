@@ -129,7 +129,8 @@ class EntryFormat:
             if not hasattr(self, attr):
                 raise FormatOptionError('%s is not a valid option for %s' % (attr, self.__class__))
 
-    def bibitem(self, obj):
+    def bibitem(self, obj, simple=False):
+        #by default, simplify does nothing
         text = LatexFormat.format(self.style, obj.text())
         if self.parentheses:
             text =  "(%s)" % text
@@ -145,11 +146,20 @@ class AuthorsFormat(EntryFormat):
     finaldelim = True
     finishdelim = ''
 
+    simplify_map = {
+     r'\`{o}' : 'o',
+     r'\"{a}' : 'a',
+     r'\"{o}' : 'o',
+     r'\o' : 'o',
+     r'\"{u}' : 'u',
+     r'\v{S}' : 'S',
+     r'\v{z}' : 'z',
+    }
 
-    def bibitem(self, authorList):
+    def bibitem(self, authorList, simple=False):
         formatted_list = []
         for author in authorList:
-            bibentry = self.formatname(author)
+            bibentry = self.formatname(author, simple)
             formatted_list.append(bibentry)
 
         frontpart = ""
@@ -163,7 +173,7 @@ class AuthorsFormat(EntryFormat):
         bibitem = frontpart + formatted_list[-1] + self.finishdelim
         return bibitem
 
-    def formatname(self, author):
+    def formatname(self, author, simple=False):
         lastname = author.lastname()
         initials = author.initials()
         text = ''
@@ -171,13 +181,28 @@ class AuthorsFormat(EntryFormat):
             text = "%s, %s" % (lastname, initials)
         else:
             text = "%s %s" % (initials, lastname)
+
+        if simple:
+            text = self.simplify_entry(text)
+
         return LatexFormat.format(self.style, text)
+
+    def simplify_entry(cls, text):
+        simple = text
+        for entry in cls.simplify_map:
+            simple = simple.replace(entry, cls.simplify_map[entry])
+        return simple
+
+    simplify_entry = classmethod(simplify_entry)
+
+
 
 class JournalFormat(EntryFormat): 
     
-    def bibitem(self, obj):
-        format = EntryFormat.bibitem(self, obj)
-        if format[-2:] == self.finishdelim * 2: #ends in two
+    def bibitem(self, obj, simple=False):
+        #by default, bibitem simplify doesn't have to do anything
+        format = EntryFormat.bibitem(self, obj, simple)
+        if format[-2:] == self.finishdelim * 2: #ends in two periods or similar
             format = format[:-1]
         return format
 
@@ -226,16 +251,6 @@ class FullJournalTitle(Entry): pass
 
 class Author:
     
-    simplify_map = {
-     r'\`{o}' : 'o',
-     r'\"{a}' : 'a',
-     r'\"{o}' : 'o',
-     r'\o' : 'o',
-     r'\"{u}' : 'u',
-     r'\v{S}' : 'S',
-     r'\v{z}' : 'z',
-    }
-
     def __init__(self, author):
         try:
             self._lastname, self._initials = map( lambda x: x.strip(), author.split(",") )
@@ -245,14 +260,8 @@ class Author:
     def __str__(self):
         return "%s, %s" % (self.lastname(), self.initials())
 
-    def simple_entry(self):
-        simple = str(self)
-        for entry in self.simplify_map:
-            simple = simple.replace(entry, self.simplify_map[entry])
-        return simple
-
     def matches(self, match):
-        simpleself = self.simple_entry()
+        simpleself = AuthorsFormat.simplify_entry(str(self))
         if match in simpleself.lower():
             return True
 
@@ -309,21 +318,21 @@ class RecordObject:
 
     setBibformat = classmethod(setBibformat)
 
-    def getAttribute(self, name):
+    def getAttribute(self, name, simple=False):
         name = name.lower()
         formatter = getattr(self, name)
         if not formatter:
             raise BibformatUnspecifiedError(name)
-        text = formatter.bibitem(self.entries[name])
+        text = formatter.bibitem(self.entries[name], simple)
         return text
 
-    def bibitem(self):
+    def bibitem(self, simple=False):
         txt_arr = []
         for flag in self.order:
             formatter = getattr(self, flag)
             if not formatter:
                 raise BibformatUnspecifiedError(flag)
-            text = formatter.bibitem(self.entries[flag])
+            text = formatter.bibitem(self.entries[flag], simple)
             txt_arr.append(text)
         return " ".join(txt_arr)
             
@@ -537,7 +546,18 @@ class Bibliography:
     def labels(self):
         return self.records.keys()
 
-    def subset(self, initstring):
+    def subset(self, labels):
+        newbib = Bibliography()
+        newrecs = {}
+        for label in labels:
+            try:
+                newrecs[label] = self.records[label]
+            except KeyError:
+                pass #don't include
+        newbib.records = newrecs
+        return newbib
+
+    def filter(self, initstring):
         matchreq = MatchRequest(initstring)
 
         newrecs = {}

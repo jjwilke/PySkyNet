@@ -9,8 +9,8 @@ class PyGtkTableEntry:
         self.visible = False
         self.data = data
 
-    def getAttribute(self, name):
-        return self.data.getAttribute(name)
+    def getAttribute(self, name, **kwargs):
+        return self.data.getAttribute(name, **kwargs)
 
     def isVisible(self):
         return self.visible
@@ -71,7 +71,7 @@ class PyGtkTable:
     def set_cell(self, column, cell, model, iter):
         name = column.get_title()
         entry = model.get_value(iter, 0)
-        value = entry.getAttribute(name)
+        value = entry.getAttribute(name, simple=True) #get simple entry, not fancy unicode ones
         cell.set_property('text', value)
 
     def addEntries(self, entries):
@@ -100,7 +100,9 @@ class PyRefTable:
 
     def __init__(self, bib, entries, *cols):
         self.entries = entries[:]
-        self.bib = bib
+        self.bib = bib.subset(entries)
+        self.cols = cols
+
 
         self.entrymap = {}
         entrylist = []
@@ -110,6 +112,21 @@ class PyRefTable:
             entrylist.append(gtkentry)
 
         self.table = PyGtkTable(entrylist, *cols)
+
+    def subset(self, entries):
+        valid_entries = []
+        for entry in entries:
+            if entry in self.entries:
+                valid_entries.append(entry)
+
+        newtable = PyRefTable(self.bib, valid_entries, *self.cols)
+        return newtable
+
+    def filter(self, filterstr):
+        subset = self.bib.filter(filterstr)
+        entries = subset.labels()
+        newtable = PyRefTable(subset, entries, *self.cols)
+        return newtable
 
     def addReferences(self, refs):
         entrylist = []
