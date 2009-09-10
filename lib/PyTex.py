@@ -57,6 +57,7 @@ class CiteManager:
         vbox.pack_start(self.scrollwindow)
         self.window.add(vbox)
         self.window.show_all()
+        self.window.maximize()
         
         self.tables = [ TableFilter(self.table, self.filterstr) ]
 
@@ -148,16 +149,12 @@ class CiteManager:
         comm = PySock.Communicator(self.REF_LISTEN_PORT)
         nfailed = 0
         sent = False
-        while not sent:
-            try:
-                comm.sendObject(refs)
-                comm.close()
-                sent = True
-            except Exception, error:
-                nfailed += 1
-
-                if nfailed == 5: #too many failures
-                    raise error
+        try:
+            comm.sendObject(refs)
+            comm.close()
+            sent = True
+        except PySock.SocketOpenError:
+            print 'failed'
 
 def walkForBibs(folder):
 
@@ -192,18 +189,27 @@ def openBibFile(file):
 
     return bibobj
 
-def loadBibliography(bibpath):
+def loadBibliography(bibpaths):
+    if isinstance(bibpaths, str):
+        bibpaths = [bibpaths]
     
     import os.path
     bibobj = None
-    if os.path.isdir(bibpath):
-        bibobj = walkForBibs(bibpath)
-    else:
-        bibobj = openBibFile(bibpath)
+    for bibpath in bibpaths:
+        newbib = None
+        if os.path.isdir(bibpath):
+            newbib = walkForBibs(bibpath)
+        else:
+            newbib = openBibFile(bibpath)
+
+        if bibobj: #if not the first in list, update
+            bibobj.update(newbib)
+        else: #if first in list, update
+            bibobj = newbib
 
     return bibobj
 
-def setBiblography(bibpath):
+def setBibliography(bibpath):
     bibobj = loadBibliography(bibpath)
     if not bibobj:
         return #nothing to do
@@ -270,6 +276,7 @@ class Citation:
         self.vbox.pack_end(self.scrollwindow, True)
         self.window.add(self.vbox)
         self.window.show_all()
+        self.window.maximize()
 
         #self.window.connect("focus-in-event", self.start_listening)
         #self.window.connect("focus-out-event", self.stop_listening)
@@ -301,19 +308,19 @@ def processInitFlag(flag):
     if name == "bibliography":
         if not options:
             return #nothing there
-        loadBibliography(options[0])
-    
+        setBibliography(options[0])
 
 def init(flags):
     for flag in flags:
         processInitFlag(flag)
 
-def loadCitation():
-    import PyVim, re
+def loadCitation(cword):
+    import re
     import pygtk
     import gtk
-    cword = PyVim.getCurrentWord()
+    import os.path
     entries = []
+    import PyVim
     if '\cite{' in cword: #we are currently on a citation
         #get the entries within the citation
         innards = re.compile(r'cite[{](.*?)[}]').search(cword).groups()[0].strip()
@@ -322,12 +329,19 @@ def loadCitation():
         else:
             entries = []
     else: #no citation, but put one in
+        import PyVim
         PyVim.appendAtWord("\cite{}")
         cword = "\cite{}"
 
     #build the citation
+    import os.path
+    if not hasattr(PyTexGlobals, "bib"):
+        import PyGui
+        filesel = PyGui.FileSelect(os.path.join(os.path.expanduser("~"), "Documents"), setBibliography, main=True)
+        gtk.main()
+        
     bib = getattr(PyTexGlobals, "bib")
-    title = "Reference at line %d" % PyVim.line
+    title = "Reference at line %d" % PyVim.PyVimGlobals.line
     citeobj = Citation(title, bib, entries)
 
     gtk.gdk.threads_init()
@@ -340,8 +354,13 @@ def loadCitation():
     labels = []
     for entry in entries:
         labels.append(str(entry.getAttribute("label")))
-    newtext = "\cite{%s}" % ",".join(labels)
+
+    newtext = ''
+    if labels:
+        newtext = "\cite{%s}" % ",".join(labels)
+    import PyVim
     PyVim.replace(cword, newtext)
 
 if __name__ == "__main__":
     startLatex()
+    #loadCitation("\cite{RauhutVibrationsF122009}")

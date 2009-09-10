@@ -1,7 +1,56 @@
 import vim
 
-line = 0
-col = 0
+class PyVimGlobals:
+    line = 0
+    col = 0
+    is_init = False
+    stderr = None
+    stdout = None
+
+def disconnectErr():
+    if PyVimGlobals.stderr: #already disconnected
+        return
+
+    import sys
+    import os.path, os
+    home = os.environ["HOME"]
+    errorfile = os.path.join(home, ".vimerr")
+    fileobj = open(errorfile, "a+")
+    PyVimGlobals.stderr = sys.stderr
+    sys.stderr = fileobj
+
+def reconnectErr():
+    if not PyVimGlobals.stderr: #already connected
+        return
+
+    import sys
+    fileobj = sys.stderr
+    sys.stderr = PyVimGlobals.stderr
+    #fileobj.close()
+    PyVimGlobals.stderr = None
+
+def disconnectOut():
+    if PyVimGlobals.stdout: #already disconnected
+        return
+
+    import sys
+    import os.path, os
+    home = os.environ["HOME"]
+    errorfile = os.path.join(home, ".vimout")
+    fileobj = open(errorfile, "a+")
+    PyVimGlobals.stdout = sys.stdout
+    sys.stdout = fileobj
+
+def reconnectOut():
+    if not PyVimGlobals.stdout: #already connected
+        return
+
+    import sys
+    fileobj = sys.stderr
+    sys.stdout = PyVimGlobals.stdout
+    #fileobj.close()
+    PyVimGlobals.stdout = None
+
 
 def display(msg):
     import sys, os
@@ -27,10 +76,18 @@ def display(msg):
 
 def openReference():
     import PyTex
-    PyTex.loadBibliography()
-    PyTex.loadCitation()
+    #disconnect stderr and out
+    disconnectErr()
+    disconnectOut()
+    cword = getCurrentWord()
+    PyTex.loadCitation(cword)
+    reconnectErr()
+    reconnectOut()
     
 def appendAtWord(word):
+    resetXY()
+    col = PyVimGlobals.col
+    line = PyVimGlobals.line
     cline = vim.current.buffer[line]
     if not cline: #no line yet
         col = 0
@@ -50,6 +107,9 @@ def test():
     display("after = %d" % col)
 
 def getCurrentWord():
+    resetXY()
+    col = PyVimGlobals.col
+    line = PyVimGlobals.line
     cline = vim.current.buffer[line]
     if len(cline) == 0: #nothing here
         return ""
@@ -77,9 +137,11 @@ def getCurrentWord():
     return word
 
 def replace(old, new):
+    col = PyVimGlobals.col
+    line = PyVimGlobals.line
     cline = vim.current.buffer[line]
     newline = cline.replace(old, new)
-    display("%s %d %s" % (newline, line, newline.__class__))
+    #display("%s %d %s" % (newline, line, newline.__class__))
     resetXY()
     try:
         vim.current.buffer[line] = newline
@@ -91,18 +153,30 @@ def replace(old, new):
 def resetXY():
     line, col = vim.current.window.cursor
     line-=1 #1 based counting
+    PyVimGlobals.col = col
+    PyVimGlobals.line = line
 
 def commentLine():
+    resetXY()
+    col = PyVimGlobals.col
+    line = PyVimGlobals.line
     cline = vim.current.buffer[line]
     newline = '/* %s */' % cline
-    resetXY()
     vim.current.buffer[line] = newline
+
+def init():
+    if PyVimGlobals.is_init:
+        return
+
+    initParse()
+    PyVimGlobals.is_init = True
 
 def initParse():
     filename = vim.current.buffer.name
     if not filename:
         return
 
+    #display(filename)
 
     import PyTex
     method_map = {
@@ -122,6 +196,8 @@ def initParse():
             clean = line.replace("%PyVim","").strip()
             flags.append(clean)
 
+    #display(str(flags))
+
     method = None
     try:
         method = method_map[suffix]
@@ -131,4 +207,3 @@ def initParse():
     method(flags)
 
 resetXY()
-

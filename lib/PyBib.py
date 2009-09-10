@@ -1,7 +1,6 @@
 from xml.dom import minidom
 import codecs, sys, os.path, re
 
-
 class BibPyError(Exception):
     
     def __init__(self, msg):
@@ -70,6 +69,7 @@ class MatchRequest:
         'pages',
         'year',
         'journal',
+        'label',
     ]
 
     regexp = "([a-zA-Z0-9]+)[=]([a-zA-Z0-9]+)"

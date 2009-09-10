@@ -103,7 +103,6 @@ class PyRefTable:
         self.bib = bib.subset(entries)
         self.cols = cols
 
-
         self.entrymap = {}
         entrylist = []
         for entry in self.entries:
