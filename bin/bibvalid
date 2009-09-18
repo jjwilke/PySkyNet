@@ -6,15 +6,17 @@ if len(sys.argv) < 2:
     sys.exit("Please give me a file to validate")
 
 file = sys.argv[1]
-if not os.path.isfile(file):
+if not os.path.isfile(file) and not os.path.isdir(file):
     sys.exit("File does not exist")
 
 fields = sys.argv[2:]
 
-bib = PyBib.Bibliography()
-ret = bib.buildRecords(file, True, fields)
-if ret == -1: #error
-    sys.exit("Not a valid xml file")
+import PyTex
+bib = PyTex.walkForBibs(file, True, [])
 
+labels = bib.labels()
+labels.sort()
 
+for lbl in labels:
+    print lbl
 

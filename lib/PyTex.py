@@ -156,7 +156,7 @@ class CiteManager:
         except PySock.SocketOpenError:
             print 'failed'
 
-def walkForBibs(folder):
+def walkForBibs(folder, check=False, fields=[]):
 
     def checkFolder(args, dirname, files):
         import glob, os, os.path
@@ -165,7 +165,7 @@ def walkForBibs(folder):
         allbib = args
         xmlfiles = [elem for elem in files if elem.endswith('xml')]
         for file in xmlfiles:
-            allbib.buildRecords(file)
+            allbib.buildRecords(file, check, fields)
         os.chdir(topdir)
 
     import os.path, PyBib
@@ -320,6 +320,10 @@ def loadCitation(cword):
     import gtk
     import os.path
     entries = []
+    print cword
+    if "~" in cword:
+        cword = "~" + cword.split("~")[-1]
+    print cword
     import PyVim
     if '\cite{' in cword: #we are currently on a citation
         #get the entries within the citation
@@ -330,8 +334,8 @@ def loadCitation(cword):
             entries = []
     else: #no citation, but put one in
         import PyVim
-        PyVim.appendAtWord("\cite{}")
-        cword = "\cite{}"
+        PyVim.appendAtWord("~\cite{}")
+        cword = "~\cite{}"
 
     #build the citation
     import os.path
@@ -357,10 +361,42 @@ def loadCitation(cword):
 
     newtext = ''
     if labels:
-        newtext = "\cite{%s}" % ",".join(labels)
+        newtext = "~\cite{%s}" % ",".join(labels)
     import PyVim
     PyVim.replace(cword, newtext)
 
+def makeBib(params):
+    import sys
+    if len(params) != 2:
+        sys.exit("Please specify the tex file and bibfile")
+
+    texfile = params[0]
+    if texfile.endswith(".tex"): texfile = texfile[:-4]
+    import os.path
+    auxfile = texfile + ".aux"
+    if not os.path.isfile(auxfile):
+        sys.exit("%s is not a valid tex root name" % texfile)
+
+    bibfile = params[1]
+    if bibfile.startswith("~"):
+        bibfile = os.path.expanduser('~') + bibfile[1:]
+    if not os.path.isfile(bibfile) and not os.path.isdir(bibfile):
+        sys.exit("%s is not a valid bib path" % bibfile)
+
+    bib = walkForBibs(bibfile)
+    bib.buildBibliography(texfile)
+    bib.write()
+
+def insertAlign():
+    import PyVim
+    PyVim.insertLine(r"\end{align}")
+    PyVim.insertLine(r"\begin{align}")
+
+def insertEquation():
+    import PyVim
+    PyVim.insertLine(r"\end{equation}")
+    PyVim.insertLine(r"\begin{equation}")
+
 if __name__ == "__main__":
     startLatex()
-    #loadCitation("\cite{RauhutVibrationsF122009}")
+    #loadCitation("\cite{Knizia:hw2008}")

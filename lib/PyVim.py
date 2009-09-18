@@ -1,5 +1,6 @@
 import vim
 
+
 class PyVimGlobals:
     line = 0
     col = 0
@@ -77,12 +78,12 @@ def display(msg):
 def openReference():
     import PyTex
     #disconnect stderr and out
-    disconnectErr()
-    disconnectOut()
+    #disconnectErr()
+    #disconnectOut()
     cword = getCurrentWord()
     PyTex.loadCitation(cword)
-    reconnectErr()
-    reconnectOut()
+    #reconnectErr()
+    #reconnectOut()
     
 def appendAtWord(word):
     resetXY()
@@ -170,6 +171,13 @@ def init():
 
     initParse()
     PyVimGlobals.is_init = True
+
+def insertLine(newline):
+    resetXY()
+    #insert new line at current position
+    vim.command('call append(line("."), "")')
+    insertline = PyVimGlobals.line + 1
+    vim.current.buffer[insertline] = newline
 
 def initParse():
     filename = vim.current.buffer.name

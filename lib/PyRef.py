@@ -71,8 +71,13 @@ class PyGtkTable:
     def set_cell(self, column, cell, model, iter):
         name = column.get_title()
         entry = model.get_value(iter, 0)
-        value = entry.getAttribute(name, simple=True) #get simple entry, not fancy unicode ones
-        cell.set_property('text', value)
+        try:
+            value = entry.getAttribute(name, simple=True) #get simple entry, not fancy unicode ones
+            cell.set_property('text', value)
+        except Exception, error:
+            import sys
+            sys.stderr.write("%s\n" % error)
+            cell.set_property('text', '') #blank
 
     def addEntries(self, entries):
         for entry in entries:
@@ -106,9 +111,12 @@ class PyRefTable:
         self.entrymap = {}
         entrylist = []
         for entry in self.entries:
-            gtkentry = PyGtkTableEntry(bib[entry])
-            self.entrymap[entry] = gtkentry
-            entrylist.append(gtkentry)
+            try:
+                gtkentry = PyGtkTableEntry(bib[entry])
+                self.entrymap[entry] = gtkentry
+                entrylist.append(gtkentry)
+            except KeyError:
+                pass #can't find current reference
 
         self.table = PyGtkTable(entrylist, *cols)
 
@@ -150,7 +158,10 @@ class PyRefTable:
     def getEntries(self):
         entries = []
         for label in self.entries:
-            entries.append(self.bib[label])
+            try:
+                entries.append(self.bib[label])
+            except KeyError:
+                pass #ignore broken entries
         return entries
 
     def getTree(self):
