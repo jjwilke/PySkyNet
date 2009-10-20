@@ -100,7 +100,7 @@ class InputOption:
     #  @param allowedOptions an explicit list of allowed options if only a few options should be allowed.
     #  @param default A default value if none is specified
     #  @param bind Whether to bind the long option name to a variable name
-    def __init__(self, shortOption=None, longOption=None, optionType='string', listOfValues=False, valuesMandatory=False, restrictedValues=None, default=None, bind=False):
+    def __init__(self, shortOption=None, longOption=None, optionType='string', listOfValues=False, valuesMandatory=False, restrictedValues=None, default=None, bind=False, setbool=False, allowValues=True):
         self.shortOption = shortOption
         self.longOption = longOption
 
@@ -111,6 +111,8 @@ class InputOption:
 
         self.isList = listOfValues
         self.valuesMandatory = valuesMandatory
+        self.allowValues = allowValues
+
 
         if default == None:
             self.default = None
@@ -118,6 +120,13 @@ class InputOption:
             self.default = str(default)
 
         self.bind = bind
+
+        self.setbool = setbool
+        if setbool:
+            self.default = None
+            self.allowValues = False
+            self.bind = True
+            self.values = [False]
 
     def __str__(self):
         str_array = []
@@ -128,6 +137,10 @@ class InputOption:
             str_array.append("Values Given:")
             str_array.append("\n".join( map(toString, self.values) ) )
         return "\n".join(str_array)
+
+    def setFound(self):
+        if self.setbool:
+            self.values = [True]
 
     def hasDefault(self):
         return self.default
@@ -158,6 +171,10 @@ class InputOption:
         else: return self.longOption        
 
     def addValue(self, value):
+        if not self.allowValues:
+            raise InvalidValueError(option=self.getOptionDescription(), value=value,
+                                     error="Option does not take any values")
+
         #first, check if the value meets the "optionType" criteria
         converted_value = self.checkValue(value) #this might throw an exception
         #here, a converted value is returned as specified by the regular expression
@@ -185,6 +202,7 @@ class InputOption:
             #nope... no good
             raise InvalidValueError( option=self.getOptionDescription(), value=value,
                                      error="Input value not in allowed values:\n%s" % "\n".join( map(toString, self.restrictedValues) )  )
+
         
         #first verify the format
         pattern = self.regExpressions[self.optionType]
@@ -424,7 +442,11 @@ def readOptions(optionList, optionsInput=sys.argv[1:], optionSet=None):
                 #hmm, okay, we'll overwrite what's there
                 if current_option in options_given: 
                     optionList[current_option].reset()
-                else: options_given.append(current_option)
+                else: 
+                    options_given.append(current_option)
+
+                optionList[current_option].setFound()
+
             else:
                 try:
                     optionList[current_option].addValue(entry)

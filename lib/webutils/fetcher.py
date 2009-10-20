@@ -52,7 +52,7 @@ def getBasisForAtom(atom, basis="STO-3G", program="Gaussian94", verbatim=False):
     url = "http://www.emsl.pnl.gov/cgi-bin/ecce/basis_old.pl"
     urlObj = urllib.URLopener()
     query = urllib.urlencode({"BasisSets": "%s" % basis, "Atoms":atom.getSymbol(), "Codes": prog_name,
-                       "Optimize" : "on", "ECP" : "off", "Email" : "jjwilke@uga.edu"})
+                       "Optimize" : "off", "ECP" : "off", "Email" : "jjwilke@uga.edu"})
     response = urlObj.open(url, query).read()
 
     #clean up the response

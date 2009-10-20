@@ -7,32 +7,32 @@ import sys, os, os.path
 PYBASIS = os.environ["PYBASIS"]
 
 if __name__ == "__main__":
-    from utils.getoptions import InputOption, OptionList, readOptions
+    from utils.getoptions import InputOption, OptionList, readOptions, OptionSet
 
     #set the allowed command line options and user messages
-    options = [
+    opts = [
         InputOption(shortOption='e', longOption='emsl', optionType='string', valuesMandatory=True),
-        InputOption(shortOption='a', longOption='atoms', optionType='string', listOfValues=True, valuesMandatory=True),
+        InputOption(shortOption='a', longOption='atoms', optionType='string', listOfValues=True, valuesMandatory=True, bind=True),
         InputOption(shortOption='s', longOption='save', optionType='string', valuesMandatory=False),
         InputOption(longOption='setname', optionType='string', valuesMandatory=True),
         InputOption(shortOption='c', longOption='clip'),
-        InputOption(shortOption='v', longOption='verb'),
         InputOption(shortOption='u', longOption='uncontract'),
         InputOption(shortOption='p', longOption='print', optionType='string', valuesMandatory=False),
         InputOption(longOption='summary', valuesMandatory=False),
+        InputOption(longOption='verbatim', setbool = True),
         InputOption(longOption='pickle', optionType='string', valuesMandatory=True),
-        InputOption(shortOption='n', longOption='name', optionType='string', valuesMandatory=True),
+        InputOption(shortOption='n', longOption='name', optionType='string', valuesMandatory=True, bind=True, default="custom"),
         InputOption(shortOption='f', longOption='file', optionType='string', valuesMandatory=True),
         ]
+
+    options=OptionSet()
     optionList = OptionList(commandName="getbasis",
                             usageStructure=[ "[options]"],
-                            optionsList=options)
-    options_given = readOptions(optionList)
-   
+                            optionsList=opts)
+    options_given = readOptions(optionList, optionSet=options)
+
     #defaults
-    name = "CUSTOM"
     basis_object = None
-    atomList = []
     #usually, the basis set name is 'corrected' automatically
     #in some situations, this should not be done
     verbatim = False
@@ -40,13 +40,7 @@ if __name__ == "__main__":
         if option in ('e', 'emsl'):
             import webutils.fetcher
             basis = optionList[option].getValue()
-            basis_object = webutils.fetcher.getBasisSet(basis, atomList, verbatim)
-
-        elif option in ('v', 'verb'):
-            verbatim = True
-            
-        elif option in ('a', 'atoms'):
-            atomList = optionList[option].getValues()
+            basis_object = webutils.fetcher.getBasisSet(basis, options.atoms, options.verbatim)
 
         elif option in ('', 'summary'):
             print basis_object.basisDictionary.keys()
@@ -62,7 +56,7 @@ if __name__ == "__main__":
                 continue #we found one
 
             fileText = open(file).read()
-            basis_object = basisset.readGaussianBasis(fileText, atomList)
+            basis_object = basisset.readGaussianBasis(fileText, options.atoms)
             if basis_object:
                 continue #we found one
 
@@ -81,9 +75,6 @@ if __name__ == "__main__":
             else:
                 save(basis_object, BASIS_FILE)
 
-        elif option in ('n', 'name'):
-            name = optionList[option].getValue()
-
         elif option in ('', 'pickle'):
             pickle_file = optionList[option].getValue().lower()
             basis_object = load( os.path.join(PYBASIS, pickle_file) )
@@ -94,14 +85,16 @@ if __name__ == "__main__":
         elif option in ('p', 'print'):
             program = optionList[option].getValue()
             if program: 
-                print basis_object.getBasisText(program=program, name=name, atomList=atomList)
+                print basis_object.getBasisText(program=program, name=options.name, atomList=options.atoms)
             else: 
                 print basis_object
 
         elif option in ('', 'setname'):
             name = optionList[option].getValue()
-            if program: print basis_object.getBasisText(program=program, name=name)
-            else: print basis_object
+            if program: 
+                print basis_object.getBasisText(program=program, name=name)
+            else: 
+                print basis_object
 
         elif option in ('u', 'uncontract'):
             basis_object = basis_object.decontract()
