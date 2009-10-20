@@ -3,15 +3,11 @@
 from utils.RM import *
 import chem.basisset
 import sys, os, os.path
-import webutils.fetcher
 
-PYTEMP = os.environ["PYTEMP"]
-MOLECULE_FILE = os.path.join(PYTEMP, ".molecule")
-BASIS_FILE = os.path.join(PYTEMP, ".basis")
 PYBASIS = os.environ["PYBASIS"]
 
 if __name__ == "__main__":
-    from getoptions import *
+    from utils.getoptions import InputOption, OptionList, readOptions
 
     #set the allowed command line options and user messages
     options = [
@@ -42,9 +38,9 @@ if __name__ == "__main__":
     verbatim = False
     for option in options_given:
         if option in ('e', 'emsl'):
-            import fetcher
+            import webutils.fetcher
             basis = optionList[option].getValue()
-            basis_object = fetcher.getBasisSet(basis, atomList, verbatim)
+            basis_object = webutils.fetcher.getBasisSet(basis, atomList, verbatim)
 
         elif option in ('v', 'verb'):
             verbatim = True

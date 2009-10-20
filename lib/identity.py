@@ -1,15 +1,22 @@
 ## @module identity  Implements the identity class, from which all classes derive.  Identity allows classes to copy themselves. 
 ## Two interfaces are also implemented.  Runnable allows a class to run a series of methods in succession.  Savable allows a class to 
 ## save and load a state from a pickle on the hard drive.
-from RM import * 
+from utils.RM import * 
 from errors import *
-from linkedlist import LinkedList
+from utils.linkedlist import LinkedList
 
 class Identity(object):
 
     def copy(self):
         newcopy = copy(self)
         return newcopy
+
+    def setAttributes(self, **kwargs):
+        for entry in kwargs:
+            setattr(self, entry.lower(), kwargs[entry])
+
+    def getAttribute(self, entry):
+        return getattr(self, entry.lower())
 
 class Savable(Identity):
 

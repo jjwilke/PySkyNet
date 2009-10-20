@@ -1,6 +1,6 @@
 import re,sys,os,os.path 
-from RM import *
-from identity import *
+import identity
+from utils.RM import *
 
 ANGULAR_MOMENTUM_VALUES = {"S" : 0, "P" : 1, "D" : 2,
               "F" : 3, "G" : 4, "H" : 5,
@@ -42,13 +42,9 @@ BASIS_LETTERS = {
 
 BASIS_REGEXP = "([tdq56x])z"
 
-PY = os.environ["PY"]
-BASIS_FOLDER = os.path.join(PY, "basis_sets")
-
-class Basis(Identity):
+class Basis(identity.Identity):
 
     def __init__(self, basis):
-        import RM
         self.basis = str(basis).lower()
         percent = '%s'
         self.basisTemplate = re_replace(BASIS_REGEXP, self.basis, percent)
@@ -192,7 +188,7 @@ def getBasisNumber(basis):
         if number: return BASIS_NUMBERS[ number.groups()[0] ]
         else: return None
 
-class Shell(Identity):
+class Shell(identity.Identity):
 
     # @param basisDictionary The basis set dictionary that holds all the basis function
     #        Dictionary has the form key = angular momentum, value = list of basis functions
@@ -305,7 +301,7 @@ class Shell(Identity):
     def __len__(self):
         return len(self.coefficients)
 
-class BasisSet(Identity):
+class BasisSet(identity.Identity):
 
     ## Constructor
     #  @param basisDictionary The basis set dictionary that will hold all the basis functions
