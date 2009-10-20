@@ -9,7 +9,7 @@ import sys
 
 def getBasisSet(basis, atomList, verbatim=False):
     import urllib
-    import basisset
+    import chem.basisset
 
     program = "Gaussian94"
     basis_array = []
@@ -19,16 +19,16 @@ def getBasisSet(basis, atomList, verbatim=False):
    
     basisText = "\n".join(basis_array)
 
-    basisSet = basisset.processBasisText(basisText, atomList, program)
+    basisSet = chem.basisset.processBasisText(basisText, atomList, program)
 
     return basisSet
 
 def getBasisForAtom(atom, basis="STO-3G", program="Gaussian94", verbatim=False):    
     import urllib
-    import basisset
+    import chem.basisset
     
     #we want to work with atom objects, not atom names
-    from molecules import Atom
+    from chem.molecules import Atom
     if not isinstance(atom, Atom): atom = Atom(atom)
 
     if not verbatim: #take the name as is... don't "spell" check it
@@ -75,10 +75,10 @@ def getBasisForAtom(atom, basis="STO-3G", program="Gaussian94", verbatim=False):
 
 def getPetersonBasis(atom, basis, program, ri = False):    
     import urllib
-    import basisset
+    import chem.basisset
     
     #we want to work with atom objects, not atom names
-    from molecules import Atom
+    from chem.molecules import Atom
     if not isinstance(atom, Atom):
         atom = Atom(atom)
 

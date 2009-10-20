@@ -473,11 +473,11 @@ def readGaussianBasis(basisText, atomList):
 
 
 def printPsiBasis(basisSet, basisName, atomList):
-    import molecules
+    import chem.molecules
     atomList = basisSet.getAtoms()
     textArray = ["BASIS: ("]
     for atom in atomList:
-        atomName = molecules.getInfo("name", atom)
+        atomName = chem.molecules.getInfo("name", atom)
         textArray.append("%s : \"%s\" = (" % (atomName, basisName.upper()))
         shells = basisSet[atom]
         shells.sort()
@@ -498,7 +498,7 @@ def printPsiBasis(basisSet, basisName, atomList):
 def printMolproBasis(basisSet, basisName, atomList):
     exp_format = "%14.7E"
     coeff_format = "%14.7E"
-    import molecules
+    import chem.molecules
     atomList = basisSet.getAtoms()
     textArray = [""]
     for atom in atomList:
@@ -522,7 +522,7 @@ def printMolproBasis(basisSet, basisName, atomList):
     return finalText
 
 def printACESBasis(basisSet, basisName, atomList):
-    import molecules
+    import chem.molecules
     atomList = basisSet.getAtoms()
     textArray = []
     for atom in atomList:
@@ -573,11 +573,11 @@ def printACESBasis(basisSet, basisName, atomList):
     return "\n".join(textArray)    
 
 def printMPQCBasis(basisSet, basisName, atomList = None):
-    import molecules
+    import chem.molecules
     if not atomList: atomList = basisSet.getAtoms()
     textArray = []
     for atom in atomList:
-        textArray.append( "%s : \"%s\" : [" % (molecules.getInfo("name", atom).lower(), basisName) )  
+        textArray.append( "%s : \"%s\" : [" % (chem.molecules.getInfo("name", atom).lower(), basisName) )  
         numShells = basisSet.getNumberOfShells(atom)
         for shell in basisSet.getAtomShells(atom):
             topLine = '(type: ['
@@ -613,11 +613,11 @@ def printMPQCBasis(basisSet, basisName, atomList = None):
     return "\n".join(textArray)
                 
 def printMPQCRIBasis(basisSet, basisName, atomList = None):
-    import molecules
+    import chem.molecules
     if not atomList: atomList = basisSet.getAtoms()
     textArray = []
     for atom in atomList:
-        textArray.append("basis:%s:\"%s\": [" % ( molecules.getInfo("name", atom).lower(), basisName) )
+        textArray.append("basis:%s:\"%s\": [" % ( chem.molecules.getInfo("name", atom).lower(), basisName) )
         for shell in basisSet[atom]:
             exponents = shell.getExponents()
             angType = shell.getAngularMomentum()
@@ -632,7 +632,7 @@ def printMPQCRIBasis(basisSet, basisName, atomList = None):
     return "\n".join(textArray)
 
 def printGaussianBasis(basisSet, basisName, atomList = None):
-    import molecules
+    import chem.molecules
     textArray = []
     if not atomList:   
         atomList = basisSet.getAtoms()
