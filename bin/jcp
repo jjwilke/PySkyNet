@@ -6,16 +6,16 @@ from PyBib import *
 order(JournalArticle, 'authors', 'journal', 'volume', 'pages', 'year')
 set('authors', JournalArticle, delim = ',', lastname = false, finaldelim = true, finishdelim = ",")
 set('volume', JournalArticle, style = 'bold')
-set('pages', JournalArticle) #no style modification
+set('pages', JournalArticle, lastpage = false, finishdelim = "") #no style modification
 set('year', JournalArticle, parentheses = true, finishdelim = ".")
-set('journal', JournalArticle, finishdelim = ".") #defaults are fine
+set('journal', JournalArticle, finishdelim = "")
 
 order(ComputerProgram, 'title', 'year', 'authors', 'publisher', 'url')
 set('title', ComputerProgram, finishdelim = ",") #defaults are fine
 set('year', ComputerProgram, parentheses = false, finishdelim = ".")
 set('authors', ComputerProgram, delim = ',', lastname = false, finaldelim = true, finishdelim = ".")
 set('publisher', ComputerProgram, finishdelim = ".") #defaults are fine
-set('url', ComputerProgram, finishdelim = "") #defaults are fine
+set('url', ComputerProgram, finishdelim = ".") #defaults are fine
 
 import sys
 import PyTex

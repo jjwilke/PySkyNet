@@ -154,6 +154,7 @@ class AuthorsFormat(EntryFormat):
      r'\"{u}' : 'u',
      r'\v{S}' : 'S',
      r'\v{z}' : 'z',
+     r'\v{c}' : 'c',
     }
 
     def bibitem(self, authorList, simple=False):
@@ -206,9 +207,19 @@ class JournalFormat(EntryFormat):
             format = format[:-1]
         return format
 
+class PagesFormat(EntryFormat):
+    
+    lastpage = False
+
+    def bibitem(self, obj, simple=False):
+        format = EntryFormat.bibitem(self, obj, simple)
+        if not self.lastpage: #grab first one
+            format = format.split('-')[0]
+        return format
+        
+
 class YearFormat(EntryFormat): pass
 class VolumeFormat(EntryFormat): pass
-class PagesFormat(EntryFormat): pass
 class TitleFormat(EntryFormat): pass
 class LabelFormat(EntryFormat): pass
 class UrlFormat(EntryFormat): pass
@@ -260,6 +271,8 @@ class Author:
     def __init__(self, author):
         try:
             self._lastname, self._initials = map( lambda x: x.strip(), author.split(",") )
+            #fix capitalization
+            self.capitalize()
             return
         except ValueError:
             pass #try again
@@ -272,8 +285,29 @@ class Author:
             for entry in split[1:-1]:
                 initials.append(entry[0].upper())
             self._initials = ". ".join(initials) + '.'
+            #fix capitalization
+            self.capitalize()
         except IndexError:
             raise RecordEntryError("author", "%s is not a valid author entry" % author)
+
+    def capitalize(self):
+        #find the first letter
+        firstletter = ''
+        if self._lastname[0] != "\\":
+            self._lastname = self._lastname[0].upper() + self._lastname[1:].lower()
+        elif "{" in self._lastname: #complicated
+            firstletter = re.compile("([{][a-zA-Z][}])").search(self._lastname).groups()[0]
+            self._lastname = self._lastname.replace(firstletter, firstletter.upper())
+            pos = 0
+            while self._lastname[pos] != '}':
+                pos += 1
+            self._lastname = self._lastname[:pos + 1] + self._lastname[pos + 1:].lower()
+        else:
+            firstletter = re.compile("([a-zA-Z])").search(self._lastname).groups()[0] 
+            pos = 0
+            while self._lastname[pos] != '}':
+                pos += 1
+            self._lastname = self._lastname[:pos + 1].upper() + self._lastname[pos + 1:].lower()
 
     def __str__(self):
         return "%s, %s" % (self.lastname(), self.initials())
@@ -314,13 +348,15 @@ class XMLRequest:
 
     LOOKUP_TABLE = {
         u'\xd8' : r'\O',
-        u'\xe1' : r'\`{o}',
+        u'\xe1' : r'\`{a}',
+        u'\xf3' : r'\`{o}',
         u'\xe4' : r'\"{a}',
         u'\xf6' : r'\"{o}',
         u'\xf8' : r'\o',
         u'\xfc' : r'\"{u}',
         u'\u0160' : r'\v{S}',
         u'\u017e' : r'\v{z}',
+        u'\u010d' : r'\v{c}',
     }
 
     def __init__(self, topname, dataname = None, attrname = None):
@@ -433,82 +469,6 @@ class RecordObject:
             text = formatter.bibitem(self.entries[flag], simple)
             txt_arr.append(text)
         return " ".join(txt_arr)
-class XMLRequest:
-
-    LOOKUP_TABLE = {
-        u'\xd8' : r'\O',
-        u'\xe1' : r'\`{o}',
-        u'\xe4' : r'\"{a}',
-        u'\xf6' : r'\"{o}',
-        u'\xf8' : r'\o',
-        u'\xfc' : r'\"{u}',
-        u'\u0160' : r'\v{S}',
-        u'\u017e' : r'\v{z}',
-    }
-
-    def __init__(self, topname, dataname = None, attrname = None):
-        self.dataname = dataname
-        self.topname = topname
-        self.attrname = attrname
-
-    def getData(self, xmldoc):
-        nodes = xmldoc.getElementsByTagName(self.topname)
-        data = None
-        try: 
-            if self.dataname: #second level
-                childnodes = nodes[0].getElementsByTagName(self.dataname)
-                data = self.getDataFromNodes(childnodes)
-            elif self.attrname:
-                data = self.getAttributesFromNodes(nodes, self.attrname)[0] 
-            else:
-                data = self.getDataFromNodes(nodes)[0]
-        except IndexError:
-            raise XMLRequestError("could not find data for %s" % self.topname)
-
-        return data
-
-    def getList(self, xmldoc):
-        topnodes = xmldoc.getElementsByTagName(self.topname)
-        data = []
-        if self.dataname: #second level
-            for node in topnodes:
-                childnodes = node.getElementsByTagName(self.dataname)
-                data.append(self.getDataFromNodes(childnodes))
-            return data
-        elif self.attrname:
-            data = self.getAttributesFromNodes(topnodes, self.attrname)
-        else: #only one level
-            data = self.getDataFromNodes(topnodes)
-
-        return data
-
-    def cleanEntry(self, text):
-        for repl in self.LOOKUP_TABLE:
-            text = text.replace(repl, self.LOOKUP_TABLE[repl])
-        return text
-
-    def getAttributesFromNodes(self, nodes, attrname):
-        data = []
-        for node in nodes:
-            attr = node.getAttribute(attrname)
-            data.append(attr)
-        return data
-
-    def getDataFromNodes(self, nodes):
-        data = []
-        for entry in nodes:
-            try:
-                text = entry.firstChild.firstChild.data
-                cleanEntry = self.cleanEntry(text)
-                data.append(cleanEntry)
-            except:
-                pass #character not yet added
-        return data
-
-    def nrecords(cls, xmldoc, flag):
-        nodes = xmldoc.getElementsByTagName(flag)
-        return len(nodes)
-    nrecords = classmethod(nrecords)
 
 class ComputerProgram(RecordObject):
 

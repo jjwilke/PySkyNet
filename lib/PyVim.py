@@ -214,4 +214,52 @@ def initParse():
 
     method(flags)
 
+def getCurrentSentence():
+    resetXY()
+    col = PyVimGlobals.col
+    line = PyVimGlobals.line
+    cline = vim.current.buffer[line]
+
+    def getSentence(cline):
+        if len(cline) == 0: #nothing here
+            return ""
+
+        if cline[col] == '.': #no letters
+            return ""
+
+        start = col
+        while cline[start] != '.'and start >= 0 and cline[start:start+2] != '  ' :
+            start -= 1
+        start += 1 #loop goes one too far
+
+        word = []
+        letter = start
+        length = len(cline)
+        while letter < length and cline[letter] != '.' and cline[letter:letter+2] != '  ':
+            word.append(cline[letter])
+            letter += 1
+
+        #add the period, if there is one
+        if letter < length and cline[letter] == '.':
+            word.append('.')
+        elif letter == length and cline[-1] == '.':
+            word.append('.')
+        else:
+            pass
+
+        word = "".join(word)
+        return word
+
+    word = getSentence(cline)
+
+    return word
+
+def deleteSentence():
+    sent = getCurrentSentence()
+    col = PyVimGlobals.col
+    line = PyVimGlobals.line
+    cline = vim.current.buffer[line]
+    newline = cline.replace(sent, '')
+    vim.current.buffer[line] = newline
+
 resetXY()

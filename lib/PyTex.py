@@ -156,7 +156,7 @@ class CiteManager:
         except PySock.SocketOpenError:
             print 'failed'
 
-def walkForBibs(folder, check=False, fields=[]):
+def walkForBibs(path, check=False, fields=[]):
 
     def checkFolder(args, dirname, files):
         import glob, os, os.path
@@ -169,8 +169,14 @@ def walkForBibs(folder, check=False, fields=[]):
         os.chdir(topdir)
 
     import os.path, PyBib
+    if os.path.isfile(path):
+        bib = PyBib.Bibliography()
+        bib.buildRecords(path, check, fields)
+        return bib
+
+    #folder, do the walk
     allbib = PyBib.Bibliography()
-    os.path.walk(folder, checkFolder, allbib)
+    os.path.walk(path, checkFolder, allbib)
 
     return allbib
 
@@ -320,10 +326,8 @@ def loadCitation(cword):
     import gtk
     import os.path
     entries = []
-    print cword
     if "~" in cword:
         cword = "~" + cword.split("~")[-1]
-    print cword
     import PyVim
     if '\cite{' in cword: #we are currently on a citation
         #get the entries within the citation

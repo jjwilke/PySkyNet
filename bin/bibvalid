@@ -17,6 +17,8 @@ bib = PyTex.walkForBibs(file, True, [])
 labels = bib.labels()
 labels.sort()
 
+
 for lbl in labels:
     print lbl
+print "%s entries in bibliography" % len(labels)
 
