@@ -227,10 +227,10 @@ def setBibliography(bibpath):
     else:
         setattr(PyTexGlobals, "bib", bibobj)
 
-def startLatex():
+def startLatex(folder="/Users/jjwilke/Documents/Projects"):
     import gtk
     cite = CiteManager()
-    cite.updateBib("/Users/jjwilke/Documents/Projects")
+    cite.updateBib(folder)
     gtk.main()
 
 import threading
@@ -402,5 +402,6 @@ def insertEquation():
     PyVim.insertLine(r"\begin{equation}")
 
 if __name__ == "__main__":
-    startLatex()
+    import os
+    startLatex(os.getcwd())
     #loadCitation("\cite{Knizia:hw2008}")
