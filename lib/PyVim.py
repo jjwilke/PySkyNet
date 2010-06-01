@@ -5,6 +5,7 @@ class PyVimGlobals:
     line = 0
     col = 0
     is_init = False
+
     stderr = None
     stdout = None
 

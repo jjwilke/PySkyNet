@@ -1,0 +1,4 @@
+
+class HTMLException(Exception):
+    pass
+

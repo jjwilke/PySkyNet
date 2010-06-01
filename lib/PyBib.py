@@ -1,6 +1,26 @@
 from xml.dom import minidom
 import codecs, sys, os.path, re
 
+def lower_case_xml_node(node, newnode, depth):
+    for child in node.childNodes:
+        if child.nodeType == node.TEXT_NODE:
+            newchild = node.ownerDocument.createTextNode(child.nodeName.lower())
+            newchild.nodeValue = child.nodeValue
+            newnode.appendChild(newchild)
+        else:
+            newchild = node.ownerDocument.createElement(child.nodeName.lower())
+            newnode.appendChild(newchild)
+            lower_case_xml_node(child, newchild, depth + 1)
+
+def lower_case_xml(xmldoc):
+    newdoc = minidom.Document()
+    for child in xmldoc.childNodes:
+        newchild = newdoc.createElement(child.nodeName.lower())
+        newdoc.appendChild(newchild)
+        lower_case_xml_node(child, newchild, 0)
+
+    return newdoc
+
 class BibPyError(Exception):
     
     def __init__(self, msg):
@@ -115,9 +135,7 @@ class LatexFormat:
 
 class EntryFormat:
     
-    style = style = 'normal'
-    finishdelim = ','
-    parentheses = False
+    style = 'normal'
 
     def __init__(self, **kwargs):
         self.verify(kwargs)
@@ -132,9 +150,6 @@ class EntryFormat:
     def bibitem(self, obj, simple=False):
         #by default, simplify does nothing
         text = LatexFormat.format(self.style, obj.text())
-        if self.parentheses:
-            text =  "(%s)" % text
-        text += self.finishdelim
         return text
 
 class AuthorsFormat(EntryFormat):
@@ -143,8 +158,6 @@ class AuthorsFormat(EntryFormat):
     style = 'normal'
     delim = ','
     finaland = False
-    finaldelim = True
-    finishdelim = ''
 
     simplify_map = {
      r'\`{o}' : 'o',
@@ -158,6 +171,9 @@ class AuthorsFormat(EntryFormat):
     }
 
     def bibitem(self, authorList, simple=False):
+        if not authorList:
+            return "" #nothing
+
         formatted_list = []
         for author in authorList:
             bibentry = self.formatname(author, simple)
@@ -167,11 +183,11 @@ class AuthorsFormat(EntryFormat):
         if len(formatted_list) > 1: #more than one entry
             delim = self.delim + ' ' #include extra space
             frontpart = delim.join(formatted_list[:-1])
-            if self.finaldelim:
-                frontpart += self.delim + ' '
             if self.finaland:
                 frontpart += " and "
-        bibitem = frontpart + formatted_list[-1] + self.finishdelim
+            else:
+                frontpart += "%s " % delim
+        bibitem = frontpart + formatted_list[-1]
         return bibitem
 
     def formatname(self, author, simple=False):
@@ -196,6 +212,9 @@ class AuthorsFormat(EntryFormat):
 
     simplify_entry = classmethod(simplify_entry)
 
+#do editors exactly as authors
+EditorsFormat = AuthorsFormat
+
 
 
 class JournalFormat(EntryFormat): 
@@ -203,8 +222,6 @@ class JournalFormat(EntryFormat):
     def bibitem(self, obj, simple=False):
         #by default, bibitem simplify doesn't have to do anything
         format = EntryFormat.bibitem(self, obj, simple)
-        if format[-2:] == self.finishdelim * 2: #ends in two periods or similar
-            format = format[:-1]
         return format
 
 class PagesFormat(EntryFormat):
@@ -225,6 +242,8 @@ class LabelFormat(EntryFormat): pass
 class UrlFormat(EntryFormat): pass
 class VersionFormat(EntryFormat): pass
 class PublisherFormat(EntryFormat): pass
+class CityFormat(EntryFormat): pass
+class EditionFormat(EntryFormat): pass
     
 class CiteKey: pass
 
@@ -256,6 +275,7 @@ class Entry:
             return True
 
 class Label(Entry): pass
+class Edition(Entry): pass
 class Title(Entry): pass
 class Volume(Entry): pass
 class Pages(Entry): pass
@@ -263,6 +283,7 @@ class Year(Entry): pass
 class Journal(Entry): pass
 class Url(Entry): pass
 class Publisher(Entry): pass
+class City(Entry): pass
 class Version(Entry): pass
 class FullJournalTitle(Entry): pass
 
@@ -270,10 +291,22 @@ class Author:
     
     def __init__(self, author):
         try:
-            self._lastname, self._initials = map( lambda x: x.strip(), author.split(",") )
+            self._lastname, firstname = map( lambda x: x.strip(), author.split(",") )
+
+            firstnames = map( lambda x: x.strip(), firstname.split() )
+            str_arr = []
+            for entry in firstnames:
+                entry = entry.replace(".","") #get rid of any periods. I'll put these in
+                #split on -
+                initial = "-".join(map(lambda x: "%s." % x[0], entry.split("-")))
+                str_arr.append(initial)
+            self._initials = " ".join(str_arr)
+
             #fix capitalization
             self.capitalize()
+
             return
+
         except ValueError:
             pass #try again
 
@@ -289,6 +322,7 @@ class Author:
             self.capitalize()
         except IndexError:
             raise RecordEntryError("author", "%s is not a valid author entry" % author)
+
 
     def capitalize(self):
         #find the first letter
@@ -309,6 +343,20 @@ class Author:
                 pos += 1
             self._lastname = self._lastname[:pos + 1].upper() + self._lastname[pos + 1:].lower()
 
+        #check last name for dashes
+        matches = re.compile("[-][a-zA-Z]").findall(self._lastname)
+        for match in matches:
+            old = match
+            new = match.upper()
+            self._lastname = self._lastname.replace(old, new)
+
+        #check last name for Mc
+        for prefix in "Mc", "De":
+            if self._lastname[:2] == prefix:
+                old = self._lastname[:3]
+                new = self._lastname[:2] + old[-1].upper()
+                self._lastname = self._lastname.replace(old, new)
+
     def __str__(self):
         return "%s, %s" % (self.lastname(), self.initials())
 
@@ -321,7 +369,13 @@ class Author:
         return self._lastname
 
     def initials(self):
-        return self._initials
+        str_arr = []
+        for entry in self._initials.split():
+            if entry[-1] == ".":
+                str_arr.append(entry)
+            else:
+                str_arr.append(entry + ".")
+        return " ".join(str_arr)
 
 class AuthorList(Entry): 
 
@@ -330,6 +384,9 @@ class AuthorList(Entry):
 
     def __getitem__(self, key):
         return self.authorList[key]
+
+    def __len__(self):
+        return len(self.authorList)
 
     def __str__(self):
         return "; ".join(map(str,self.authorList))
@@ -348,15 +405,43 @@ class XMLRequest:
 
     LOOKUP_TABLE = {
         u'\xd8' : r'\O',
+        u'\xcd' : r'\'{I}',
+        u'\xdc' : r'\"{U}',
+        u'\xdf' : r'\ss',
         u'\xe1' : r'\`{a}',
+        u'\xe9' : r'\`{e}',
+        u'\xed' : r'\`{i}',
         u'\xf3' : r'\`{o}',
         u'\xe4' : r'\"{a}',
         u'\xf6' : r'\"{o}',
-        u'\xf8' : r'\o',
+        u'\xf8' : r'\o ',
         u'\xfc' : r'\"{u}',
-        u'\u0160' : r'\v{S}',
-        u'\u017e' : r'\v{z}',
+        u'\xf3' : r'\`{o}',
+        u'\u0107' :  r'\'{c}',
+        u'\u010c' : r'\v{C}',
         u'\u010d' : r'\v{c}',
+        u'\u012d' :  r'\u{i}',
+        u'\u0142' :  r'\l',
+        u'\u0160' : r'\v{S}',
+        u'\u017d' : r'\v{Z}',
+        u'\u017e' : r'\v{z}',
+        u'o\u0308' : r'\"{o}', #this is not right... not sure where it is coming from
+        u'u\u0308' : r'\"{u}', #this is not right... not sure where it is coming from
+        u'\u0338' : r'\\',
+        u'\u03b6' : r'$\zeta$',
+        u'\u03c0' : r'$\pi$',
+        u'\u2019' : r"'",
+        u'\u201c' : r"``",
+        u'\u201d' : r"''",
+        u'\u201f' : r"''",
+        u'\u2026' : r'...',
+        u'\u2020' : r'$^{\dagger}$',
+        u'\u2014' : r'-',
+        u'\u2013' : r'-',
+        u'\u2012' : r'-',
+        u'\u2010' : r'-',
+        u'\u2192' : r'$\rightarrow$',
+        u'\u2212' : r'-',
     }
 
     def __init__(self, topname, dataname = None, attrname = None):
@@ -398,6 +483,9 @@ class XMLRequest:
     def cleanEntry(self, text):
         for repl in self.LOOKUP_TABLE:
             text = text.replace(repl, self.LOOKUP_TABLE[repl])
+        
+        text.encode()
+
         return text
 
     def getAttributesFromNodes(self, nodes, attrname):
@@ -410,12 +498,19 @@ class XMLRequest:
     def getDataFromNodes(self, nodes):
         data = []
         for entry in nodes:
-            try:
+            text = ""
+            if entry.firstChild.firstChild:
                 text = entry.firstChild.firstChild.data
-                cleanEntry = self.cleanEntry(text)
-                data.append(cleanEntry)
-            except:
-                pass #character not yet added
+            else:
+                text = entry.firstChild.data
+
+            try:
+                text = self.cleanEntry(text)
+            except BibPyError:
+                continue
+
+            data.append(text)
+
         return data
 
     def nrecords(cls, xmldoc, flag):
@@ -460,15 +555,12 @@ class RecordObject:
         text = formatter.bibitem(self.entries[name], simple)
         return text
 
-    def bibitem(self, simple=False):
-        txt_arr = []
-        for flag in self.order:
-            formatter = getattr(self, flag)
-            if not formatter:
-                raise BibformatUnspecifiedError(flag)
-            text = formatter.bibitem(self.entries[flag], simple)
-            txt_arr.append(text)
-        return " ".join(txt_arr)
+    def __getitem__(self, name, simple=False):
+        formatter = getattr(self, name)
+        if not formatter:
+            raise BibformatUnspecifiedError(name)
+        text = formatter.bibitem(self.entries[name], simple)
+        return text
 
 class ComputerProgram(RecordObject):
 
@@ -479,12 +571,14 @@ class ComputerProgram(RecordObject):
     publisher = None
     label = None
     url = None
+    bibitem = None
 
     attrlist = [
         'title',
         ['authors', 'author'],
         'year',
         'short-title',
+        "accession_number",
         'url',
         #'edition',
         'publisher',
@@ -493,6 +587,7 @@ class ComputerProgram(RecordObject):
 
     mapnames = {
         'short-title' : 'label',
+        'accession_number' : 'label',
         #'edition' : 'version',
     }
 
@@ -517,17 +612,79 @@ class ComputerProgram(RecordObject):
                 raise RecordClassError('%s does not have a class implemented' % entry)
             
 
+class Book(RecordObject):
+
+    authors = None
+    title = None
+    edition = None
+    year = None
+    pages = None
+    city = None
+    publisher = None
+    bibitem = None
+    editors = None
+    label = None
+
+    attrlist = [
+        'title',
+        ['authors', 'author'],
+        ['secondary-authors', 'author'],
+        'volume',
+        'year',
+        'pages',
+        'short-title',
+        'accession_number',
+        'edition',
+        'publisher',
+        'pub-location',
+        XMLRequest(topname = 'ref-type', attrname = 'name'),
+    ]
+
+    mapnames = {
+        'short-title' : 'label',
+        'accession_number' : 'label',
+        'secondary-authors' : 'editors',
+        'pub-location' : 'city',
+    }
+
+    patchlist = {
+    }
+
+    CLASS_MAP = {
+        'authors' : AuthorList,
+        'title' : Title,
+        'volume' : Volume,
+        'pages' : Pages,
+        'year' : Year,
+        'full-title' : FullJournalTitle,
+        'label' : Label,
+        'editors' : AuthorList,
+        'edition' : Edition,
+        'publisher' : Publisher,
+        'city' : City,
+    }
+
+    def __init__(self, **kwargs):
+        self.entries = {}
+        for entry in kwargs:
+            try:
+                classtype = self.CLASS_MAP[entry]
+                classinst = classtype(kwargs[entry])
+                self.entries[entry] = classinst
+            except KeyError:
+                raise RecordClassError('%s does not have a class implemented' % entry)
+
 class JournalArticle(RecordObject):
 
     authors = None
     title = None
     journal = None
     volume = None
-    order = None
     pages = None
     year = None
     citekey = None
     label = None
+    bibitem = None
 
     attrlist = [
         'title',
@@ -536,15 +693,17 @@ class JournalArticle(RecordObject):
         'year',
         'pages',
         'short-title',
+        'accession_number',
         'abbr-1', #the abbreviated journal title
-        'secondary-title',
+        'secondary_title',
         XMLRequest(topname = 'ref-type', attrname = 'name'),
     ]
 
     mapnames = {
         'abbr-1' : 'journal',
         'short-title' : 'label',
-        'secondary-title' : 'full-title',
+        'secondary_title' : 'journal',
+        'accession_number' : 'label',
     }
 
     patchlist = {
@@ -580,6 +739,12 @@ class Record(object):
     
     CLASS_LIST = {
         "Journal Article" : JournalArticle,
+        "17" : JournalArticle, #fuck papers, seriously
+        "13" : JournalArticle, #fuck papers, seriously
+        "0" : JournalArticle, #fuck papers, seriously
+        "9" : ComputerProgram,
+        "27" : ComputerProgram,
+        "6" : Book,
         "Computer Program" : ComputerProgram,
     }
     
@@ -606,24 +771,29 @@ class Record(object):
     getClassType = classmethod(getClassType)
 
     def setDefaults(cls):
-        if not JournalArticle.order: #not yet formatted
-            order(JournalArticle, 'authors', 'journal', 'volume', 'pages', 'year')
-            set('authors', JournalArticle, delim = ',', lastname = false, finaldelim = true, finishdelim = "")
-            set('volume', JournalArticle, style = 'normal', finishdelim = "")
-            set('pages', JournalArticle, finishdelim = "") #no style modification
-            set('year', JournalArticle, parentheses = false, finishdelim = "")
-            set('journal', JournalArticle, finishdelim = "") #defaults are fine
-            set('title', JournalArticle, finishdelim = "") #defaults are fine
-            set('label', JournalArticle, finishdelim = "") #defaults are fine
-        if not ComputerProgram.order:
-            order(ComputerProgram, 'title', 'authors', 'year', 'publisher', 'url')
-            set('authors', ComputerProgram, delim = ',', lastname = false, finaldelim = true, finishdelim = "")
-            set('year', ComputerProgram, parentheses = false, finishdelim = "")
-            set('title', ComputerProgram, finishdelim = "") #defaults are fine
-            set('label', ComputerProgram, finishdelim = "") #defaults are fine
-            set('url', ComputerProgram, finishdelim = "") #defaults are fine
-            set('publisher', ComputerProgram, finishdelim = "") #defaults are fine
-            #set('version', ComputerProgram, finishdelim = "") #defaults are fine
+        if not JournalArticle.bibitem: #not yet formatted
+
+            def journal_bibitem(r):
+                authors = record['authors']
+                format = "%s, %s %s, %s, (%s)." % (r['authors'], r['journal'], r['volume'], r['pages'], r['year'])
+
+            JournalArticle.bibitem = journal_bibitem
+            set('authors', JournalArticle, delim = ',', lastname = false)
+            set('volume', JournalArticle, style = 'bold')
+            set('pages', JournalArticle, lastpage = false) #no style modification
+            set('year', JournalArticle)
+            set('journal', JournalArticle)
+            set('label', JournalArticle)
+
+            set('authors', ComputerProgram, delim = ',', lastname = false)
+            set('year',    ComputerProgram)
+            set('title',   ComputerProgram) #defaults are fine
+            set('label',   ComputerProgram) #defaults are fine
+
+            set('authors', Book, delim = ',', lastname = false)
+            set('year',    Book)
+            set('title',   Book) #defaults are fine
+            set('label',   Book) #defaults are fine
 
     setDefaults = classmethod(setDefaults)
 
@@ -742,9 +912,12 @@ class Bibliography:
         xmldoc = None
         try:
             xmldoc = minidom.parse(bibfile)
-        except Exception, error: #not a valid xmldoc
+        except BibPyError, error: #not a valid xmldoc
             print error
             return -1
+
+        #lower case-ify the xml file
+        xmldoc = lower_case_xml(xmldoc)
 
         xmlrecords = xmldoc.getElementsByTagName('record')
         for rec in xmlrecords:
@@ -754,6 +927,7 @@ class Bibliography:
                 errormsgs = []
                 if not check:
                     continue
+
                 for field in error:
                     if not xargerrors or field in xargerrors: #this is a field we are trying to validate
                         errormsgs.append("invalid field %s" % field)
@@ -777,20 +951,55 @@ class Bibliography:
             req = XMLRequest(topname = 'ref-type', attrname = 'name')
             reftype = req.getData(xmlrec)
         except XMLRequestError,error:
-            raise RecordEntryError('ref-type', "entry does not have attribute ref-type")
+            pass
 
+        #try again
+        if not reftype:
+            try:
+                req = XMLRequest(topname = 'ref-type')
+                reftype = req.getData(xmlrec)
+            except XMLRequestError,error:
+                pass
+
+        #try again
+        if not reftype:
+            try:
+                req = XMLRequest(topname = 'reference_type')
+                reftype = req.getData(xmlrec)
+            except XMLRequestError,error:
+                raise error
+
+        kwargs['ref-type'] = reftype
         reftype = Record.getClassType(reftype)
         
-        optional_errors = []
-        fatal_errors = []
+        errors = []
         for attr in reftype.attrlist:
             try:
                 self.addEntry(reftype, attr, xmlrec, kwargs)
             except RecordEntryError, error:
-                if error.getField() in reftype.mandatoryfields:
-                    fatal_errors.append(error.getField())
-                else:
-                    optional_errors.append(error.getField())
+                errors.append(error.getField())
+
+        
+
+        for field in reftype.patchlist:
+            if kwargs.has_key(field) and kwargs[field]: #we are either missing a field, or the field has no value
+                continue
+
+            for patch in reftype.patchlist[field]:
+                if kwargs.has_key(patch):
+                    kwargs[field] = kwargs[patch]
+                    break #done, move on
+
+        fatal_errors = []
+        optional_errors = []
+        for field in errors:
+            if kwargs.has_key(field) and kwargs[field]: #this got patched
+                continue
+
+            if field in reftype.mandatoryfields:
+                fatal_errors.append(field)
+            else:
+                optional_errors.append(field)
 
         if fatal_errors:
             fatal_errors.extend(optional_errors)
@@ -802,14 +1011,6 @@ class Bibliography:
         if label in self.records:
             raise DuplicateLabelError("duplicate label %s" % label)
 
-        for field in reftype.patchlist:
-            if kwargs.has_key(field) and kwargs[field]: #we are either missing a field, or the field has no value
-                continue
-
-            for patch in reftype.patchlist[field]:
-                if kwargs.has_key(patch):
-                    kwargs[field] = kwargs[patch]
-                    break #done, move on
 
         try:
             rec = Record(**kwargs)
@@ -827,6 +1028,9 @@ class Bibliography:
         if reftype.mapnames.has_key(topname):
             mapname = reftype.mapnames[topname]
 
+        if kwargs.has_key(mapname) and kwargs[mapname]:
+            return #already have this from different field
+
         try:
             data = req.getData(recnode)
             kwargs[mapname] = data
@@ -835,9 +1039,13 @@ class Bibliography:
             if not mapname in reftype.mandatoryfields:
                 kwargs[mapname] = '' #store nothing
             raise RecordEntryError(mapname, "entry does not have attribute %s" % req.topname)
+
             
 
-
+if __name__ == "__main__":
+    bib = Bibliography()
+    import sys
+    bib.buildRecords(sys.argv[1], check=True)
 
 
 

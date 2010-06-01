@@ -3,19 +3,58 @@
 from PyBib import *
 
 #entry JCP guidelines
-order(JournalArticle, 'authors', 'journal', 'volume', 'pages', 'year')
-set('authors', JournalArticle, delim = ',', lastname = false, finaldelim = true, finishdelim = ",")
+def journal_bibitem(r):
+    format = "%s, %s %s, %s (%s)." % (r['authors'], r['journal'], r['volume'], r['pages'], r['year'])
+    return format
+JournalArticle.bibitem = journal_bibitem
+set('authors', JournalArticle, delim = ',', lastname = false)
 set('volume', JournalArticle, style = 'bold')
-set('pages', JournalArticle, lastpage = false, finishdelim = "") #no style modification
-set('year', JournalArticle, parentheses = true, finishdelim = ".")
-set('journal', JournalArticle, finishdelim = "")
+set('pages', JournalArticle, lastpage = false) #no style modification
+set('year', JournalArticle)
+set('journal', JournalArticle)
 
-order(ComputerProgram, 'title', 'year', 'authors', 'publisher', 'url')
-set('title', ComputerProgram, finishdelim = ",") #defaults are fine
-set('year', ComputerProgram, parentheses = false, finishdelim = ".")
-set('authors', ComputerProgram, delim = ',', lastname = false, finaldelim = true, finishdelim = ".")
-set('publisher', ComputerProgram, finishdelim = ".") #defaults are fine
-set('url', ComputerProgram, finishdelim = ".") #defaults are fine
+def program_bibitem(r):
+    format = "%s. %s." % (r['authors'], r['title'])
+
+    year = r['year']
+    if year:
+        format += " %s." % year
+    
+    publisher = r['publisher']
+    if publisher:
+        format += " %s." % publisher
+
+    url = r['url']
+    if url:
+        format += " %s." % url
+
+    return format
+ComputerProgram.bibitem = program_bibitem
+set('title', ComputerProgram) #defaults are fine
+set('year', ComputerProgram)
+set('authors', ComputerProgram, delim = ',', lastname = false)
+set('publisher', ComputerProgram) #defaults are fine
+set('url', ComputerProgram) #defaults are fine
+
+
+def book_bibitem(r):
+    format = "%s, %s." % (r['authors'], r['title'])
+
+    editors = r['editors']
+    if editors:
+        format += " edited by %s." % editors
+
+    format += " (%s, %s, %s)." % (r['publisher'], r['city'], r['year'])
+
+    return format
+Book.bibitem = book_bibitem
+set('title', Book, style='italic') #defaults are fine
+set('year', Book)
+set('edition', Book)
+set('authors', Book, delim = ',', lastname = false)
+set('editors', Book, delim = ',', lastname = false)
+set('publisher', Book) #defaults are fine
+set('city', Book) #defaults are fine
 
 import sys
 import PyTex

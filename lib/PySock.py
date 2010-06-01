@@ -13,7 +13,7 @@ class Communicator(object):
     socketMin = 1000
     socketMax = 2000
 
-    def __init__(self, socketPort, hostName = 'localhost', numRequests = 5):
+    def __init__(self, socketPort, hostName = '', numRequests = 5):
         import socket
         self.socketPort = socketPort
         self.hostName = hostName
@@ -77,7 +77,7 @@ class Communicator(object):
         if self.socketPort == 50000:
             print traceback()
         #print "binding socket on", self.hostName, self.socketPort
-        self.socketObj.bind(('localhost', self.socketPort)) #'' = local host
+        self.socketObj.bind(('', self.socketPort)) #'' = local host
         self.socketObj.listen(self.numRequests) #only listen for one request at a time
 
     def accept(self):
