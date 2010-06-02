@@ -16,17 +16,9 @@ class PDFArticle:
     def set_title(self, text):
         self.title = text
 
-    def set_pages(self, text):
-        import re
-        matches = map(int, re.compile("\d+").findall(text))
-        if len(matches) == 1:
-            if not "p " in text:
-                raise Exception("%s is not a properly formatted page spec" % text)
-            self.start_page = self.end_page = matches[0]
-        elif len(matches) == 2:
-            if not "pp " in text:
-                raise Exception("%s is not a properly formatted page spec" % text)
-            self.start_page, self.end_page = matches
+    def set_pages(self, start_page, end_page):
+        self.start_page = start_page
+        self.end_page = end_page
 
 class ArticleParser(HTMLParser):
 
@@ -65,8 +57,6 @@ class ArticleParser(HTMLParser):
         self.entries = []
         self.a_frame = None
         self.text_frame = None
-        self.title_text = self.append_text
-        self.pages_text = self.append_text
 
     def start_div(self, attrs):
         cls = self.get_html_attr("class", attrs)

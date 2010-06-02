@@ -3,6 +3,7 @@
 from utils.getoptions import InputOption, OptionList, readOptions, OptionSet
 
 from webutils.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC
+from webutils.aip import JCP, JMP
 
 journals = {
     "jacs" : JACS,
@@ -12,6 +13,8 @@ journals = {
     "joc" : JOC,
     "jpc" : JPC,
     "ioc" : InorgChem,
+    "jcp" : JCP,
+    "jmp" : JMP,
 }
 
 #set the allowed command line options and user messages

@@ -1,35 +1,18 @@
 from pdfget import ArticleParser, PDFArticle
 from htmlexceptions import HTMLException
+import sys
 
 class ACSArticle(PDFArticle):
-    
-    def __init__(self):
-        self.title = "No title"
-        self.start_page = 0
-        self.end_page = 1
-
-    def __str__(self):
-        return "%s pp %d-%d" % (self.title, self.start_page, self.end_page)
-
-    def set_pdfurl(self, url):
-        self.url = url
-
-    def set_title(self, text):
-        self.title = text
-
-    def set_pages(self, text):
-        import re
-        matches = map(int, re.compile("\d+").findall(text))
-        if len(matches) == 1:
-            if not "p " in text:
-                raise Exception("%s is not a properly formatted page spec" % text)
-            self.start_page = self.end_page = matches[0]
-        elif len(matches) == 2:
-            if not "pp " in text:
-                raise Exception("%s is not a properly formatted page spec" % text)
-            self.start_page, self.end_page = matches
+    pass    
 
 class ACSParser(ArticleParser):
+
+    def reset(self):
+        ArticleParser.reset(self)
+
+        self.title_text = self.append_text
+        self.pages_text = self.append_text
+        self.citation_text = self.append_text
 
     def title_a(self, attrs):
         self.text_frame = "title"
@@ -51,7 +34,19 @@ class ACSParser(ArticleParser):
         if self.text_frame == "pages": #nuke the frame
             self.text_frame = None
             pages = self.get_text()
-            self.article.set_pages(pages)
+            import re
+            matches = map(int, re.compile("\d+").findall(pages))
+            start_page = end_page = 0
+            if len(matches) == 1:
+                if not "p " in pages:
+                    raise Exception("%s is not a properly formatted page spec" % pages)
+                start_page = end_page = matches[0]
+            elif len(matches) == 2:
+                if not "pp " in pages:
+                    raise Exception("%s is not a properly formatted page spec" % pages)
+                start_page, end_page = matches
+
+            self.article.set_pages(start_page, end_page)
         
     def _start_articleBoxMeta(self, attrs):
         self.a_frame = "title"
@@ -92,13 +87,16 @@ class ACSJournal:
 
         from htmlparser import fetch_url
         response = fetch_url(mainurl)
-        
+
+        print "Response received from %s" % mainurl
+
         parser = ACSParser()
         parser.feed(response)
         for article in parser:
             if article.start_page == page:
-                print article
                 return article.url, issue
+
+        raise HTMLException("No matching entry for %d %d %d" % (volume, issue, page))
 
 class JACS(ACSJournal):
     baseurl = "http://pubs.acs.org/toc/jacsat"
