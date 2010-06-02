@@ -1,0 +1,48 @@
+#! /usr/bin/env python
+
+from utils.getoptions import InputOption, OptionList, readOptions, OptionSet
+
+from webutils.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC
+
+journals = {
+    "jacs" : JACS,
+    "jctc" : JCTC,
+    "jpca" : JPCA,
+    "jpcb" : JPCB,
+    "joc" : JOC,
+    "jpc" : JPC,
+    "ioc" : InorgChem,
+}
+
+#set the allowed command line options and user messages
+if __name__ == "__main__":
+    opts = [
+        InputOption(shortOption='v', longOption='volume', optionType='int', valuesMandatory=True, bind=True),
+        InputOption(shortOption='i', longOption='issue', optionType='int', valuesMandatory=False, bind=True, default=-1),
+        InputOption(shortOption='p', longOption='page', optionType='int', valuesMandatory=True, bind=True),
+        InputOption(shortOption='j', longOption='journal', optionType='string', valuesMandatory=True, bind=True),
+        ]
+
+    options=OptionSet()
+    optionList = OptionList(commandName="getpdf",
+                            usageStructure=[ "[options]"],
+                            optionsList=opts)
+    options_given = readOptions(optionList, optionSet=options)
+
+
+    journal = journals[options.journal]()
+    #we might have to fetch the issue
+    url, issue = journal.url(options.volume, options.issue, options.page)
+    filename = "%s %d %d %d.pdf" % (options.journal, options.volume, issue, options.page)
+    print url, filename
+
+    from webutils.htmlparser import save_url
+    save_url(url, filename)
+
+    for option in options_given:
+        pass
+
+
+
+
+
