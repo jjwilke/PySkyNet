@@ -1,5 +1,33 @@
 from htmlparser import HTMLParser
 
+class PDFArticle:
+    
+    def __init__(self):
+        self.title = "No title"
+        self.start_page = 0
+        self.end_page = 1
+
+    def __str__(self):
+        return "%s pp %d-%d" % (self.title, self.start_page, self.end_page)
+
+    def set_pdfurl(self, url):
+        self.url = url
+
+    def set_title(self, text):
+        self.title = text
+
+    def set_pages(self, text):
+        import re
+        matches = map(int, re.compile("\d+").findall(text))
+        if len(matches) == 1:
+            if not "p " in text:
+                raise Exception("%s is not a properly formatted page spec" % text)
+            self.start_page = self.end_page = matches[0]
+        elif len(matches) == 2:
+            if not "pp " in text:
+                raise Exception("%s is not a properly formatted page spec" % text)
+            self.start_page, self.end_page = matches
+
 class ArticleParser(HTMLParser):
 
     def __iter__(self):
@@ -39,12 +67,6 @@ class ArticleParser(HTMLParser):
         self.text_frame = None
         self.title_text = self.append_text
         self.pages_text = self.append_text
-
-    def start_a(self, attrs):
-        self.call_method(self.a_frame, "a", attrs)
-
-    def end_a(self):
-        pass
 
     def start_div(self, attrs):
         cls = self.get_html_attr("class", attrs)
