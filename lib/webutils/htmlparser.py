@@ -1,9 +1,34 @@
 from sgmllib import SGMLParser
 
+class URLGlobals:
+    
+    handler = None
+    jar = None
+    opener = None
+    installed = False
+
+    def install(cls):
+        if cls.installed:
+            return
+
+        import urllib
+        import urllib2
+        import cookielib
+
+        cls.jar = cookielib.CookieJar()
+        cls.handler = urllib2.HTTPCookieProcessor(cls.jar)
+        cls.opener = urllib2.build_opener(cls.handler)
+        urllib2.install_opener(cls.opener)
+
+        cls.installed = True
+    install = classmethod(install)
+
+
 def fetch_url(url):
+    URLGlobals.install()
+
     import urllib
     import urllib2
-    import cookielib
 
     user_agent = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
     headers = { 'User-Agent' : user_agent }
@@ -12,10 +37,6 @@ def fetch_url(url):
     data = { }
 
     # set things up
-    jar = cookielib.CookieJar()
-    handler = urllib2.HTTPCookieProcessor(jar)
-    opener = urllib2.build_opener(handler)
-    urllib2.install_opener(opener)
     request = urllib2.Request(url, headers = headers)
     response = urllib2.urlopen(request).read()
     
@@ -47,4 +68,41 @@ class HTMLParser(SGMLParser):
             if name == key:
                 return value
         return None
+
+    def get_href(self, attrs):
+        return self.get_html_attr("href", attrs)
+
+class URLLister(HTMLParser):
+
+    def __iter__(self):
+        return iter(self.links)
+
+    def __getitem__(self, key):
+        return self.links[key]
+    
+    def reset(self):
+        HTMLParser.reset(self)
+        self.links = {}
+        self.href = None
+        self.linktext = ""
+        self.storelink = False
+
+    def start_a(self, attrs):
+        self.href = self.get_href(attrs)
+        if self.href: #make sure we actually have a link
+            self.storelink = True
+
+    def end_a(self):
+        if self.href:
+            self.links[self.linktext] = self.href
+            self.href = None
+            self.linktext = ""
+            self.storelink = False
+
+    def handle_data(self, text):
+        if self.storelink:
+            self.linktext = text
+
+        
+
 

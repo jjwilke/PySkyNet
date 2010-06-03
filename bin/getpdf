@@ -2,20 +2,6 @@
 
 from utils.getoptions import InputOption, OptionList, readOptions, OptionSet
 
-from webutils.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC
-from webutils.aip import JCP, JMP
-
-journals = {
-    "jacs" : JACS,
-    "jctc" : JCTC,
-    "jpca" : JPCA,
-    "jpcb" : JPCB,
-    "joc" : JOC,
-    "jpc" : JPC,
-    "ioc" : InorgChem,
-    "jcp" : JCP,
-    "jmp" : JMP,
-}
 
 #set the allowed command line options and user messages
 if __name__ == "__main__":
@@ -32,15 +18,8 @@ if __name__ == "__main__":
                             optionsList=opts)
     options_given = readOptions(optionList, optionSet=options)
 
-
-    journal = journals[options.journal]()
-    #we might have to fetch the issue
-    url, issue = journal.url(options.volume, options.issue, options.page)
-    filename = "%s %d %d %d.pdf" % (options.journal, options.volume, issue, options.page)
-    print url, filename
-
-    from webutils.htmlparser import save_url
-    save_url(url, filename)
+    from webutils.pdfget import download_pdf
+    download_pdf(options.journal, options.volume, options.issue, options.page)
 
     for option in options_given:
         pass
