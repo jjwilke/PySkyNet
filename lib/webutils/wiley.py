@@ -99,17 +99,20 @@ class WileyJournal:
             raise HTMLException("Class %s does not have base url" % self.__class__)
 
 
-        cgi = "&volume=%d&issue=%d&pages=%d" % (volume, issue, page)
+        cgi = "&volume=%d&issue=&pages=%d" % (volume, page)
         mainurl = self.baseurl + cgi
+
+        print mainurl
 
         from htmlparser import fetch_url
         response = fetch_url(mainurl)
 
-        print "Response received from %s" % mainurl
-        
         parser = WileyParser()
         parser.feed(response)
         for article in parser:
+            if not article: #failed url
+                continue
+
             if article.start_page == page:
                 print article
                 
@@ -127,4 +130,12 @@ class AngeChem(WileyJournal):
 class IJQC(WileyJournal):
 
     baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1097-461X"
+
+class JPOC(WileyJournal):
+
+    baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1099-1395"
+
+class JCC(WileyJournal):
+
+    baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1096-987X"
 

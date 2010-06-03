@@ -85,6 +85,9 @@ class APSJournal:
 
     abbrev = None
 
+    #some pages get precedeed by a letter, e.g. R4151
+    pageletter = None
+
     def url(self, volume, issue, page):
 
         if not self.baseurl:
@@ -107,8 +110,6 @@ class APSJournal:
         from htmlparser import fetch_url
         response = fetch_url(mainurl)
 
-        print "Response received from %s" % mainurl
-        
         parser = APSParser()
         parser.feed(response)
         for article in parser:
@@ -126,4 +127,17 @@ class PRL(APSJournal):
 
     abbrev = "PRL"
 
+    pageletter = ""
+
+class PRA(APSJournal):
+
+    #the base url
+    baseurl = "http://pra.aps.org"
+
+    #the volume start at which the journal switched over numbering system
+    volstart = 61
+
+    abbrev = "PRA"
+
+    pageletter = "R"
 

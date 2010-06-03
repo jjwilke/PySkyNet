@@ -95,8 +95,6 @@ class AIPJournal:
         from htmlparser import fetch_url
         response = fetch_url(mainurl)
 
-        print "Response received from %s" % mainurl
-        
         parser = AIPParser()
         parser.feed(response)
         for article in parser:

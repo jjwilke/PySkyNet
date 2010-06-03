@@ -1,4 +1,9 @@
 from htmlparser import HTMLParser
+from urllib2 import HTTPError
+import sys
+
+class URLNotPDFError(Exception):
+    pass
 
 class PDFArticle:
     
@@ -12,7 +17,7 @@ class PDFArticle:
         self.year = 0
 
     def __str__(self):
-        return '"%s" %s %d pp %d-%d %d' % (self.title, self.journal, self.volume, self.start_page, self.end_page, self.year)
+        return '%s %s %d pp %d-%d %d' % (self.title, self.journal, self.volume, self.start_page, self.end_page, self.year)
 
     def set_pdfurl(self, url):
         self.url = url
@@ -95,13 +100,19 @@ class ArticleParser(HTMLParser):
 
         self.call_method("_end", cls)
 
+class Journal:
+
+    def checkattr(self, attr):
+        if not hasattr(self, attr):
+            raise HTMLException("Class %s does not have attribue %s" % (self.__class__, attr))
+
 def download_pdf(journal, volume, issue, page):
     from webutils.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC
     from webutils.aip import JCP, JMP
     from webutils.sciencedirect import CPL, PhysRep, ChemPhys
     from webutils.springer import TCA
-    from webutils.aps import PRL
-    from webutils.wiley import AngeChem, IJQC
+    from webutils.aps import PRL, PRA
+    from webutils.wiley import AngeChem, IJQC, JPOC, JCC
     from webutils.rsc import PCCP
 
     journals = {
@@ -119,20 +130,44 @@ def download_pdf(journal, volume, issue, page):
         "chemphys" : ChemPhys,
         "tca" : TCA,
         "prl" : PRL,
+        "pra" : PRA,
         "ange" : AngeChem,
         "ijqc" : IJQC,
         "pccp" : PCCP,
+        "jpoc" : JPOC,
+        "jcc" : JCC,
     }
 
-    jobj = journals[journal]()
+    name = "%s %d %d %d" % (journal, volume, issue, page)
+    try:
+        jobj = journals[journal]()
 
-    #we might have to fetch the issue
-    url, issue = jobj.url(volume, issue, page)
-    filename = "%s %d %d %d.pdf" % (journal, volume, issue, page)
-    print url, filename
+        #we might have to fetch the issue
+        url, issue = jobj.url(volume, issue, page)
 
-    from webutils.htmlparser import save_url
-    save_url(url, filename)
+        if not url: #nothing found
+            return False
+
+        filename = "%s.pdf" % name
+
+        from webutils.htmlparser import save_url
+        save_url(url, filename)
+        text = open(filename).read()
+        if not text[:4] == "%PDF":
+            raise URLNotPDFError
+
+        sys.stdout.write("SUCCESS: %s\n" % name)
+
+        return True #return success
+
+    except KeyError, error:
+        sys.stderr.write("FAILURE: %s\tJournal not valid\n" %  name)
+    except HTTPError, error:
+        sys.stderr.write("FAILURE: %s\tURL not found\n" % name)
+    except URLNotPDFError, error:
+        sys.stderr.write("FAILURE: %s\tURL is not a PDF file\n" % name)
+
+    return False
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 from sgmllib import SGMLParser
+import sys
 
 class URLGlobals:
     
@@ -38,11 +39,18 @@ def fetch_url(url):
 
     # set things up
     request = urllib2.Request(url, headers = headers)
-    response = urllib2.urlopen(request).read()
+    response = None
+    try:
+        response = urllib2.urlopen(request).read()
+        print "Response received from %s" % url
+    except urllib2.HTTPError, error:
+        sys.stderr.write("Cannot find page %s\n" % url)
+        raise error
     
     return response
 
 def save_url(url, filename):
+    print "Downloading %s" % url
     fileobj = open(filename, "w")
     fileobj.write(fetch_url(url))
     fileobj.close()

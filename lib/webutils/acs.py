@@ -1,4 +1,5 @@
-from pdfget import ArticleParser, PDFArticle
+from pdfget import ArticleParser, PDFArticle, Journal
+from htmlparser import URLLister
 from htmlexceptions import HTMLException
 import sys
 
@@ -74,21 +75,40 @@ class ACSParser(ArticleParser):
         self.articles.append(self.article)
         self.article = None
 
-class ACSJournal:
+class ACSJournal(Journal):
 
-    baseurl = None
+    def get_issue(self, volume, page):
+        from htmlparser import fetch_url
+        import re
+        mainurl = "http://pubs.acs.org/loi/%s/%d" % (self.id, volume)
+        response = fetch_url(mainurl)
+        url_list = URLLister()
+        url_list.feed(response)
+        for name in url_list:
+            if not "Issue" in name or not "Volume" in name:
+                continue
+
+            volcheck, issue, start, end = map(int, re.compile("Volume\s(\d+)[,]\sIssue\s(\d+)[,]\spp[.]\s(\d+).*?(\d+)").search(name).groups())
+            if volcheck == volume and start <= page and end >= page:
+                return issue
+
+        return 0
 
     def url(self, volume, issue, page):
 
-        if not self.baseurl:
-            HTMLException("Class %s does not have baseurl" % self.__class__)
+        self.checkattr("name")
+        self.checkattr("id")
 
-        mainurl = "%s/%d/%d" % (self.baseurl, volume, issue)
+        if not issue:
+            issue = self.get_issue(volume, page)
+
+        if not issue:
+            raise HTMLException("Unable to find issue for volume %d, page %d" % (volume, page))
+
+        mainurl = "http://pubs.acs.org/toc/%s/%d/%d" % (self.id, volume, issue)
 
         from htmlparser import fetch_url
         response = fetch_url(mainurl)
-
-        print "Response received from %s" % mainurl
 
         parser = ACSParser()
         parser.feed(response)
@@ -99,23 +119,30 @@ class ACSJournal:
         raise HTMLException("No matching entry for %d %d %d" % (volume, issue, page))
 
 class JACS(ACSJournal):
-    baseurl = "http://pubs.acs.org/toc/jacsat"
+    name = "Journal of the American Chemical Society"
+    id = "jacsat"
 
 class JCTC(ACSJournal):
-    baseurl = "http://pubs.acs.org/toc/jctcce"
+    name = "Journal of Chemical Theory and Computation"
+    id = "jctcce"
 
 class JPC(ACSJournal):
+    name = "Journal of Physical Chemistry"
     baseurl = "http://pubs.acs.org/toc/jpchax"
 
 class JPCA(ACSJournal):
-    baseurl = "http://pubs.acs.org/toc/jpcafh"
+    name = "Journal of Physical Chemistry A"
+    id = "jpcafh"
 
 class JPCB(ACSJournal):
-    baseurl = "http://pubs.acs.org/toc/jpcbfk"
+    name = "Journal of Physical Chemistry B"
+    id = "jpcbfk"
 
 class JOC(ACSJournal):
-    baseurl = "http://pubs.acs.org/toc/joceah"
-    
+    name = "Journal of Organic Chemistry"
+    id = "joceah"
+
 class InorgChem(ACSJournal):
-    baseurl = "http://pubs.acs.org/toc/inocaj"
+    name = "Inorganic Chemistry"
+    id = "inocaj"
     

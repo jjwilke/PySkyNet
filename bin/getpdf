@@ -7,7 +7,7 @@ from utils.getoptions import InputOption, OptionList, readOptions, OptionSet
 if __name__ == "__main__":
     opts = [
         InputOption(shortOption='v', longOption='volume', optionType='int', valuesMandatory=True, bind=True),
-        InputOption(shortOption='i', longOption='issue', optionType='int', valuesMandatory=False, bind=True, default=-1),
+        InputOption(shortOption='i', longOption='issue', optionType='int', valuesMandatory=False, bind=True, default=0),
         InputOption(shortOption='p', longOption='page', optionType='int', valuesMandatory=True, bind=True),
         InputOption(shortOption='j', longOption='journal', optionType='string', valuesMandatory=True, bind=True),
         ]
