@@ -1,12 +1,10 @@
-from pdfget import ArticleParser, PDFArticle
+from pdfget import ArticleParser, PDFArticle, Journal
 from htmlexceptions import HTMLException
 
 import sys
 
 class SpringerArticle(PDFArticle):
     pass
-
-
 
 class SpringerStopException(Exception):
     pass
@@ -140,18 +138,11 @@ class SpringerParser(ArticleParser):
             self.text_frame = None
 
 
-
-class SpringerJournal:
-
-    #the base url
-    mainurl = SpringerParser.mainurl
-    baseurl = None
+class SpringerJournal(Journal):
 
     def url(self, volume, issue, page):
-        if not self.baseurl:
-            raise HTMLException("Class %s does not have base url" % self.__class__)
-        if not self.name:
-            raise HTMLException("Class %s does not have name" % self.__class__)
+
+        self.validate("baseurl", "pickle")
 
         from htmlparser import URLLister, fetch_url
         import re
@@ -189,7 +180,11 @@ class TCA(SpringerJournal):
 
     name = "Theoretical Chemistry Accounts"
     baseurl = "http://www.springerlink.com/content/1432-881X"
-    pickle = "/Users/jjwilke/Python/lib/webutils/.springer.tca.links"
+
+    import webutils.pdfget
+    import os.path
+    folder = os.path.split(webutils.pdfget.__file__)[0]
+    pickle = os.path.join(folder, ".springer.tca.links")
 
 
 if __name__ == "__main__":
@@ -198,24 +193,24 @@ if __name__ == "__main__":
     from utils.RM import save
     import re
 
-    links = {}
 
-    baseurl = "http://www.springerlink.com"
-    url = "/content/1432-881X"
-    regexp = "Volume\s(\d+)"
-    try:
-        while 1:
-            response = fetch_url(baseurl + url)
-            vols = map(int, re.compile(regexp).findall(response))
-            vols.sort()
-            print url
-            print vols
-            links[url] = vols
-            url_list = URLLister()
-            url_list.feed(response)
-            url = url_list["Next Page"]
-    except KeyError, error:
-        print error
+    for journal in TCA,:
+        links = {}
+        try:
+            while 1:
+                url = journal.baseurl
+                response = fetch_url(url)
+                vols = map(int, re.compile(regexp).findall(response))
+                vols.sort()
+                print url
+                print vols
+                links[url] = vols
+                url_list = URLLister()
+                url_list.feed(response)
+                url = url_list["Next Page"]
+        except KeyError, error:
+            print error
 
-    save(links, ".springer.links")
+        #figure out the filename
+        save(links, journal.pickle)
     

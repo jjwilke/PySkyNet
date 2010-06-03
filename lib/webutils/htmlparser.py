@@ -45,7 +45,7 @@ def fetch_url(url):
         print "Response received from %s" % url
     except urllib2.HTTPError, error:
         sys.stderr.write("Cannot find page %s\n" % url)
-        raise error
+        return None
     
     return response
 

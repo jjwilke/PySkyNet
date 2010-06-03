@@ -1,5 +1,4 @@
-
-from pdfget import ArticleParser, PDFArticle
+from pdfget import ArticleParser, PDFArticle, Journal
 from htmlexceptions import HTMLException
 
 import sys
@@ -48,7 +47,15 @@ class APSParser(ArticleParser):
         elif self.text_frame == "pages":
             import re
             text = self.get_text()
-            text = re.compile("(\d+.*)PDF", re.DOTALL).search(text).groups()[0]
+            match = re.compile("(\d+.*)PDF", re.DOTALL).search(text)
+            if not match: #just ignore this
+                self.article = None
+                self.a_frame = None
+                self.text_frame = None
+                ArticleParser.end_div(self)
+                return
+
+            text = match.groups()[0]
             match = map(int, re.compile("\d+").findall(text))
 
             if len(match) == 1:
@@ -70,33 +77,32 @@ class APSParser(ArticleParser):
         self.article = APSArticle()
 
     def _end_aps_toc_articleinfo(self):
-        self.articles.append(self.article)
-        self.article = None
-        self.text_frame = None
+        if self.article:
+            self.articles.append(self.article)
+            self.article = None
+            self.text_frame = None
+            self.a_frame = None
 
 
-class APSJournal:
+class APSJournal(Journal):
 
-    #the base url
-    baseurl = None
+    def get_articles(self, volume, issue):
+        mainurl = "%s/toc/%s/v%d/i%d" % (self.baseurl, self.abbrev, volume, issue)
 
-    #the volume start at which the journal switched over numbering system
-    volstart = None
+        from htmlparser import fetch_url
+        response = fetch_url(mainurl)
+        if not response:
+            return []
 
-    abbrev = None
+        parser = APSParser()
+        parser.feed(response)
 
-    #some pages get precedeed by a letter, e.g. R4151
-    pageletter = None
+        return parser
 
     def url(self, volume, issue, page):
-
-        if not self.baseurl:
-            raise HTMLException("Class %s does not have base url" % self.__class__)
-        if not self.volstart:
-            raise HTMLException("Class %s does not have volume start" % self.__class__)
-        if not self.abbrev:
-            raise HTMLException("Class %s does not have abbreviation" % self.__class__)
         
+        self.validate("baseurl", "abbrev", "volstart", "pageletter")
+
         if volume >= self.volstart: #get the issue from the page number
             pagestr = "%d" % page
             if pagestr[0] == "0":
@@ -104,20 +110,15 @@ class APSJournal:
             else:
                 issue = int(pagestr[:2])
             
-        
-        mainurl = "%s/toc/%s/v%d/i%d" % (self.baseurl, self.abbrev, volume, issue)
-
-        from htmlparser import fetch_url
-        response = fetch_url(mainurl)
-
-        parser = APSParser()
-        parser.feed(response)
+        parser = self.get_articles(volume, issue) 
         for article in parser:
             if article.start_page == page:
                 url = self.baseurl + article.url
                 return url, issue
 
 class PRL(APSJournal):
+    
+    name = "Physical Review Letters"
 
     #the base url
     baseurl = "http://prl.aps.org"
@@ -130,6 +131,8 @@ class PRL(APSJournal):
     pageletter = ""
 
 class PRA(APSJournal):
+
+    name = "Physical Review A"
 
     #the base url
     baseurl = "http://pra.aps.org"

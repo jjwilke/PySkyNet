@@ -1,5 +1,5 @@
 from htmlparser import URLLister
-from pdfget import ArticleParser, PDFArticle
+from pdfget import ArticleParser, PDFArticle, Journal
 from htmlexceptions import HTMLException
 
 import sys
@@ -45,28 +45,24 @@ class RSCParser(ArticleParser):
             self.article.set_title(title)
             self.text_frame = "citation"
 
-class RSCJournal:
+class RSCJournal(Journal):
 
-    #the base url
-    template = None
-    year1 = None
-
-    def url(self, volume, issue, page):
-        if not self.template:
-            raise HTMLException("Class %s does not have url template" % self.__class__)
-
-        if not self.year1:
-            raise HTMLException("No year one specificed for %s" % self.__class__)
-
-
+    def get_articles(self, volume, issue):
         year = self.year1 + volume - 1
         mainurl = self.template % (year, volume, volume, year, issue)
 
         from htmlparser import fetch_url
         response = fetch_url(mainurl)
+        if not response:
+            return []
 
         parser = RSCParser()
         parser.feed(response)
+        return parser
+
+    def url(self, volume, issue, page):
+        self.validate("template", "year1")
+        parser = self.get_articles(volume, issue)
         for article in parser:
             if article.start_page == page:
                 url_list = URLLister()
@@ -77,6 +73,7 @@ class RSCJournal:
 
 class PCCP(RSCJournal):
 
+    name = "Physical Chemistry Chemical Physics"
     year1 = 1999
     template = "http://www.rsc.org/Publishing/Journals/CP/article.asp?Journal=CP5&VolumeYear=%d%d&Volume=%d&JournalCode=CP&MasterJournalCode=CP&SubYear=%d&type=Issue&Issue=%d&x=11&y=14"
 

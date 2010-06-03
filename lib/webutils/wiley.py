@@ -1,5 +1,4 @@
-
-from pdfget import ArticleParser, PDFArticle
+from pdfget import ArticleParser, PDFArticle, Journal
 from htmlexceptions import HTMLException
 
 import sys
@@ -89,15 +88,11 @@ class WileyPDFFetcher(ArticleParser):
         self.url = src
         
 
-class WileyJournal:
-
-    #the base url
-    baseurl = None
+class WileyJournal(Journal):
 
     def url(self, volume, issue, page):
-        if not self.baseurl:
-            raise HTMLException("Class %s does not have base url" % self.__class__)
-
+        
+        self.validate("baseurl")
 
         cgi = "&volume=%d&issue=&pages=%d" % (volume, page)
         mainurl = self.baseurl + cgi
@@ -125,17 +120,21 @@ class WileyJournal:
 
 class AngeChem(WileyJournal):
 
+    name = "Angewandte Chemie"
     baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=%281521-3773%2C1521-3773%29"
 
 class IJQC(WileyJournal):
 
+    name = "International Journal Of Quantum Chemistry"
     baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1097-461X"
 
 class JPOC(WileyJournal):
 
+    name = "Journal of Physical Organic Chemistry"
     baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1099-1395"
 
 class JCC(WileyJournal):
 
+    name = "Journal of Computational Chemistry"
     baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1096-987X"
 

@@ -1,5 +1,4 @@
-
-from pdfget import ArticleParser, PDFArticle
+from pdfget import ArticleParser, PDFArticle, Journal
 from htmlexceptions import HTMLException
 
 import sys
@@ -67,20 +66,23 @@ class AIPParser(ArticleParser):
         self.text_frame = None
         self.a_frame = None
 
-class AIPJournal:
+class AIPJournal(Journal):
 
-    #the base url
-    baseurl = None
+    def get_articles(self, volume, issue):
+        mainurl = "%s/v%d/i%d" % (self.baseurl, volume, issue)
 
-    #the volume start at which the journal switched over numbering system
-    volstart = None
+        from htmlparser import fetch_url
+        response = fetch_url(mainurl)
+        if not response:
+            return []
+
+        parser = AIPParser()
+        parser.feed(response)
+        return parser
 
     def url(self, volume, issue, page):
 
-        if not self.baseurl:
-            raise HTMLException("Class %s does not have base url" % self.__class__)
-        if not self.volstart:
-            raise HTMLException("Class %s does not have volume start" % self.__class__)
+        self.validate("baseurl", "volstart")
         
         if volume >= self.volstart: #get the issue from the page number
             pagestr = "%d" % page
@@ -89,19 +91,14 @@ class AIPJournal:
             else:
                 issue = int(pagestr[:2])
             
-        
-        mainurl = "%s/v%d/i%d" % (self.baseurl, volume, issue)
-
-        from htmlparser import fetch_url
-        response = fetch_url(mainurl)
-
-        parser = AIPParser()
-        parser.feed(response)
+        parser = self.get_articles(volume, issue)
         for article in parser:
             if article.start_page == page:
                 return article.url, issue
 
 class JCP(AIPJournal):
+    
+    name = "Journal of Chemical Physics"
 
     #the base url
     baseurl = "http://jcp.aip.org/jcpsa6"
@@ -110,6 +107,8 @@ class JCP(AIPJournal):
     volstart = 122
 
 class JMP(AIPJournal):
+
+    name = "Journal of Mathematical Physics"
 
     #the base url
     baseurl = "http://jmp.aip.org/jmapaq"

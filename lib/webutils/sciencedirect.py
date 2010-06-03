@@ -1,4 +1,4 @@
-from pdfget import ArticleParser, PDFArticle
+from pdfget import ArticleParser, PDFArticle, Journal
 from htmlexceptions import HTMLException
 
 import sys
@@ -84,14 +84,14 @@ class SDParser(ArticleParser):
         if self.text_frame == "td":
             self.text_frame = None
 
-class SDJournal:
+class SDJournal(Journal):
 
     #the base url
     baseurl = None
 
     def url(self, volume, issue, page):
-        if not self.baseurl:
-            raise HTMLException("Class %s does not have base url" % self.__class__)
+        
+        self.validate("baseurl")
 
         from htmlparser import URLLister, fetch_url
         import re
@@ -156,12 +156,15 @@ class SDJournal:
 
 
 class CPL(SDJournal):
+    name = "Chemical Physics Letters"
     baseurl = "http://www.sciencedirect.com/science/journal/00092614"
 
 class ChemPhys(SDJournal):
+    name = "Chemical Physics"
     baseurl = "http://www.sciencedirect.com/science/journal/03010104"
 
 class PhysRep(SDJournal):
+    name = "Physics Reports"
     baseurl = "http://www.sciencedirect.com/science/journal/03701573"
 
 if __name__ == "__main__":

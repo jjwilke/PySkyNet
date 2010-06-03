@@ -96,8 +96,7 @@ class ACSJournal(Journal):
 
     def url(self, volume, issue, page):
 
-        self.checkattr("name")
-        self.checkattr("id")
+        self.validate("id")
 
         if not issue:
             issue = self.get_issue(volume, page)
