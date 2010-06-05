@@ -90,6 +90,15 @@ class AIPJournal(Journal):
                 issue = int(pagestr[1])
             else:
                 issue = int(pagestr[:2])
+        else:
+            from utils.RM import save, load
+            volumes = load(self.pickle_path())
+            issues = volumes[volume].issues
+            for entry in issues:
+                issobj = issues[entry]
+                if page in issobj.pages:
+                    issue = entry
+                    break
             
         parser = self.get_articles(volume, issue)
         for article in parser:

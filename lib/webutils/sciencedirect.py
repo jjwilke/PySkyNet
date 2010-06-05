@@ -41,7 +41,9 @@ class SDParser(ArticleParser):
             #title is everything up to Pags
             match = re.compile("(.*)Pages").search(text)
             if not match:
-                raise HTMLException("No title found for %s" % text)
+                #ignore this and move on
+                self.article = SDArticle()
+                return
 
             title = match.groups()[0]
             self.article.set_title(title)
@@ -49,8 +51,10 @@ class SDParser(ArticleParser):
             #the page line is line 2
             match = re.compile("Pages\s(\d+)[-](\d+)").search(text)
             if not match:
-                print text
-                sys.exit()
+                #ignore this and move on
+                self.article = SDArticle()
+                return
+
             start_page, end_page = map(int, match.groups())
             self.article.set_pages(start_page, end_page)
             
@@ -128,7 +132,6 @@ class SDJournal(Journal):
             if not match1 and not match2:
                 continue
 
-
             start_issue = 0
             end_issue = 0
             volcheck = 0
@@ -138,8 +141,14 @@ class SDJournal(Journal):
             elif match2:
                 volcheck, start_issue, end_issue = map(int, match2.groups())
 
-            if volume == volcheck and issue >= start_issue and issue <= end_issue:
+            
+            start_page, end_page = map(int, re.compile("pp[.]\s+(\d+)[-](\d+)").search(url_list.get_text(name)).groups())
+
+            if volume == volcheck and page >= start_page and page <= end_page:
                 nexturl = url_list[name]
+                if not issue:
+                    issue = start_issue
+                break
 
         if not nexturl:
             raise HTMLException("Unable to find link for volume %d issue %d" % (volume, issue))

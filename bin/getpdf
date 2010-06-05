@@ -19,12 +19,14 @@ if __name__ == "__main__":
                             optionsList=opts)
     options_given = readOptions(optionList, optionSet=options)
 
-
     download = True
     for option in options_given:
         if option in ('', "profile"):
             from webutils.pdfget import profile_journal
-            profile_journal(options.journal)
+            if hasattr(options, "volume"):
+                profile_journal(options.journal, options.volume)
+            else:
+                profile_journal(options.journal)
             download = False
 
     if download:

@@ -138,6 +138,15 @@ class Volume:
         return "\n".join(str_arr)
 
 class Journal:
+    
+    def pickle_path(self):
+        import webutils.pdfget
+        import os.path
+        module_file = webutils.pdfget.__file__
+        folder = os.path.split(module_file)[0]
+        name = ".%s.profile" % self.name.replace("-","_").replace(" ","")
+        pickle = os.path.join(folder, name)
+        return pickle
 
     def profile_issue(self, volume, issue):
         import time
@@ -172,21 +181,20 @@ class Journal:
             num += 1
 
                 
-    def profile(self):
-        import webutils.pdfget
+    def profile(self, num = None):
         import os.path
         from utils.RM import load, save
-        module_file = webutils.pdfget.__file__
-        folder = os.path.split(module_file)[0]
-        name = ".%s.profile" % self.name.replace("-","_").replace(" ","")
-        pickle = os.path.join(folder, name)
-        volumes = load(pickle)
+        volumes = load(self.pickle_path())
         if not volumes:
             volumes = {}
 
         keys = volumes.keys() ; keys.sort()
-        num = 1
-        if keys:
+
+        x = None
+        if num:
+            volume = Volume(num)
+            x = num
+        elif keys:
             num = keys[-1]
             volume = volumes[num]
         else:
@@ -194,7 +202,7 @@ class Journal:
         print "Starting profile of %s on Volume %d" % (self.name, num)
 
         try:
-            while 1:
+            while num == x:
                 volumes[num] = volume
                 nfound = self.profile_volume(volume)
                 print volume
@@ -220,10 +228,10 @@ class Journal:
             raise HTMLException("Class %s does not have attribue %s" % (self.__class__, attr))
 
 
-def profile_journal(journal):
+def profile_journal(journal, volume = None):
     from pdfglobals import PDFGetGlobals
     jobj = PDFGetGlobals.journals[journal]()
-    jobj.profile()
+    jobj.profile(volume)
 
 def download_pdf(journal, volume, issue, page):
 

@@ -105,11 +105,13 @@ class APSJournal(Journal):
 
         if volume >= self.volstart: #get the issue from the page number
             pagestr = "%d" % page
+            if len(pagestr) == 5:
+                pagestr = "0" + pagestr
             if pagestr[0] == "0":
                 issue = int(pagestr[1])
             else:
                 issue = int(pagestr[:2])
-            
+
         parser = self.get_articles(volume, issue) 
         for article in parser:
             if article.start_page == page:

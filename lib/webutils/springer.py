@@ -193,12 +193,12 @@ if __name__ == "__main__":
     from utils.RM import save
     import re
 
-
+    regexp = "Volume\s(\d+)"
     for journal in TCA,:
         links = {}
+        url = journal.baseurl
         try:
             while 1:
-                url = journal.baseurl
                 response = fetch_url(url)
                 vols = map(int, re.compile(regexp).findall(response))
                 vols.sort()
@@ -207,7 +207,12 @@ if __name__ == "__main__":
                 links[url] = vols
                 url_list = URLLister()
                 url_list.feed(response)
-                url = url_list["Next Page"]
+                url = "http://www.springerlink.com" + url_list["Next Page"]
+
+                for entry in url_list:
+                    if "Number" in entry:
+                        print entry, url_list.get_text(entry)
+
         except KeyError, error:
             print error
 

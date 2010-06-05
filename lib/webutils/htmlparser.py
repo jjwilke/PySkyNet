@@ -80,17 +80,33 @@ class HTMLParser(SGMLParser):
     def get_href(self, attrs):
         return self.get_html_attr("href", attrs)
 
+class Link:
+    
+    def __init__(self, url):
+        self.url = url
+        self.text_arr = []
+
+    def get_text(self):
+        return " ".join(self.text_arr)
+
+    def add_text(self, text):
+        return self.text_arr.append(text)
+
 class URLLister(HTMLParser):
 
     def __iter__(self):
-        return iter(self.links)
+        return iter(self.links.keys())
 
     def __getitem__(self, key):
-        return self.links[key]
+        return self.links[key].url
+
+    def get_text(self, key):
+        return self.links[key].get_text()
     
     def reset(self):
         HTMLParser.reset(self)
         self.links = {}
+        self.link = None
         self.href = None
         self.linktext = ""
         self.storelink = False
@@ -102,7 +118,8 @@ class URLLister(HTMLParser):
 
     def end_a(self):
         if self.href:
-            self.links[self.linktext] = self.href
+            self.link = Link(self.href)
+            self.links[self.linktext] = self.link
             self.href = None
             self.linktext = ""
             self.storelink = False
@@ -110,6 +127,8 @@ class URLLister(HTMLParser):
     def handle_data(self, text):
         if self.storelink:
             self.linktext = text
+        elif self.link:
+            self.link.add_text(text)
 
         
 
