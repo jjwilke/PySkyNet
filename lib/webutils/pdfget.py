@@ -236,7 +236,6 @@ def profile_journal(journal, volume = None):
 def download_pdf(journal, volume, issue, page):
 
     from pdfglobals import PDFGetGlobals
-    name = "%s %d %d %d" % (journal, volume, issue, page)
 
     try:
         jobj = PDFGetGlobals.journals[journal]()
@@ -247,6 +246,7 @@ def download_pdf(journal, volume, issue, page):
         if not url: #nothing found
             return False
 
+        name = "%s %d %d %d" % (journal, volume, issue, page)
         filename = "%s.pdf" % name
 
         from webutils.htmlparser import save_url

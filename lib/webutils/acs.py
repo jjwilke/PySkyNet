@@ -1,7 +1,28 @@
 from pdfget import ArticleParser, PDFArticle, Journal
 from htmlparser import URLLister
 from htmlexceptions import HTMLException
+from selenium import selenium
 import sys
+import os.path
+
+class ACSQuery:
+    
+    def __init__(self, id, volume, page):
+        self.id = id
+        self.volume = volume
+        self.page = page
+
+    def run(self):
+        self.selenium = selenium("localhost", 4444, "*chrome", "http://pubs.acs.org")
+        self.selenium.start()
+        self.selenium.open("/journal/%s" % self.id);
+        self.selenium.click("qsTabCitation");
+        self.selenium.type("qsCitVol", "%d" % self.volume);
+        self.selenium.type("qsCitPage", "%d" % self.page);
+        self.selenium.click("qsCitSubmit");
+        self.selenium.wait_for_page_to_load("30000");
+        self.html = self.selenium.get_html_source()
+        self.selenium.stop()
 
 class ACSArticle(PDFArticle):
     pass    
@@ -100,21 +121,27 @@ class ACSJournal(Journal):
         self.validate("id")
 
         if not issue:
-            issue = self.get_issue(volume, page)
+            query = ACSQuery(self.id, volume, page)
+            query.run()
+            url_list = URLLister()
+            url_list.feed(query.html)
+            pdfurl = "http://pubs.acs.org" + url_list["PDF w/ Links"]
+            tocurl = url_list["Table of Contents"]
+            issue = int(os.path.split(tocurl)[-1])
+            return pdfurl, issue
 
-        if not issue:
-            raise HTMLException("Unable to find issue for volume %d, page %d" % (volume, page))
+        else:
+            mainurl = "http://pubs.acs.org/toc/%s/%d/%d" % (self.id, volume, issue)
 
-        mainurl = "http://pubs.acs.org/toc/%s/%d/%d" % (self.id, volume, issue)
+            from htmlparser import fetch_url
+            response = fetch_url(mainurl)
+            parser = ACSParser()
+            parser.feed(response)
+            for article in parser:
+                if article.start_page == page:
+                    return article.url, issue
 
-        from htmlparser import fetch_url
-        response = fetch_url(mainurl)
 
-        parser = ACSParser()
-        parser.feed(response)
-        for article in parser:
-            if article.start_page == page:
-                return article.url, issue
 
         raise HTMLException("No matching entry for %d %d %d" % (volume, issue, page))
 
