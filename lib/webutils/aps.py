@@ -100,17 +100,25 @@ class APSJournal(Journal):
         return parser
 
     def url(self, volume, issue, page):
-        
-        self.validate("baseurl", "abbrev", "volstart", "pageletter")
+        from webutils.htmlparser import fetch_url 
+
+        self.validate("baseurl", "abbrev", "volstart", "pageletter", "doi")
+
+        pagestr = "%d" % page
+        if len(pagestr) == 5:
+            pagestr = "0" + pagestr
 
         if volume >= self.volstart: #get the issue from the page number
-            pagestr = "%d" % page
-            if len(pagestr) == 5:
-                pagestr = "0" + pagestr
             if pagestr[0] == "0":
                 issue = int(pagestr[1])
             else:
                 issue = int(pagestr[:2])
+        else:
+            import re
+            url = "%s.%d.%s" % (self.doi, volume, pagestr)
+            text = fetch_url(url)
+            regexp = "/toc/%s/v%d/i(\d+)" % (self.abbrev, volume)
+            issue = int(re.compile(regexp).search(text).groups()[0])
 
         parser = self.get_articles(volume, issue) 
         for article in parser:
@@ -131,6 +139,8 @@ class PRL(APSJournal):
     abbrev = "PRL"
 
     pageletter = ""
+
+    doi = "http://dx.doi.org/10.1103/PhysRevLett"
 
 class PRA(APSJournal):
 

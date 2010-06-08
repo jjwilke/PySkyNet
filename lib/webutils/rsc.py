@@ -51,7 +51,7 @@ class RSCJournal(Journal):
         year = self.year1 + volume - 1
         mainurl = self.template % (year, volume, volume, year, issue)
 
-        from htmlparser import fetch_url
+        from webutils.htmlparser import fetch_url
         response = fetch_url(mainurl)
         if not response:
             return []
@@ -61,6 +61,8 @@ class RSCJournal(Journal):
         return parser
 
     def url(self, volume, issue, page):
+        from webutils.htmlparser import fetch_url
+
         self.validate("template", "year1")
         parser = self.get_articles(volume, issue)
         for article in parser:

@@ -1,7 +1,35 @@
 from pdfget import ArticleParser, PDFArticle, Journal
+from htmlparser import URLLister
 from htmlexceptions import HTMLException
 
 import sys
+import re
+
+from selenium import selenium
+
+class AIPQuery:
+    
+    def __init__(self, volume, page):
+        self.volume = volume
+        self.page = page
+
+    def run(self):
+        self.selenium = selenium("localhost", 4444, "*chrome", "http://jcp.aip.org")
+        self.selenium.start()
+    
+        sel = self.selenium
+        sel.open("/jcpsa6")
+        sel.type("vol", "%d" % self.volume)
+        sel.type("pg", "%d" % self.page)
+        sel.click("//input[@value='' and @type='submit']")
+        sel.wait_for_page_to_load("30000")
+        sel.wait_for_pop_up("_self", "30000")
+        self.aiphtml = sel.get_html_source()
+    
+        self.selenium.stop()
+
+if __name__ == "__main__":
+    unittest.main()
 
 class AIPArticle(PDFArticle):
     pass
@@ -84,26 +112,34 @@ class AIPJournal(Journal):
 
         self.validate("baseurl", "volstart")
         
+        pagestr = "%d" % page
+        if len(pagestr) == 5:
+            pagestr = "0" + pagestr
         if volume >= self.volstart: #get the issue from the page number
-            pagestr = "%d" % page
             if pagestr[0] == "0":
                 issue = int(pagestr[1])
             else:
                 issue = int(pagestr[:2])
-        else:
-            from utils.RM import save, load
-            volumes = load(self.pickle_path())
-            issues = volumes[volume].issues
-            for entry in issues:
-                issobj = issues[entry]
-                if page in issobj.pages:
-                    issue = entry
-                    break
+
+            parser = self.get_articles(volume, issue)
+            for article in parser:
+                if article.start_page == page:
+                    return article.url, issue
+        elif not issue:
+            query = AIPQuery(volume, page)
+            query.run()
+            url_list = URLLister()
+            url_list.feed(query.aiphtml)
+            pdfurl = url_list["Download PDF"]
+            regexp = re.compile("Issue\s(\d+)")
+            for name in url_list:
+                match = regexp.search(name)
+                if match:
+                    issue = int(match.groups()[0])
+                    return pdfurl, issue
+                    
+            sys.exit()
             
-        parser = self.get_articles(volume, issue)
-        for article in parser:
-            if article.start_page == page:
-                return article.url, issue
 
 class JCP(AIPJournal):
     

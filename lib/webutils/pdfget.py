@@ -260,6 +260,7 @@ def download_pdf(journal, volume, issue, page):
         return True #return success
 
     except KeyError, error:
+        print traceback(error)
         sys.stderr.write("FAILURE: %s\tJournal not valid\n" %  name)
     except HTTPError, error:
         sys.stderr.write("FAILURE: %s\tURL not found\n" % name)

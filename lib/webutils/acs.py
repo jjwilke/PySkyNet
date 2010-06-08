@@ -88,6 +88,7 @@ class ACSJournal(Journal):
             if not "Issue" in name or not "Volume" in name:
                 continue
 
+
             volcheck, issue, start, end = map(int, re.compile("Volume\s(\d+)[,]\sIssue\s(\d+)[,]\spp[.]\s(\d+).*?(\d+)").search(name).groups())
             if volcheck == volume and start <= page and end >= page:
                 return issue
