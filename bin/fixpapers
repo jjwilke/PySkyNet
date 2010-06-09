@@ -7,8 +7,12 @@ from pyPdf import PdfFileReader
 
 archive = Archive("Info.xml")
 lib = Library()
-n = 0
+n = 1
 for article in archive:
+    #fix article number
+    article.set_record_number(n)
+    n += 1
+
     if article.has_pdf():
         continue
 
@@ -21,35 +25,39 @@ for article in archive:
 
 
     
-    name = "%s %d %d %d" % (journal, volume, page, year)
-    path = lib.find(year, volume, page)
+    try:
+        name = "%s %d %d %d" % (journal, volume, page, year)
+        path = lib.find(year, volume, page)
 
-    if path:
-        print "Transferred %s" % path,
-
-    if not path:
-        path = download_pdf(journal, volume=volume, page=page, issue=issue) 
         if path:
-            print "Downloaded %s" % path,
+            print "Transferred %s" % path,
 
-    if not path:
-        print "%s failed to get PDF" % name
-        continue
+        if not path:
+            path = download_pdf(journal, volume=volume, page=page, issue=issue) 
+            if path:
+                print "Downloaded %s" % path,
 
-    article.set_pdf(path)
-    print name
+        if not path:
+            print "%s failed to get PDF" % name
+            continue
 
-    #attempt to fix number of pages
-    if "&" in pages: #fix this
-        reader = PdfFileReader(file(path, "rb"))
-        endpage = page + reader.numPages - 1
-        newpages = "%d-%d" % (page, endpage)
-        article.set_pages(newpages)
+        article.set_pdf(path)
+        print name
+
+        #attempt to fix number of pages
+        if "&" in pages: #fix this
+            reader = PdfFileReader(file(path, "rb"))
+            endpage = page + reader.numPages - 1
+            newpages = "%d-%d" % (page, endpage)
+            article.set_pages(newpages)
+    except Exception, error:
+        print error
+
 
 text = archive.toxml()
-#fileobj  = open("Info.xml", "w")
-#fileobj.write(text)
-#fileobj.close()
+fileobj  = open("Info.xml", "w")
+fileobj.write(text)
+fileobj.close()
 
 
 
