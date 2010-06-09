@@ -1,0 +1,55 @@
+#! /usr/bin/env python
+
+from papers.archive import Article, Archive
+from papers.index import Library
+from webutils.pdfget import download_pdf
+from pyPdf import PdfFileReader
+
+archive = Archive("Info.xml")
+lib = Library()
+n = 0
+for article in archive:
+    if article.has_pdf():
+        continue
+
+    journal = article.get_journal()
+    volume = article.get_volume()
+    year = article.get_year()
+    page = article.get_page()
+    issue = article.get_issue()
+    pages = article.get_pages()
+
+
+    
+    name = "%s %d %d %d" % (journal, volume, page, year)
+    path = lib.find(year, volume, page)
+
+    if path:
+        print "Transferred %s" % path,
+
+    if not path:
+        path = download_pdf(journal, volume=volume, page=page, issue=issue) 
+        if path:
+            print "Downloaded %s" % path,
+
+    if not path:
+        print "%s failed to get PDF" % name
+        continue
+
+    article.set_pdf(path)
+    print name
+
+    #attempt to fix number of pages
+    if "&" in pages: #fix this
+        reader = PdfFileReader(file(path, "rb"))
+        endpage = page + reader.numPages - 1
+        newpages = "%d-%d" % (page, endpage)
+        article.set_pages(newpages)
+
+text = archive.toxml()
+#fileobj  = open("Info.xml", "w")
+#fileobj.write(text)
+#fileobj.close()
+
+
+
