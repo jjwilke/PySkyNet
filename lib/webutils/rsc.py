@@ -2,10 +2,34 @@ from htmlparser import URLLister
 from pdfget import ArticleParser, PDFArticle, Journal
 from htmlexceptions import HTMLException
 
+from selenium import selenium
+
 import sys
 
 class RSCArticle(PDFArticle):
     pass
+
+class RSCQuery:
+    
+    def __init__(self, journal, volume, page):
+        self.volume = volume
+        self.page = page
+        self.journal = journal
+        self.rschtml = None
+
+    def run(self):
+        self.selenium = selenium("localhost", 4444, "*chrome", "http://www.rsc.org/")
+        self.selenium.start()
+        sel = self.selenium
+        sel.open("/Publishing/Journals/articlefinder.asp")
+        sel.select("journal_code", "label=%s" % self.journal)
+        sel.type("year_volume", "%d" % self.volume)
+        sel.type("fpage", "%d" % self.page)
+        sel.click("//div[@id='content']/div[2]/div/div[2]/form/div[5]/input[2]")
+        sel.wait_for_page_to_load("30000")
+        self.rschtml = sel.get_html_source()
+    
+        self.selenium.stop()
     
 class RSCParser(ArticleParser):
 
@@ -64,18 +88,28 @@ class RSCJournal(Journal):
         from webutils.htmlparser import fetch_url
 
         self.validate("template", "year1")
-        parser = self.get_articles(volume, issue)
-        for article in parser:
-            if article.start_page == page:
-                url_list = URLLister()
-                response = fetch_url(article.url)
-                url_list.feed(response)
-                pdflink = "http://www.rsc.org" + url_list["PDF"]
-                return pdflink, issue
+        response = None
+        if not issue:
+            query = RSCQuery(self.name, volume, page)
+            query.run()
+            response = query.rschtml
+        else:
+            parser = self.get_articles(volume, issue)
+            for article in parser:
+                if article.start_page == page:
+                    response = fetch_url(article.url)
+                    break
+            return None, None #nothing found
+
+        url_list = URLLister()
+        url_list.feed(response)
+        pdflink = "http://www.rsc.org" + url_list["PDF"]
+        return pdflink, issue
 
 class PCCP(RSCJournal):
 
     name = "Physical Chemistry Chemical Physics"
+    dropdown = "PCCP + Faraday Transactions"
     year1 = 1999
     template = "http://www.rsc.org/Publishing/Journals/CP/article.asp?Journal=CP5&VolumeYear=%d%d&Volume=%d&JournalCode=CP&MasterJournalCode=CP&SubYear=%d&type=Issue&Issue=%d&x=11&y=14"
 

@@ -155,7 +155,7 @@ class JCTC(ACSJournal):
 
 class JPC(ACSJournal):
     name = "Journal of Physical Chemistry"
-    baseurl = "http://pubs.acs.org/toc/jpchax"
+    id = "jpchax"
 
 class JPCA(ACSJournal):
     name = "Journal of Physical Chemistry A"
@@ -173,3 +173,6 @@ class InorgChem(ACSJournal):
     name = "Inorganic Chemistry"
     id = "inocaj"
     
+class OrgLett(ACSJournal):
+    name = "Organic Letters"
+    id = "orlef7"

@@ -106,12 +106,17 @@ class SDJournal(Journal):
 
         nexturl = None
         for name in url_list:
-            regexp = "Volumes\s(\d+)\s?[-]\s?(\d+)"
-            match = re.compile(regexp).search(name)
-            if not match:
+            match1  = re.compile("Volumes\s(\d+)\s?[-]\s?(\d+)").search(name)
+            match2  = re.compile("Volume\s(\d+)").search(name)
+            if not match1 and not match2:
                 continue
-            
-            start, finish = map(int, match.groups())
+
+            start = finish = 0
+            if match1:
+                start, finish = map(int, match1.groups())
+            elif match2:
+                start = finish = int(match2.groups()[0])
+
             if volume >= start and volume <= finish:
                 nexturl = url_list[name]
                 break
@@ -124,6 +129,7 @@ class SDJournal(Journal):
         url_list.reset()
         url_list.feed(response)
 
+        baseurl = nexturl
         nexturl = None
         for name in url_list:
             match1 = re.compile("Volume\s(\d+)[,]\sIssue\s(\d+)").search(name)
@@ -131,6 +137,7 @@ class SDJournal(Journal):
             
             if not match1 and not match2:
                 continue
+
 
             start_issue = 0
             end_issue = 0
@@ -150,10 +157,21 @@ class SDJournal(Journal):
                     issue = start_issue
                 break
 
+        if not nexturl: #all is not lost... we might already be on the correct page
+            regexp = "Volume\s%d[,]\sIssue\s(\d+)[,]\sPages\s(\d+)[-](\d+)" % volume
+            match = re.compile(regexp).search(response)
+            if match:
+                number, start, end = map(int, match.groups())
+                if start <= page and end >= page:
+                    nexturl = baseurl
+                    issue = number
+
+        else:
+            nexturl = "http://www.sciencedirect.com%s" % nexturl
+
         if not nexturl:
             raise HTMLException("Unable to find link for volume %d issue %d" % (volume, issue))
 
-        nexturl = "http://www.sciencedirect.com%s" % nexturl
         response = fetch_url(nexturl)
 
         sdparser = SDParser()
@@ -175,6 +193,18 @@ class ChemPhys(SDJournal):
 class PhysRep(SDJournal):
     name = "Physics Reports"
     baseurl = "http://www.sciencedirect.com/science/journal/03701573"
+
+class THEOCHEM(SDJournal):
+    name = "Journal of Molecular Structure: THEOCHEM"
+    baseurl = "http://www.sciencedirect.com/science/journal/01661280"
+
+class CompChem(SDJournal):
+    name = "Computers and Chemistry"
+    baseurl = "http://www.sciencedirect.com/science/journal/00978485"
+
+class JMS(SDJournal):
+    name = "Journal of Molecular Spectroscopy"
+    baseurl = "http://www.sciencedirect.com/science/journal/00222852"
 
 if __name__ == "__main__":
     pass

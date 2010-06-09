@@ -1,6 +1,7 @@
 from htmlparser import HTMLParser
 from urllib2 import HTTPError
 from utils.RM import traceback
+from htmlexceptions import HTMLException
 import sys
 
 class URLNotPDFError(Exception):
@@ -233,18 +234,27 @@ def profile_journal(journal, volume = None):
     jobj = PDFGetGlobals.journals[journal]()
     jobj.profile(volume)
 
-def download_pdf(journal, volume, issue, page):
+def download_pdf(journal, volume = 0, issue = 0, page = 0):
 
     from pdfglobals import PDFGetGlobals
 
+    name = "%s %d %d %d" % (journal, volume, issue, page)
     try:
-        jobj = PDFGetGlobals.journals[journal]()
+        jobj = PDFGetGlobals.getJournal(journal)
+        if not jobj: #no journal
+            sys.stderr.write("FAILURE: %s\tJournal not valid\n" %  name)
+            return None
 
         #we might have to fetch the issue
-        url, issue = jobj.url(volume, issue, page)
+        url = None
+        try:
+            url, issue = jobj.url(volume, issue, page)
+        except HTMLException, error:
+            sys.stderr.write("%s\n" % error)
+            pass #for now
 
         if not url: #nothing found
-            return False
+            return None
 
         name = "%s %d %d %d" % (journal, volume, issue, page)
         filename = "%s.pdf" % name
@@ -257,17 +267,14 @@ def download_pdf(journal, volume, issue, page):
 
         sys.stdout.write("SUCCESS: %s\n" % name)
 
-        return True #return success
+        return filename #return success
 
-    except KeyError, error:
-        print traceback(error)
-        sys.stderr.write("FAILURE: %s\tJournal not valid\n" %  name)
     except HTTPError, error:
         sys.stderr.write("FAILURE: %s\tURL not found\n" % name)
     except URLNotPDFError, error:
         sys.stderr.write("FAILURE: %s\tURL is not a PDF file\n" % name)
 
-    return False
+    return None
 
 
 if __name__ == "__main__":

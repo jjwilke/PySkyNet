@@ -102,7 +102,7 @@ class APSJournal(Journal):
     def url(self, volume, issue, page):
         from webutils.htmlparser import fetch_url 
 
-        self.validate("baseurl", "abbrev", "volstart", "pageletter", "doi")
+        self.validate("baseurl", "abbrev", "volstart", "doi")
 
         pagestr = "%d" % page
         if len(pagestr) == 5:
@@ -138,9 +138,21 @@ class PRL(APSJournal):
 
     abbrev = "PRL"
 
-    pageletter = ""
-
     doi = "http://dx.doi.org/10.1103/PhysRevLett"
+
+class PROLA(APSJournal):
+
+    name = "Physical Review"
+
+    #the base url
+    baseurl = "http://prola.aps.org"
+
+    #the volume start at which the journal switched over numbering system
+    volstart = 10000 #never switched
+
+    abbrev = "PR"
+
+    doi = "http://link.aps.org/doi/10.1103/PhysRev"
 
 class PRA(APSJournal):
 
@@ -154,5 +166,29 @@ class PRA(APSJournal):
 
     abbrev = "PRA"
 
-    pageletter = "R"
+    doi = "http://link.aps.org/doi/10.1103/PhysRevA"
+
+class PRB(APSJournal):
+
+    name = "Physical Review B"
+
+    #the base url
+    baseurl = "http://prb.aps.org"
+
+    #the volume start at which the journal switched over numbering system
+    volstart = 63
+
+    abbrev = "PRB"
+
+    doi = "http://link.aps.org/doi/10.1103/PhysRevB"
+
+class RMP(APSJournal):
+
+    baseurl = "http://rmp.aps.org"
+
+    name = "Reviews of Modern Physics"
+
+    volstart = 10000 #none
+
+    doi = "http://link.aps.org/doi/10.1103/RevModPhys"
 

@@ -33,8 +33,7 @@ if __name__ == "__main__":
     if download:
         #check if duplicate
         volumes = load("/Users/jjwilke/Documents/Papers/.papers.index")
-        pages = volumes[options.volume]
-        if options.page in pages:
+        if options.volume in volumes and options.page in volumes[options.volume]:
             sys.exit("Paper already downloaded")
         from webutils.pdfget import download_pdf
         check = download_pdf(options.journal, options.volume, options.issue, options.page)
