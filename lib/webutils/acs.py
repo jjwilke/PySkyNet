@@ -176,3 +176,11 @@ class InorgChem(ACSJournal):
 class OrgLett(ACSJournal):
     name = "Organic Letters"
     id = "orlef7"
+
+class ChemRev(ACSJournal):
+    name = "Chemical Reviews"
+    id = "chreay"
+
+class ACR(ACSJournal):
+    name = "Accounts of Chemical Research"
+    id = "achre4"

@@ -138,3 +138,8 @@ class JCC(WileyJournal):
     name = "Journal of Computational Chemistry"
     baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1096-987X"
 
+class ChemPhysChem(WileyJournal):
+    
+    name = "ChemPhysChem"
+    baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1439-7641"
+
