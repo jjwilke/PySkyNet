@@ -127,7 +127,17 @@ class ACSJournal(Journal):
             query.run()
             url_list = URLLister()
             url_list.feed(query.html)
-            pdfurl = "http://pubs.acs.org" + url_list["PDF w/ Links"]
+            pdfurl = None
+
+            try:
+                pdfurl = "http://pubs.acs.org" + url_list["PDF w/ Links"]
+            except KeyError:
+                pass
+
+            if not pdfurl:
+                pdfurl = "http://pubs.acs.org" + url_list["Hi-Res PDF"]
+                
+
             tocurl = url_list["Table of Contents"]
             issue = int(os.path.split(tocurl)[-1])
             return pdfurl, issue
