@@ -1,4 +1,4 @@
-from pdfget import ArticleParser, PDFArticle, Journal
+from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlexceptions import HTMLException
 
 import sys
@@ -55,7 +55,7 @@ class SDParser(ArticleParser):
                 self.article = SDArticle()
                 return
 
-            start_page, end_page = map(int, match.groups())
+            start_page, end_page = map(Page, match.groups())
             self.article.set_pages(start_page, end_page)
             
             self.articles.append(self.article)
@@ -154,7 +154,7 @@ class SDJournal(Journal):
                 volcheck, start_issue, end_issue = map(int, match2.groups())
 
             
-            start_page, end_page = map(int, re.compile("pp[.]\s+(\d+)[-](\d+)").search(url_list.get_text(name)).groups())
+            start_page, end_page = map(Page, re.compile("pp[.]\s+(\d+)[-](\d+)").search(url_list.get_text(name)).groups())
 
             if volume == volcheck and page >= start_page and page <= end_page:
                 nexturl = url_list[name]
@@ -185,6 +185,8 @@ class SDJournal(Journal):
         for article in sdparser:
             if article.start_page == page:
                 return article.url, issue
+
+        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
 
 
 class CPL(SDJournal):

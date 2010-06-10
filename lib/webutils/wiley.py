@@ -1,4 +1,4 @@
-from pdfget import ArticleParser, PDFArticle, Journal
+from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlexceptions import HTMLException
 
 import sys
@@ -52,7 +52,7 @@ class WileyParser(ArticleParser):
             #parse for the page number
             import re
             text = self.get_text()
-            start, end = map(int, re.compile("Pages[:]\s*(\d+)[-](\d+)").search(text).groups())
+            start, end = map(Page, re.compile("Pages[:]\s*(\d+)[-](\d+)").search(text).groups())
             self.article.set_pages(start, end)
 
             self.text_frame = "pdf"
@@ -94,10 +94,8 @@ class WileyJournal(Journal):
         
         self.validate("baseurl")
 
-        cgi = "&volume=%d&issue=&pages=%d" % (volume, page)
+        cgi = "&volume=%d&issue=&pages=%s" % (volume, page)
         mainurl = self.baseurl + cgi
-
-        print mainurl
 
         from htmlparser import fetch_url
         response = fetch_url(mainurl)
@@ -109,14 +107,14 @@ class WileyJournal(Journal):
                 continue
 
             if article.start_page == page:
-                print article
-                
                 #we don't quite have the article url yet
                 response = fetch_url(article.url)
                 pdfget = WileyPDFFetcher()
                 pdfget.feed(response)
                 url = pdfget.url.split("&PLAC")[0]
                 return url, issue
+
+        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
 
 class AngeChem(WileyJournal):
 

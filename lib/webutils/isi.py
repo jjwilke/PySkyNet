@@ -1,5 +1,4 @@
-
-from pdfget import ArticleParser, PDFArticle
+from pdfget import ArticleParser, PDFArticle, Page
 from htmlexceptions import HTMLException
 import sys
 
@@ -102,7 +101,7 @@ class ISIParser(ArticleParser):
         try:
             self.article.set_journal(journal.strip())
             self.article.set_volume(int(volume))
-            self.article.set_pages(int(page))
+            self.article.set_pages(Page(page))
             self.article.set_year(int(year))
             self.articles.append(self.article)
         except JournalNotFoundError, error:

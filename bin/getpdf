@@ -2,6 +2,7 @@
 import sys
 from utils.getoptions import InputOption, OptionList, readOptions, OptionSet
 from utils.RM import load, save
+from webutils.pdfget import Page
 
 
 #set the allowed command line options and user messages
@@ -9,7 +10,7 @@ if __name__ == "__main__":
     opts = [
         InputOption(shortOption='v', longOption='volume', optionType='int', valuesMandatory=True, bind=True),
         InputOption(shortOption='i', longOption='issue', optionType='int', valuesMandatory=False, bind=True, default=0),
-        InputOption(shortOption='p', longOption='page', optionType='int', valuesMandatory=True, bind=True),
+        InputOption(shortOption='p', longOption='page', optionType='string', valuesMandatory=True, bind=True),
         InputOption(shortOption='j', longOption='journal', optionType='string', valuesMandatory=True, bind=True),
         InputOption(longOption='profile'),
         ]
@@ -21,6 +22,7 @@ if __name__ == "__main__":
     options_given = readOptions(optionList, optionSet=options)
 
     download = True
+    page = Page(options.page)
     for option in options_given:
         if option in ('', "profile"):
             from webutils.pdfget import profile_journal
@@ -36,7 +38,7 @@ if __name__ == "__main__":
         if options.volume in volumes and options.page in volumes[options.volume]:
             sys.exit("Paper already downloaded")
         from webutils.pdfget import download_pdf
-        check = download_pdf(options.journal, options.volume, options.issue, options.page)
+        check = download_pdf(options.journal, options.volume, options.issue, page)
         if not check:
             sys.stderr.write("FAILED\n")
         

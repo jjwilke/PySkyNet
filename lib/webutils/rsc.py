@@ -1,5 +1,5 @@
 from htmlparser import URLLister
-from pdfget import ArticleParser, PDFArticle, Journal
+from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlexceptions import HTMLException
 
 from selenium import selenium
@@ -24,7 +24,7 @@ class RSCQuery:
         sel.open("/Publishing/Journals/articlefinder.asp")
         sel.select("journal_code", "label=%s" % self.journal)
         sel.type("year_volume", "%d" % self.volume)
-        sel.type("fpage", "%d" % self.page)
+        sel.type("fpage", "%s" % self.page)
         sel.click("//div[@id='content']/div[2]/div/div[2]/form/div[5]/input[2]")
         sel.wait_for_page_to_load("30000")
         self.rschtml = sel.get_html_source()
@@ -47,7 +47,7 @@ class RSCParser(ArticleParser):
         if self.text_frame == "citation":
             citation = self.get_text()
             entries = citation.split(",")
-            page = int(entries[-1].split()[0])
+            page = Page(entries[-1].split()[0])
             self.article.set_pages(page, page)
             self.articles.append(self.article)
 
@@ -99,7 +99,9 @@ class RSCJournal(Journal):
                 if article.start_page == page:
                     response = fetch_url(article.url)
                     break
-            return None, None #nothing found
+
+        if not response:
+            raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
 
         url_list = URLLister()
         url_list.feed(response)

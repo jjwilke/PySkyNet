@@ -3,23 +3,114 @@ from urllib2 import HTTPError
 from utils.RM import traceback
 from htmlexceptions import HTMLException
 import sys
+import re
 
 class URLNotPDFError(Exception):
     pass
+
+
+class Page:
+    
+    INT = 0
+    STR = 1
+    PAGE = 2
+    
+    def __init__(self, text):
+        self.value = text
+        try:
+            self.number = int(re.compile("(\d+)").search(text).groups()[0])
+        except TypeError, error:
+            raise Exception("%s is not valid Page input" % text)
+
+    def __le__(self, other):
+        case = self.get_case(other)
+        if case == self.INT:
+            return self.number <= other
+        elif case == self.PAGE:
+            return self.value <= other.value and self.number <= other.number
+        elif case == self.STR:
+            return self.value <= other
+        else:
+            raise Exception("%s is not a valid comparison for Page" % other.__class__)
+
+    def __ge__(self, other):
+        case = self.get_case(other)
+        if case == self.INT:
+            return self.number >= other
+        elif case == self.PAGE:
+            return self.value >= other.value and self.number >= other.number
+        elif case == self.STR:
+            return self.value >= other
+        else:
+            raise Exception("%s is not a valid comparison for Page" % other.__class__)
+
+    def __lt__(self, other):
+        case = self.get_case(other)
+        if case == self.INT:
+            return self.number < other
+        elif case == self.PAGE:
+            return self.value < other.value and self.number < other.number
+        elif case == self.STR:
+            return self.value < other
+        else:
+            raise Exception("%s is not a valid comparison for Page" % other.__class__)
+
+    def __gt__(self, other):
+        case = self.get_case(other)
+        if case == self.INT:
+            return self.number > other
+        elif case == self.PAGE:
+            return self.value > other.value and self.number > other.number
+        elif case == self.STR:
+            return self.value > other
+        else:
+            raise Exception("%s is not a valid comparison for Page" % other.__class__)
+
+    def __eq__(self, other):
+        case = self.get_case(other)
+        if case == self.INT:
+            return self.number == other
+        elif case == self.PAGE:
+            return self.value == other.value and self.number == other.number
+        elif case == self.STR:
+            return self.value == other
+        else:
+            raise Exception("%s is not a valid comparison for Page" % other.__class__)
+
+    def __int__(self):
+        return self.number
+
+    def __str__(self):
+        return self.value
+
+    def get_case(self, other):
+        if isinstance(other, basestring):
+            return self.STR
+        elif "Page" in str(other.__class__):
+            return self.PAGE
+        else:
+            return self.INT
+
+    def get_issue(self):
+        if self.value[0] == "0":
+            return int(self.value[1])
+        else:
+            return int(self.value[:2])
+
 
 class PDFArticle:
     
     def __init__(self):
         self.title = "No title"
         self.journal = "No journal"
-        self.start_page = 0
-        self.end_page = 1
+        self.start_page = Page("0")
+        self.end_page = Page("1")
         self.volume = 0
         self.issue = 0
         self.year = 0
 
     def __str__(self):
-        return '%s %s %d pp %d-%d %d' % (self.title, self.journal, self.volume, self.start_page, self.end_page, self.year)
+        return '%s %s %d pp %s-%s %d' % (self.title, self.journal, self.volume, self.start_page, self.end_page, self.year)
 
     def set_pdfurl(self, url):
         self.url = url
@@ -27,7 +118,7 @@ class PDFArticle:
     def set_title(self, text):
         self.title = text
 
-    def set_pages(self, start_page, end_page = 0):
+    def set_pages(self, start_page, end_page = None):
         self.start_page = start_page
         if not end_page:
             self.end_page = start_page
@@ -206,7 +297,6 @@ class Journal:
             while num == x:
                 volumes[num] = volume
                 nfound = self.profile_volume(volume)
-                print volume
                 if not nfound: #no more
                     break
                 save(volumes, pickle)
@@ -234,11 +324,11 @@ def profile_journal(journal, volume = None):
     jobj = PDFGetGlobals.journals[journal]()
     jobj.profile(volume)
 
-def download_pdf(journal, volume = 0, issue = 0, page = 0):
+def download_pdf(journal, volume = 0, issue = 0, page = Page("0")):
 
     from pdfglobals import PDFGetGlobals
 
-    name = "%s %d %d %d" % (journal, volume, issue, page)
+    name = "%s %d %d %s" % (journal, volume, issue, page)
     try:
         jobj = PDFGetGlobals.getJournal(journal)
         if not jobj: #no journal
@@ -256,7 +346,7 @@ def download_pdf(journal, volume = 0, issue = 0, page = 0):
         if not url: #nothing found
             return None
 
-        name = "%s %d %d %d" % (journal, volume, issue, page)
+        name = "%s %d %d %s" % (journal, volume, issue, page)
         filename = "%s.pdf" % name
 
         from webutils.htmlparser import save_url
@@ -278,7 +368,6 @@ def download_pdf(journal, volume = 0, issue = 0, page = 0):
 
 
 if __name__ == "__main__":
-    url = "http://www.sciencedirect.com/science?_ob=MImg&_imagekey=B6TFN-4YPT1SW-2-13&_cdi=5231&_user=655127&_pii=S0009261410004835&_orig=browse&_coverDate=05%2F26%2F2010&_sk=995079998&view=c&wchp=dGLzVlz-zSkWb&md5=4920081f211a7a4eff29b6938aa3d16e&ie=/sdarticle.pdf"
-    filename = "sdarticle.pdf"
-    from webutils.htmlparser import save_url
-    save_url(url, filename)
+    from pdfglobals import run_testsuite
+    run_testsuite()
+

@@ -1,4 +1,4 @@
-from pdfget import ArticleParser, PDFArticle, Journal
+from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlparser import URLLister, fetch_url, HTMLParser
 from htmlexceptions import HTMLException
 
@@ -30,7 +30,7 @@ class IssueParser(ArticleParser):
     def start_a(self, attrs):
         if self.text_frame == "issue":
             pages = self.get_text()
-            bounds = map(int, re.compile("0?(\d+)[-]0?(\d+)").search(pages).groups())
+            bounds = map(Page, re.compile("([RS]?\d+)[-]([RS]?\d+)").search(pages).groups())
             self.issues[self.issue] = bounds
         self.text_frame = 'a'
 
@@ -59,8 +59,8 @@ class IOPParser(ArticleParser):
     def start_a(self, attrs):
         if self.text_frame == "page":
             text = self.get_text()
-            page = re.compile("0?(\d+)").search(text).groups()[0]
-            self.article.set_pages(int(page))
+            page = Page(re.compile("([RS]?\d+)").search(text).groups()[0])
+            self.article.set_pages(page)
             self.text_frame = None
         self.url = self.get_href(attrs)
         self.text_frame = 'a'
@@ -99,7 +99,7 @@ class IOPJournal(Journal):
                url = "http://iopscience.iop.org" + article.url
                return url, issue
         
-        return None, None
+        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
             
 
 class JPA(IOPJournal):

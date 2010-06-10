@@ -1,4 +1,4 @@
-from pdfget import ArticleParser, PDFArticle, Journal
+from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlexceptions import HTMLException
 
 import sys
@@ -56,7 +56,7 @@ class APSParser(ArticleParser):
                 return
 
             text = match.groups()[0]
-            match = map(int, re.compile("\d+").findall(text))
+            match = map(Page, re.compile("\d+").findall(text))
 
             if len(match) == 1:
                 page = match[0]
@@ -104,18 +104,11 @@ class APSJournal(Journal):
 
         self.validate("baseurl", "abbrev", "volstart", "doi")
 
-        pagestr = "%d" % page
-        if len(pagestr) == 5:
-            pagestr = "0" + pagestr
-
         if volume >= self.volstart: #get the issue from the page number
-            if pagestr[0] == "0":
-                issue = int(pagestr[1])
-            else:
-                issue = int(pagestr[:2])
+            issue = page.get_issue()
         else:
             import re
-            url = "%s.%d.%s" % (self.doi, volume, pagestr)
+            url = "%s.%d.%s" % (self.doi, volume, page)
             text = fetch_url(url)
             regexp = "/toc/%s/v%d/i(\d+)" % (self.abbrev, volume)
             issue = int(re.compile(regexp).search(text).groups()[0])
@@ -125,6 +118,8 @@ class APSJournal(Journal):
             if article.start_page == page:
                 url = self.baseurl + article.url
                 return url, issue
+
+        return None, None
 
 class PRL(APSJournal):
     

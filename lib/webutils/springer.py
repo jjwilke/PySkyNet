@@ -1,4 +1,4 @@
-from pdfget import ArticleParser, PDFArticle, Journal
+from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlexceptions import HTMLException
 
 import sys
@@ -175,6 +175,8 @@ class SpringerJournal(Journal):
         for article in parser:
             if article.start_page == page:
                 return article.url, issue
+
+        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
 
 class TCA(SpringerJournal):
 

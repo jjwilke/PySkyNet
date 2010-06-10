@@ -1,4 +1,4 @@
-from pdfget import ArticleParser, PDFArticle, Journal
+from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlparser import URLLister
 from htmlexceptions import HTMLException
 from selenium import selenium
@@ -18,7 +18,7 @@ class ACSQuery:
         self.selenium.open("/journal/%s" % self.id);
         self.selenium.click("qsTabCitation");
         self.selenium.type("qsCitVol", "%d" % self.volume);
-        self.selenium.type("qsCitPage", "%d" % self.page);
+        self.selenium.type("qsCitPage", "%s" % self.page);
         self.selenium.click("qsCitSubmit");
         self.selenium.wait_for_page_to_load("30000");
         self.html = self.selenium.get_html_source()
@@ -68,7 +68,9 @@ class ACSParser(ArticleParser):
                     raise Exception("%s is not a properly formatted page spec" % pages)
                 start_page, end_page = matches
 
-            self.article.set_pages(start_page, end_page)
+            start = Page("%d" % start_page)
+            end = Page("%d" % end_page)
+            self.article.set_pages(start, end)
         
     def _start_articleBoxMeta(self, attrs):
         self.a_frame = "title"
@@ -141,9 +143,7 @@ class ACSJournal(Journal):
                 if article.start_page == page:
                     return article.url, issue
 
-
-
-        raise HTMLException("No matching entry for %d %d %d" % (volume, issue, page))
+        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
 
 class JACS(ACSJournal):
     name = "Journal of the American Chemical Society"

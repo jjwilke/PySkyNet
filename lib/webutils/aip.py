@@ -1,4 +1,4 @@
-from pdfget import ArticleParser, PDFArticle, Journal
+from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlparser import URLLister
 from htmlexceptions import HTMLException
 
@@ -20,7 +20,7 @@ class AIPQuery:
         sel = self.selenium
         sel.open("/jcpsa6")
         sel.type("vol", "%d" % self.volume)
-        sel.type("pg", "%d" % self.page)
+        sel.type("pg", "%s" % self.page)
         sel.click("//input[@value='' and @type='submit']")
         sel.wait_for_page_to_load("30000")
         sel.wait_for_pop_up("_self", "30000")
@@ -77,10 +77,11 @@ class AIPParser(ArticleParser):
         self.text_frame = None
         citation = self.get_text()
         import re
-        matches = map(int, re.compile("\d+").findall(citation))
+        matches = re.compile("\d+").findall(citation)
         volume, page, year = matches[:3]
 
         #just set the pages like so
+        page = Page(page)
         self.article.set_pages(page, page)
 
     def _start_dbtdownload(self, attrs):
@@ -112,20 +113,10 @@ class AIPJournal(Journal):
 
         self.validate("baseurl", "volstart")
         
-        pagestr = "%d" % page
-        if len(pagestr) == 5:
-            pagestr = "0" + pagestr
         if volume >= self.volstart: #get the issue from the page number
-            if pagestr[0] == "0":
-                issue = int(pagestr[1])
-            else:
-                issue = int(pagestr[:2])
+            issue = page.get_issue()
 
-            parser = self.get_articles(volume, issue)
-            for article in parser:
-                if article.start_page == page:
-                    return article.url, issue
-        elif not issue:
+        if not issue:
             query = AIPQuery(volume, page)
             query.run()
             url_list = URLLister()
@@ -137,8 +128,13 @@ class AIPJournal(Journal):
                 if match:
                     issue = int(match.groups()[0])
                     return pdfurl, issue
-                    
-            sys.exit()
+        else:
+            parser = self.get_articles(volume, issue)
+            for article in parser:
+                if article.start_page == page:
+                    return article.url, issue
+
+        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
             
 
 class JCP(AIPJournal):
