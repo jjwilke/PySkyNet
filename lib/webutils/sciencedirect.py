@@ -155,6 +155,8 @@ class SDJournal(Journal):
 
             
             start_page, end_page = map(Page, re.compile("pp[.]\s+(\d+)[-](\d+)").search(url_list.get_text(name)).groups())
+            if volume == volcheck:
+                print start_page, end_page, page, volume, volcheck
 
             if volume == volcheck and page >= start_page and page <= end_page:
                 nexturl = url_list[name]

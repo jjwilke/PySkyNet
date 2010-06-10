@@ -19,7 +19,7 @@ class Page:
         self.value = text
         try:
             self.number = int(re.compile("(\d+)").search(text).groups()[0])
-        except TypeError, error:
+        except Exception, error:
             raise Exception("%s is not valid Page input" % text)
 
     def __le__(self, other):

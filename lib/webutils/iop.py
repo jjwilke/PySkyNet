@@ -94,6 +94,10 @@ class IOPJournal(Journal):
         toc = fetch_url("%s/%d/%d" % (self.baseurl, volume, issue))
         parser = IOPParser()
         parser.feed(toc)
+        if hasattr(self, "baseurl2"):
+            toc = fetch_url("%s/%d/%d" % (self.baseurl2, volume, issue))
+            parser.feed(toc)
+
         for article in parser:
             if article.start_page == page:
                url = "http://iopscience.iop.org" + article.url
@@ -111,6 +115,7 @@ class JPB(IOPJournal):
     
     name = "Journal of Physics B"
     baseurl = "http://iopscience.iop.org/0953-4075"
+    baseurl2 = "http://iopscience.iop.org/0022-3700"
 
 class PhysScripta(IOPJournal):
 

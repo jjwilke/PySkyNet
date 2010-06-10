@@ -119,7 +119,7 @@ class APSJournal(Journal):
                 url = self.baseurl + article.url
                 return url, issue
 
-        return None, None
+        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
 
 class PRL(APSJournal):
     
