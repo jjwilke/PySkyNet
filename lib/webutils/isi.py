@@ -1,6 +1,10 @@
 from pdfget import ArticleParser, PDFArticle, Page
+from papers.index import Library
 from htmlexceptions import HTMLException
+from utils.RM import save, load
 import sys
+import re
+import os.path
 
 class ISIError(Exception):
     pass
@@ -11,34 +15,21 @@ class JournalNotFoundError(Exception):
 class ISIArticle(PDFArticle):
 
     journal_map = {
-        "journal of chemical physics" : "jcp",
-        "journal of mathematical physics" : "jmp",
-        "physical review a" : "pra",
-        "phys rev a" : "pra",
-        "physical review letters" : "prl",
         "angewandte chemie-international edition" : "ange",
-        "international journal of quantum chemistry" : "ijqc",
-        "journal of physical organic chemistry" : "jpoc",
-        "journal of computational chemistry" : "jcc",
-        "chemical physics letters" : "cpl",
         "chemical physics" : "chemphys",
         "physics reports" : "physrep",
-        "journal of the american chemical society" : "jacs",
-        "inorganic chemistry" : "ioc",
-        "journal of organic chemistry" : "joc",
-        "journal of physical chemistry" : "jpc",
-        "journal of physical chemistry a" : "jpc a",
-        "journal of physical chemistry b" : "jpc b",
-        "journal of chemical theory and computation" : "jctc",
-        "physical chemistry chemical physics" : "pccp",
+        "physics reports-review section of physics letters" : "physrep",
+        "molecular physics" : "molphys",
     }
-    
+
     def set_journal(self, journal):
         try:
             journal = self.journal_map[journal.lower()]
+            PDFArticle.set_journal(self, journal)
         except KeyError:
-            raise JournalNotFoundError(journal)
-        PDFArticle.set_journal(self, journal)
+            name = journal.lower().replace("of","").replace("the","").replace("and", "").replace("-"," ")
+            initials = map(lambda x: x[0], name.strip().split())
+            PDFArticle.set_journal(self, "".join(initials))
 
 class ISIParser(ArticleParser):
 
@@ -113,15 +104,117 @@ class ISIParser(ArticleParser):
         self.a_frame = None
         self.article = None
 
+class SavedRecordParser:
+    
+    def __init__(self):
+        self.articles = []
+
+    def __iter__(self):
+        return iter(self.articles)
+
+    def get_text(self, text, start, stop):
+        regexp = "\n%s (.*?)\n%s " % (start.upper(), stop.upper())
+        match = re.compile(regexp, re.DOTALL).search(text)
+        if not match:
+            return None
+
+        return match.groups()[0].strip()
+
+    def feed(self, text):
+        journals = {}
+        blocks = re.compile("PT\sJ(.*?)\nER", re.DOTALL).findall(text)
+        for block in blocks:
+            article = ISIArticle()
+
+            journal = self.get_text(block, "so", "ab")
+            if not journal: journal = self.get_text(block, "so", "sn")
+            if not journal:
+                print block
+                sys.exit("no journal")
+            article.set_journal(journal)
+
+            volume = self.get_text(block, "vl", "is")
+            if not volume: volume = self.get_text(block, "vl", "bp")
+            if not volume:
+                print block
+                sys.exit("no volume")
+            volume = int(volume)
+            article.set_volume(volume)
+
+            issue = self.get_text(block, "is", "bp")
+            if not issue:
+                issue = 0
+            else:
+                issue = int(re.compile("(\d+)").search(issue).groups()[0])
+            article.set_issue(issue)
+
+            page = self.get_text(block, "bp", "ep")
+            if not page: page = self.get_text(block, "bp", "ut")
+            if not page or "art. no." in page: page = self.get_text(block, "ar", "di")
+            if not page: page = self.get_text(block, "ar", "ut")
+            if not page:
+                print block
+                sys.exit("no page")
+            page = Page(page)
+            article.set_pages(page)
+            self.articles.append(article)
+
+            journals[journal] = 1
+            
+        """
+        journals = journals.keys()
+        journals.sort()
+        print "\n".join(journals)
+        sys.exit()
+        """
+
+def find(library, volume, page):
+    for year in library:
+        path = library.find(year, volume, page)
+        if path:
+            return path
+    return None
+
 def walkISI(files):
     from webutils.pdfget import download_pdf
+    lib = Library()
+
+    done = []
+    if os.path.exists(".isi"):
+        done = load(".isi")    
+
     for file in files:
-        parser = ISIParser()
+        parser = SavedRecordParser()
         text = open(file).read()
         parser.feed(text)
         for article in parser:
-            print article
-            download_pdf(article.journal, article.volume, article.issue, article.start_page)
+            tag = "%s %d %s" % (article.journal, article.volume, article.start_page)
+            name = "%s %d %d %s" % (article.journal, article.volume, article.issue, article.start_page)
+            print "Downloading %s" % name,
+
+            if tag in done:
+                print " -> exists %s" % tag
+                continue
+
+            path = name + ".pdf"
+            if os.path.isfile(path):
+                print " -> exists %s" % path
+                continue
+
+            path = find(lib, article.volume, article.start_page)
+            if path:
+                print " -> exists %s" % path
+                continue
+
+            #check to see if we already have it
+            path = download_pdf(article.journal, article.volume, article.issue, article.start_page)
+            if path:
+                print " -> %s" % path
+                done.append(tag)
+            else:
+                print " -> FAILED"
+            save(done, ".isi")
+                
 
     
 

@@ -18,9 +18,9 @@ class Page:
     def __init__(self, text):
         self.value = text
         try:
-            self.number = int(re.compile("(\d+)").search(text).groups()[0])
+            self.number = int(re.compile("(\d+)").search(self.value).groups()[0])
         except Exception, error:
-            raise Exception("%s is not valid Page input" % text)
+            raise Exception("%s is not valid Page input" % self.value)
 
     def __le__(self, other):
         case = self.get_case(other)

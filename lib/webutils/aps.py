@@ -185,5 +185,7 @@ class RMP(APSJournal):
 
     volstart = 10000 #none
 
+    abbrev = "RMP"
+
     doi = "http://link.aps.org/doi/10.1103/RevModPhys"
 
