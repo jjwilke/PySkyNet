@@ -40,7 +40,6 @@ class InformaJournal(Journal):
         url_list.feed(query.html)
         pdfurl = "http://www.informaworld.com/" + url_list["Full Text PDF"]
 
-        print query.text
         issue = int(re.compile("Issue\s+(\d+)").search(query.text).groups()[0])
 
         return pdfurl, issue

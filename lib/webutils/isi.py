@@ -20,6 +20,7 @@ class ISIArticle(PDFArticle):
         "physics reports" : "physrep",
         "physics reports-review section of physics letters" : "physrep",
         "molecular physics" : "molphys",
+        "journal of computational physics" : "jcompphys",
     }
 
     def set_journal(self, journal):
@@ -120,12 +121,44 @@ class SavedRecordParser:
 
         return match.groups()[0].strip()
 
+    def exclude_entry(self, entry, exclude):
+        for exc in exclude:
+            if exc in entry:
+                return True
+        return False
+        
+
+    def get_entry(self, attr, method=None, default=None, exclude=(), entries=()):
+        set = getattr(self.article, "set_%s" % attr)
+        for start, stop in entries:
+            entry = self.get_text(self.block, start, stop)
+            if entry and not self.exclude_entry(entry, exclude):
+                if method:
+                    entry = method(entry)
+                set(entry)
+                return
+
+        if not default == None:
+            set(default)
+            return
+
+        sys.stderr.write("%s\n" % self.block)
+        sys.exit("no %s" % attr)
+            
     def feed(self, text):
         journals = {}
         blocks = re.compile("PT\sJ(.*?)\nER", re.DOTALL).findall(text)
         for block in blocks:
-            article = ISIArticle()
+            self.block = block
+            self.article = ISIArticle()
 
+            self.get_entry("journal", entries=(("so", "ab"), ("so", "sn")) )
+            self.get_entry("volume", method=int, entries=(("vl", "is"), ("vl", "bp")) )
+            self.get_entry("issue", method=lambda x: int(re.compile("\d+").search(x).group()), default=0, entries=(("is", "bp"),) )
+            self.get_entry("pages", method=Page, exclude=("art. no.",), entries=(("bp", "ep"), ("bp", "ut"), ("ar", "di"), ("ar", "ut")) )
+
+            self.articles.append(self.article)
+        """
             journal = self.get_text(block, "so", "ab")
             if not journal: journal = self.get_text(block, "so", "sn")
             if not journal:
@@ -157,11 +190,9 @@ class SavedRecordParser:
                 sys.exit("no page")
             page = Page(page)
             article.set_pages(page)
-            self.articles.append(article)
 
             journals[journal] = 1
             
-        """
         journals = journals.keys()
         journals.sort()
         print "\n".join(journals)
