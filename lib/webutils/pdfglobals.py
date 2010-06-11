@@ -3,12 +3,12 @@ class PDFGetGlobals:
     
     from webutils.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC, OrgLett, ChemRev, ACR
     from webutils.aip import JCP, JMP
-    from webutils.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys
+    from webutils.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS
     from webutils.springer import TCA
     from webutils.aps import PRL, PRA, PRB, PROLA, RMP
     from webutils.wiley import AngeChem, IJQC, JPOC, JCC, ChemPhysChem
     from webutils.rsc import PCCP
-    from webutils.iop import JPA, JPB, PhysScripta
+    from webutils.iop import JPA, JPB, PhysScripta, JPCM
     from webutils.informa import MolPhys
 
     journals = {
@@ -47,7 +47,9 @@ class PDFGetGlobals:
         "jpb" : JPB,
         "physscripta" : PhysScripta,
         "jcompphys" : JCompPhys,
+        "cms" : CMS,
         "molphys" : MolPhys,
+        "jpcm" : JPCM,
     }
 
     abbrevs = {
@@ -83,7 +85,9 @@ class PDFGetGlobals:
         "physica scripta" : "physscripta",
         "j mol spectrosc" : "jms",
         "j comp phys" : "jcompphys",
+        "comp mat sci" : "cms",
         "mol phys" : "molphys",
+        "j phys cond matt" : "jpcm",
     }
 
     def getJournal(cls, name):

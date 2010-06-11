@@ -24,13 +24,15 @@ class SDParser(ArticleParser):
     def td_text(self, text):
         import re
         text = text.strip()
-        match = re.compile("\d+[.]").search(text)
-        if not match:
+        match1 = re.compile("\d+[.]").search(text)
+        match2 = ("articles" in text) #second boolean check
+        if not match1 and not match2:
             return
 
-        match = match.group()
-        if not len(match) == len(text): #exact match = good
-            return
+        if match1:
+            match = match1.group()
+            if not len(match) == len(text): #exact match = good
+                return
 
         self.text_frame = "article"
         self.a_frame = "article"
@@ -155,8 +157,6 @@ class SDJournal(Journal):
 
             
             start_page, end_page = map(Page, re.compile("pp[.]\s+(\d+)[-](\d+)").search(url_list.get_text(name)).groups())
-            if volume == volcheck:
-                print start_page, end_page, page, volume, volcheck
 
             if volume == volcheck and page >= start_page and page <= end_page:
                 nexturl = url_list[name]
@@ -181,10 +181,20 @@ class SDJournal(Journal):
 
         response = fetch_url(nexturl)
 
+        """
+        url_lister = URLLister("Pages %s" % page, "Related")
+        for name in url_lister:
+            print name
+            if "PDF" in name:
+                return url_lister[name], issue
+        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
+        """
+
         sdparser = SDParser()
         sdparser.feed(response)
 
         for article in sdparser:
+            print article, page
             if article.start_page == page:
                 return article.url, issue
 
@@ -218,6 +228,10 @@ class JMS(SDJournal):
 class JCompPhys(SDJournal):
     name = "Journal of Computational Physics"
     baseurl = "http://www.sciencedirect.com/science/journal/00219991"
+
+class CMS(SDJournal):
+    name = "Computational Materials Science"
+    baseurl = "http://www.sciencedirect.com/science/journal/09270256"
 
 if __name__ == "__main__":
     pass

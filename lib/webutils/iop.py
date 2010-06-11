@@ -58,8 +58,14 @@ class IOPParser(ArticleParser):
 
     def start_a(self, attrs):
         if self.text_frame == "page":
-            text = self.get_text()
-            page = Page(re.compile("([RS]?\d+)").search(text).groups()[0])
+            text = self.get_text().strip()
+            match = re.compile("([RS]?\d+)").search(text)
+            if not match: #skip this
+                self.article = None
+                self.text_frame = None
+                return
+            
+            page = Page(match.groups()[0])
             self.article.set_pages(page)
             self.text_frame = None
         self.url = self.get_href(attrs)
@@ -72,7 +78,8 @@ class IOPParser(ArticleParser):
 
     def _end_paperEntry(self):
         self.text_frame = None
-        self.articles.append(self.article)
+        if self.article:
+            self.articles.append(self.article)
         self.article = None
 
 class IOPJournal(Journal):
@@ -121,4 +128,9 @@ class PhysScripta(IOPJournal):
 
     name = "Physica Scripta"
     baseurl = "http://iopscience.iop.org/1402-4896"
+
+class JPCM(IOPJournal):
+
+    name = "Journal of Physics: Condensed Matter"
+    baseurl = "http://iopscience.iop.org/0953-8984"
 
