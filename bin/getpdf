@@ -39,7 +39,7 @@ if __name__ == "__main__":
         for year in lib:
             path = lib.find(year, options.volume, options.page)
             if path:
-                sys.exit("Paper already downloaded")
+                sys.exit("Paper already downloaded %s" % path)
         from webutils.pdfget import download_pdf
         check = download_pdf(options.journal, options.volume, options.issue, page)
         if not check:

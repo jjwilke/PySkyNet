@@ -94,6 +94,20 @@ class Link:
 
 class URLLister(HTMLParser):
 
+    BEGIN = 0
+    STARTED = 1
+    STOPPED = 2
+
+    def __init__(self, start = None, stop = None):
+        self.start = start
+        self.stop = stop
+        if self.start:
+            self.status = self.BEGIN
+        else:
+            self.status = self.STARTED
+
+        HTMLParser.__init__(self)
+
     def __iter__(self):
         return iter(self.links.keys())
 
@@ -119,12 +133,18 @@ class URLLister(HTMLParser):
     def end_a(self):
         if self.href:
             self.link = Link(self.href)
-            self.links[self.linktext] = self.link
+            if self.status == self.STARTED:
+                self.links[self.linktext] = self.link
             self.href = None
             self.linktext = ""
             self.storelink = False
 
     def handle_data(self, text):
+        if self.start and self.status == self.BEGIN and self.start in text:
+            self.status = self.STARTED
+        elif self.stop and self.status == self.STARTED and self.stop in text:
+            self.status = self.STOPPED
+
         if self.storelink:
             self.linktext = text
         elif self.link:

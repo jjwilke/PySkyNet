@@ -15,7 +15,7 @@ class ACSQuery:
     def run(self):
         self.selenium = selenium("localhost", 4444, "*chrome", "http://pubs.acs.org")
         self.selenium.start()
-        self.selenium.open("/journal/%s" % self.id);
+        self.selenium.open("/loi/%s" % self.id);
         self.selenium.click("qsTabCitation");
         self.selenium.type("qsCitVol", "%d" % self.volume);
         self.selenium.type("qsCitPage", "%s" % self.page);
@@ -125,7 +125,7 @@ class ACSJournal(Journal):
         if not issue:
             query = ACSQuery(self.id, volume, page)
             query.run()
-            url_list = URLLister()
+            url_list = URLLister("Abstract","Tools")
             url_list.feed(query.html)
             pdfurl = None
 
