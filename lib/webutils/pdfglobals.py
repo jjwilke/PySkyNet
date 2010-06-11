@@ -3,7 +3,7 @@ class PDFGetGlobals:
     
     from webutils.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC, OrgLett, ChemRev, ACR
     from webutils.aip import JCP, JMP
-    from webutils.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS
+    from webutils.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS, CPC
     from webutils.springer import TCA
     from webutils.aps import PRL, PRA, PRB, PROLA, RMP
     from webutils.wiley import AngeChem, IJQC, JPOC, JCC, ChemPhysChem
@@ -48,6 +48,7 @@ class PDFGetGlobals:
         "physscripta" : PhysScripta,
         "jcompphys" : JCompPhys,
         "cms" : CMS,
+        "cpc" : CPC,
         "molphys" : MolPhys,
         "jpcm" : JPCM,
     }
@@ -86,6 +87,7 @@ class PDFGetGlobals:
         "j mol spectrosc" : "jms",
         "j comp phys" : "jcompphys",
         "comp mat sci" : "cms",
+        "comp phys comm" : "cpc",
         "mol phys" : "molphys",
         "j phys cond matt" : "jpcm",
     }

@@ -165,7 +165,7 @@ class SDJournal(Journal):
                 break
 
         if not nexturl: #all is not lost... we might already be on the correct page
-            regexp = "Volume\s%d[,]\sIssue\s(\d+)[,]\sPages\s(\d+)[-](\d+)" % volume
+            regexp = "Volume\s%d[,]\sIssue[s]?\s(\d+)[-]?\d*[,]\sPages\s(\d+)[-](\d+)" % volume
             match = re.compile(regexp).search(response)
             if match:
                 number, start, end = map(int, match.groups())
@@ -194,7 +194,6 @@ class SDJournal(Journal):
         sdparser.feed(response)
 
         for article in sdparser:
-            print article, page
             if article.start_page == page:
                 return article.url, issue
 
@@ -232,6 +231,10 @@ class JCompPhys(SDJournal):
 class CMS(SDJournal):
     name = "Computational Materials Science"
     baseurl = "http://www.sciencedirect.com/science/journal/09270256"
+
+class CPC(SDJournal):
+    name = "Computer Physics Communications"
+    baseurl = "http://www.sciencedirect.com/science/journal/00104655"
 
 if __name__ == "__main__":
     pass
