@@ -80,7 +80,7 @@ class Article:
         if not other.__class__ == Article:
             sys.exit("Cannot compare Article to non-Article type")
 
-        if not self._compare(other, "journal"): return False
+        if not self._compare(other, "year"): return False
         if not self._compare(other, "volume"): return False
         if not self._compare(other, "page"): return False
 
@@ -418,12 +418,15 @@ class Archive:
         pdfs = [elem for elem in os.listdir(folder) if elem.endswith("pdf")]
         return pdfs
 
-    def test_and_add(self, article):
+    def has(self, article):
         for test in self.articles:
             if article == test:
-                return
+                return True
+        return False
 
-        self.add_article(article)
+    def test_and_add(self, article):
+        if not self.has(article):
+            self.add_article(article)
 
     def add_article(self, article):
         self.records.appendChild(article.topnode)
@@ -442,6 +445,11 @@ class Archive:
         return self.articles[0].topnode.ownerDocument.toxml()
 
     
-
+class MasterArchive(Archive):
+    
+    masterfile = "/Users/jjwilke/Documents/backup"
+    
+    def __init__(self):
+        Archive.__init__(self, masterfile)
 
 

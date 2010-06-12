@@ -1,13 +1,50 @@
 from pdfget import ArticleParser, PDFArticle, Page
 from papers.index import Library
-from papers.archive import Archive
+from papers.archive import Archive, MasterArchive
 from htmlexceptions import HTMLException
 from utils.RM import save, load, clean_line, capitalize_word
+from webutils.htmlparser import URLLister
 import sys
 import re
 import os.path
 
 from selenium import selenium
+
+def find_in_library(library, volume, page):
+    for year in library:
+        path = library.find(year, volume, page)
+        if path:
+            return path
+    return None
+
+def clean_entry(x):
+    return x.strip().replace("\n   ", " ")
+
+def process_authors(entries):
+    authors = []
+    for last, first in entries:
+        #check to see if we have stupidness
+        first_first = first.split()[0]
+        match = re.compile("[A-Z]{2}").search(first_first)
+        if match: #I fucking hate you papers
+            initials = []
+            for entry in first_first:
+                initials.append(entry)
+            first = " ".join(initials)
+        else:
+            first = clean_line(first)
+
+        #capitalize last name
+        last = capitalize_word(last)
+
+        name = "%s, %s" % (last, first)
+        authors.append(name)
+
+    return authors
+
+def get_authors(x, inter_delim, intra_delim):
+    entries  = map(lambda y: y.strip().split(intra_delim), x.split(inter_delim))
+    return process_authors(entries)
 
 class ISIError(Exception):
     pass
@@ -117,20 +154,25 @@ class WOKParser:
         self.year = year
         self.title = title
         self.archive = Archive(archive)
+        self.master = MasterArchive()
+        self.lib = Library()
+
+    def test(self):
+        self.block = u"Sign In My EndNote Web My ResearcherID My Citation Alerts My Saved Searches Log Out Help    Search Search History Marked List ALL DATABASES << Back to results list Record 1  of  1 Record from Web of Science Gaussian-3 theory using reduced Moller-Plesset order more options Author(s): Curtiss LA, Redfern PC, Raghavachari K, Rassolov V, Pople JA Source: JOURNAL OF CHEMICAL PHYSICS    Volume: 110    Issue: 10    Pages: 4703-4709    Published: MAR 8 1999   Times Cited: 589     References: 15     Citation Map      Abstract: A variation of Gaussian-3 (G3) theory is presented in which the basis set extensions are obtained at the second-order Moller-Plesset level. This method, referred to as G3(MP2) theory, is assessed on 299 energies from the G2/97 test set [J. Chem. Phys. 109, 42 (1998)]. The average absolute deviation from experiment of G3(MP2) theory for the 299 energies is 1.30 kcal/mol and for the subset of 148 neutral enthalpies it is 1.18 kcal/mol. This is a significant improvement over the related G2(MP2) theory [J. Chem. Phys. 98, 1293 (1993)], which has an average absolute deviation of 1.89 kcal/mol for all 299 energies and 2.03 kcal/mol for the 148 neutral enthalpies. The corresponding average absolute deviations for full G3 theory are 1.01 and 0.94 kcal/mol, respectively. The new method provides significant savings in computational time compared to G3 theory and, also, G2(MP2) theory. (C) 1999 American Institute of Physics. [S0021-9606(99)30309-3]. Document Type: Article Language: English KeyWords Plus: ENERGIES Reprint Address: Curtiss, LA (reprint author), Argonne Natl Lab, Div Chem, 9700 S Cass Ave, Argonne, IL 60439 USA Addresses: 1. Argonne Natl Lab, Div Chem, Argonne, IL 60439 USA 2. Argonne Natl Lab, Div Sci Mat, Argonne, IL 60439 USA 3. AT&T Bell Labs, Lucent Technol, Murray Hill, NJ 07974 USA 4. Northwestern Univ, Dept Chem, Evanston, IL 60208 USA Publisher: AMER INST PHYSICS, CIRCULATION FULFILLMENT DIV, 500 SUNNYSIDE BLVD, WOODBURY, NY 11797-2999 USA Subject Category: Physics, Atomic, Molecular & Chemical IDS Number: 170XG ISSN: 0021-9606 Cited by: 589 This article has been cited 589 times (from Web of Science). Ali MA, Rajakumar B  Kinetics of OH radical reaction with CF3CHFCH2F (HFC-245eb) between 200 and 400 K: G3MP2, G3B3 and transition state theory calculations  JOURNAL OF MOLECULAR STRUCTURE-THEOCHEM  949  1-3  73-81  JUN 15 2010 Verevkin SP, Emel'yanenko VN, Hopmann E, et al.  Thermochemistry of ionic liquid-catalysed reactions. Isomerisation and transalkylation of tert-alkyl-benzenes. Are these systems ideal?  JOURNAL OF CHEMICAL THERMODYNAMICS  42  6  719-725  JUN 2010 Zhang IY, Wu JM, Luo Y, et al.  Trends in R-X Bond Dissociation Energies (R-center dot = Me, Et, i-Pr, t-Bu, X-center dot = H, Me, Cl, OH)  JOURNAL OF CHEMICAL THEORY AND COMPUTATION  6  5  1462-1469  MAY 2010 [  view all 589 citing articles  ] Related Records: Find similar records based on shared references (from Web of Science). [ view related records ] References: 15 View the bibliography of this record (from Web of Science). Additional information View author biographies (in ISI HighlyCited.com) View the journal's impact factor (in Journal Citation Reports) View the journal's Table of Contents (in Current Contents Connect)   << Back to results list Record 1  of  1 Record from Web of Science Output Record Step 1: Authors, Title, Source plus Abstract Full Record Step 2: [How do I export to bibliographic management software?] Save to other Reference Software Save to BibTeX Save to HTML Save to Plain Text Save to Tab-delimited (Win) Save to Tab-delimited (Mac)"
+        self.article = self.archive.create_article()
+        self.build_values()
+        print self.article
 
     def open_isi(self):
         self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
         self.selenium.start()
         self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
 
-        print self.selenium.get_body_text()
-        self.selenium.stop()
-        sys.exit()
-
     def run(self):
         self.open_isi()
         self.find_article()
         self.open_article()
+        self.walk_references()
 
     def find_article(self):
         self.selenium.select("select1", "label=Author")
@@ -164,31 +206,79 @@ class WOKParser:
 
     def walk_references(self):
         url_list = URLLister()
-        url_list.feed(self.get_html_source())
+        url_list.feed(self.selenium.get_html_source())
         for name in url_list:
             link = url_list[name]
             if "CitedFullRecord" in link:
+                self.process_article(link)
+            return
+
+    def set_value(self, regexp, attr, method=None, require=True):
+        match = re.compile(regexp, re.DOTALL).search(self.block)
+        if not match:
+            if require:
+                raise ISIError
+            else:
+                return
+
+        value = match.groups()[0]
+        if method:
+            value = method(value)
+
+        set = getattr(self.article, "set_%s" % attr)
+        set(value)
+
+    def build_values(self):
+        self.set_value("Source[:]\s*(.*?)Vol", "journal", method = lambda x: x.strip())
+        self.set_value("Volume[:]\s*(\d+)", "volume", method=int)
+        self.set_value("Issue[:]\s*(\d+)", "issue", method=int, require=False)
+        self.set_value("Pages[:]\s*(\d+)[-P]", "start_page", method = Page)
+        self.set_value("Pages[:]\s*\d+[-](\d+)", "end_page", method = Page, require=False)
+        self.set_value("Author.*?[:](.*?)Source", "authors", method=lambda x: get_authors(x, ",", " "))
+        self.set_value("Record from Web of Science.*?\s(.*?)more\soptions", "title", method=clean_line)
+        self.set_value("Abstract[:](.*?)Addresses", "abstract", method=clean_entry)
+        self.set_value("Published[:]\s*[A-Z]+\s*\d+\s*(\d+)", "year", method=int)
+
+    def go_back(self):
+        self.selenium.click("link=<< Back to results list")
+        self.selenium.wait_for_page_to_load("30000")
 
     def process_article(self, link):
         id = re.compile("isickref[=]\d+").search(link).group()
-        self.selenium.click("xpath=//a[contains(@href,'%s')]" % id
+        self.selenium.click("xpath=//a[contains(@href,'%s')]" % id)
         self.selenium.wait_for_page_to_load("30000")
-        print self.selenium.get_body_text()
-        self.die("")
-            
-        
 
-def find_in_library(library, volume, page):
-    for year in library:
-        path = library.find(year, volume, page)
+        self.article = self.archive.create_article()
+        self.block = self.selenium.get_body_text()
+
+        try:
+            self.build_values()
+        except ISIError:
+            self.article = None
+            self.go_back()
+            return
+        
+        if not self.master.has(self.article):
+            self.archive.test_and_add(self.article)
+        else:
+            print "Already have article %s" % path
+            self.article = None
+            self.go_back()
+            return
+
+        path = download_pdf(journal, volume=volume, page=page)
         if path:
-            return path
-    return None
+            self.article.set_pdf(path)
+
+        self.article = None
+        self.go_back()
+
 
 class SavedRecordParser:
     
     def __init__(self, name):
         self.archive = Archive(name)
+        self.master = MasterArchive()
         self.lib = Library()
 
     def __iter__(self):
@@ -246,7 +336,6 @@ class SavedRecordParser:
 
             get_number = lambda x: re.compile("(\d+)").search(x).groups()[0] 
             get_page = lambda x: Page(get_number(x))
-            clean_entry = lambda x: x.strip().replace("\n   ", " ")
             clean_title = lambda x: clean_line(clean_entry(x))
 
             self.get_entry("journal", entries=(("so", "ab"), ("so", "sn")) )
@@ -255,33 +344,8 @@ class SavedRecordParser:
             self.get_entry("start_page", method=get_page, exclude=("art. no.",), entries=(("bp", "ep"), ("bp", "ut"), ("ar", "di"), ("ar", "ut")) )
             self.get_entry("end_page", method=get_page, require=False, entries=(("ep", "di"), ("ep", "ut")) )
 
-            def get_authors(x):
-                entries  = map(lambda y: y.strip(), x.split("\n"))
 
-                authors = []
-                for entry in entries:
-                    last, first = entry.split(",")
-                    #check to see if we have stupidness
-                    first_first = first.split()[0]
-                    match = re.compile("[A-Z]{2}").search(first_first)
-                    if match: #I fucking hate you papers
-                        initials = []
-                        for entry in first_first:
-                            initials.append(entry)
-                        first = " ".join(initials)
-                    else:
-                        first = clean_line(first)
-
-                    #capitalize last name
-                    last = capitalize_word(last)
-
-                    name = "%s, %s" % (last, first)
-                    print first_first, name
-                    authors.append(name)
-
-                return authors
-
-            self.get_entry("authors", method=get_authors, entries=(("af", "ti"), ("au", "ti")) )
+            self.get_entry("authors", method=lambda x: get_authors(x, "\n", ","), entries=(("af", "ti"), ("au", "ti")) )
 
             self.get_entry("title", method=clean_title, entries=(("ti", "so"),) )
             self.get_entry("abstract", method=clean_entry, require=False, entries=(("ab", "sn"),) )
@@ -297,7 +361,8 @@ class SavedRecordParser:
                 continue
         
             journal = ISIArticle.get_journal(self.article.get_journal())
-            self.archive.test_and_add(self.article)
+            if not self.master.has(self.article):
+                self.archive.test_and_add(self.article)
 
         """
             journal = self.get_text(block, "so", "ab")
@@ -354,7 +419,6 @@ def walkISI(files, archive, notes):
     parser = SavedRecordParser(archive)
     pdfs = [elem for elem in os.listdir(".") if elem.endswith("pdf")]
 
-
     for file in files:
         text = open(file).read()
         parser.feed(text, notes)
@@ -368,7 +432,6 @@ def walkISI(files, archive, notes):
             name = "%s %d %s" % (abbrev, volume, start)
             print "Downloading %s" % name,
 
-
             path = find_in_folder(pdfs, journal, volume, start)
             if path:
                 print " -> exists %s" % path
@@ -380,7 +443,6 @@ def walkISI(files, archive, notes):
                 print " -> exists %s" % path
                 article.set_pdf(path)
                 continue
-
 
             #check to see if we already have it
             path = download_pdf(ISIArticle.get_journal(journal), volume, 0, start) #don't require issue
