@@ -1,10 +1,13 @@
 from pdfget import ArticleParser, PDFArticle, Page
 from papers.index import Library
+from papers.archive import Archive
 from htmlexceptions import HTMLException
-from utils.RM import save, load
+from utils.RM import save, load, clean_line, capitalize_word
 import sys
 import re
 import os.path
+
+from selenium import selenium
 
 class ISIError(Exception):
     pass
@@ -12,7 +15,7 @@ class ISIError(Exception):
 class JournalNotFoundError(Exception):
     pass
 
-class ISIArticle(PDFArticle):
+class ISIArticle:
 
     journal_map = {
         "angewandte chemie-international edition" : "ange",
@@ -23,14 +26,15 @@ class ISIArticle(PDFArticle):
         "journal of computational physics" : "jcompphys",
     }
 
-    def set_journal(self, journal):
+    def get_journal(cls, journal):
         try:
-            journal = self.journal_map[journal.lower()]
-            PDFArticle.set_journal(self, journal)
+            journal = cls.journal_map[journal.lower()]
+            return journal
         except KeyError:
             name = journal.lower().replace("of","").replace("the","").replace("and", "").replace("-"," ")
             initials = map(lambda x: x[0], name.strip().split())
-            PDFArticle.set_journal(self, "".join(initials))
+            return "".join(initials)
+    get_journal = classmethod(get_journal)
 
 class ISIParser(ArticleParser):
 
@@ -105,13 +109,96 @@ class ISIParser(ArticleParser):
         self.a_frame = None
         self.article = None
 
+class WOKParser:
+
+    def __init__(self, archive, journal, author, year, title):
+        self.author = author
+        self.journal = journal
+        self.year = year
+        self.title = title
+        self.archive = Archive(archive)
+
+    def open_isi(self):
+        self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
+        self.selenium.start()
+        self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
+
+        print self.selenium.get_body_text()
+        self.selenium.stop()
+        sys.exit()
+
+    def run(self):
+        self.open_isi()
+        self.find_article()
+        self.open_article()
+
+    def find_article(self):
+        self.selenium.select("select1", "label=Author")
+        self.selenium.type("value(input1)", "%s" % self.author)
+        self.selenium.select("select2", "label=Year Published")
+        self.selenium.type("value(input2)", "%d" % self.year)
+        self.selenium.select("select3", "label=Publication Name")
+        self.selenium.type("value(input3)", "%s*" % self.journal)
+        self.selenium.click("//input[@name='' and @type='image']")
+        self.selenium.wait_for_page_to_load("30000")
+
+    def die(self, msg):
+        self.selenium.stop()
+        sys.exit("%s -> %s %d %s" % (msg, self.author, self.year, self.title))
+
+    def open_article(self):
+        try:
+            self.selenium.click("link=*%s*" % self.title)
+            self.selenium.wait_for_page_to_load("30000")
+        except Exception, error:
+            self.die("Could not find title")
+
+        text = self.selenium.get_body_text()
+        match = re.compile("References[:]\s*(\d+)").search(text)
+        if not match:
+            self.die("Could not find references")
+
+        nrefs = match.groups()[0]
+        self.selenium.click("link=%s" % nrefs)
+        self.selenium.wait_for_page_to_load("30000")
+
+    def walk_references(self):
+        url_list = URLLister()
+        url_list.feed(self.get_html_source())
+        for name in url_list:
+            link = url_list[name]
+            if "CitedFullRecord" in link:
+
+    def process_article(self, link):
+        id = re.compile("isickref[=]\d+").search(link).group()
+        self.selenium.click("xpath=//a[contains(@href,'%s')]" % id
+        self.selenium.wait_for_page_to_load("30000")
+        print self.selenium.get_body_text()
+        self.die("")
+            
+        
+
+def find_in_library(library, volume, page):
+    for year in library:
+        path = library.find(year, volume, page)
+        if path:
+            return path
+    return None
+
 class SavedRecordParser:
     
-    def __init__(self):
-        self.articles = []
+    def __init__(self, name):
+        self.archive = Archive(name)
+        self.lib = Library()
 
     def __iter__(self):
-        return iter(self.articles)
+        return iter(self.archive)
+
+    def __getitem__(self, index):
+        return self.archive.__getitem__(index)
+
+    def add_pdf(self, path):
+        self.archive.add_pdf(path)
 
     def get_text(self, text, start, stop):
         regexp = "\n%s (.*?)\n%s " % (start.upper(), stop.upper())
@@ -126,15 +213,17 @@ class SavedRecordParser:
             if exc in entry:
                 return True
         return False
-        
 
-    def get_entry(self, attr, method=None, default=None, exclude=(), entries=()):
+    def get_entry(self, attr, method=None, default=None, require=True, exclude=(), entries=()):
         set = getattr(self.article, "set_%s" % attr)
+        str_arr = []
         for start, stop in entries:
+            str_arr.append("%s->%s" % (start, stop))
             entry = self.get_text(self.block, start, stop)
             if entry and not self.exclude_entry(entry, exclude):
                 if method:
                     entry = method(entry)
+
                 set(entry)
                 return
 
@@ -142,22 +231,74 @@ class SavedRecordParser:
             set(default)
             return
 
-        sys.stderr.write("%s\n" % self.block)
-        sys.exit("no %s" % attr)
+        if require:
+            sys.stderr.write("%s\n" % self.block)
+            msg = "no %s for tags\n" % attr
+            msg += "\n".join(str_arr)
+            sys.exit(msg)
             
-    def feed(self, text):
+    def feed(self, text, notes):
         journals = {}
         blocks = re.compile("PT\sJ(.*?)\nER", re.DOTALL).findall(text)
         for block in blocks:
             self.block = block
-            self.article = ISIArticle()
+            self.article = self.archive.create_article()
+
+            get_number = lambda x: re.compile("(\d+)").search(x).groups()[0] 
+            get_page = lambda x: Page(get_number(x))
+            clean_entry = lambda x: x.strip().replace("\n   ", " ")
+            clean_title = lambda x: clean_line(clean_entry(x))
 
             self.get_entry("journal", entries=(("so", "ab"), ("so", "sn")) )
             self.get_entry("volume", method=int, entries=(("vl", "is"), ("vl", "bp")) )
-            self.get_entry("issue", method=lambda x: int(re.compile("\d+").search(x).group()), default=0, entries=(("is", "bp"),) )
-            self.get_entry("pages", method=Page, exclude=("art. no.",), entries=(("bp", "ep"), ("bp", "ut"), ("ar", "di"), ("ar", "ut")) )
+            self.get_entry("issue", method=lambda x: int(get_number(x)), require=False, entries=(("is", "bp"),) )
+            self.get_entry("start_page", method=get_page, exclude=("art. no.",), entries=(("bp", "ep"), ("bp", "ut"), ("ar", "di"), ("ar", "ut")) )
+            self.get_entry("end_page", method=get_page, require=False, entries=(("ep", "di"), ("ep", "ut")) )
 
-            self.articles.append(self.article)
+            def get_authors(x):
+                entries  = map(lambda y: y.strip(), x.split("\n"))
+
+                authors = []
+                for entry in entries:
+                    last, first = entry.split(",")
+                    #check to see if we have stupidness
+                    first_first = first.split()[0]
+                    match = re.compile("[A-Z]{2}").search(first_first)
+                    if match: #I fucking hate you papers
+                        initials = []
+                        for entry in first_first:
+                            initials.append(entry)
+                        first = " ".join(initials)
+                    else:
+                        first = clean_line(first)
+
+                    #capitalize last name
+                    last = capitalize_word(last)
+
+                    name = "%s, %s" % (last, first)
+                    print first_first, name
+                    authors.append(name)
+
+                return authors
+
+            self.get_entry("authors", method=get_authors, entries=(("af", "ti"), ("au", "ti")) )
+
+            self.get_entry("title", method=clean_title, entries=(("ti", "so"),) )
+            self.get_entry("abstract", method=clean_entry, require=False, entries=(("ab", "sn"),) )
+            self.get_entry("year", method=int, entries=(("py", "vl"),) )
+
+            self.article.set_notes(notes)
+            
+            volume = self.article.get_volume()
+            page = self.article.get_page()
+            path = find_in_library(self.lib, volume, page)
+            if path: #already in library
+                print "%s exists in archive" % path
+                continue
+        
+            journal = ISIArticle.get_journal(self.article.get_journal())
+            self.archive.test_and_add(self.article)
+
         """
             journal = self.get_text(block, "so", "ab")
             if not journal: journal = self.get_text(block, "so", "sn")
@@ -199,52 +340,56 @@ class SavedRecordParser:
         sys.exit()
         """
 
-def find(library, volume, page):
-    for year in library:
-        path = library.find(year, volume, page)
-        if path:
-            return path
+def find_in_folder(pdfs, journal, volume, page):
+    abbrev = ISIArticle.get_journal(journal)
+    for pdf in pdfs:
+        if abbrev in pdf and "%d" % volume in pdf and str(page) in pdf:
+            return pdf
     return None
-
-def walkISI(files):
+        
+def walkISI(files, archive, notes):
     from webutils.pdfget import download_pdf
-    lib = Library()
 
-    done = []
-    if os.path.exists(".isi"):
-        done = load(".isi")    
+    lib = Library()
+    parser = SavedRecordParser(archive)
+    pdfs = [elem for elem in os.listdir(".") if elem.endswith("pdf")]
+
 
     for file in files:
-        parser = SavedRecordParser()
         text = open(file).read()
-        parser.feed(text)
+        parser.feed(text, notes)
+        print "%d new articles" % len(parser.archive)
+
         for article in parser:
-            tag = "%s %d %s" % (article.journal, article.volume, article.start_page)
-            name = "%s %d %d %s" % (article.journal, article.volume, article.issue, article.start_page)
+            journal = article.get_journal()
+            abbrev = article.get_abbrev()
+            volume = article.get_volume()
+            start = article.get_start_page() 
+            name = "%s %d %s" % (abbrev, volume, start)
             print "Downloading %s" % name,
 
-            if tag in done:
-                print " -> exists %s" % tag
+
+            path = find_in_folder(pdfs, journal, volume, start)
+            if path:
+                print " -> exists %s" % path
+                article.set_pdf(path)
                 continue
 
             path = name + ".pdf"
             if os.path.isfile(path):
                 print " -> exists %s" % path
+                article.set_pdf(path)
                 continue
 
-            path = find(lib, article.volume, article.start_page)
-            if path:
-                print " -> exists %s" % path
-                continue
 
             #check to see if we already have it
-            path = download_pdf(article.journal, article.volume, article.issue, article.start_page)
+            path = download_pdf(ISIArticle.get_journal(journal), volume, 0, start) #don't require issue
             if path:
                 print " -> %s" % path
-                done.append(tag)
+                article.set_pdf(path)
             else:
                 print " -> FAILED"
-            save(done, ".isi")
+    parser.archive.commit()
                 
 
     

@@ -3,6 +3,36 @@ import os, os.path, sys, commands, re
 import pickle, thread
 from globalvals import *
 
+def capitalize_word(word):
+    if not word:
+        return "" 
+
+    new_word = word[0].upper() + word[1:].lower()
+    return new_word
+
+def clean_line(line):
+    lowercase = [
+        "and"
+        "of"
+        "the"
+    ]
+
+    words = []
+    for entry in line.split(" "):
+        if "-" in entry:
+            dash_arr = []
+            dashes = entry.split("-")
+            for dash in dashes:
+                dash_arr.append(capitalize_word(dash))
+            words.append("-".join(dash_arr))
+        elif entry in lowercase:
+            words.append(entry.lower())
+        else:
+            words.append(capitalize_word(entry))
+    
+    return " ".join(words)
+
+
 def getDate():
     date = commands.getoutput("date")
     return date.replace(" ","").replace(":","_")
