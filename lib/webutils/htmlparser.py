@@ -108,6 +108,9 @@ class URLLister(HTMLParser):
 
         HTMLParser.__init__(self)
 
+    def __len__(self):
+        return len(self.links)
+
     def __iter__(self):
         return iter(self.links.keys())
 

@@ -77,14 +77,17 @@ class Article:
         text.nodeValue = "17"
 
     def __eq__(self, other):
-        if not other.__class__ == Article:
-            sys.exit("Cannot compare Article to non-Article type")
+        try:
+            if not other.__class__ == Article:
+                sys.exit("Cannot compare Article to non-Article type")
 
-        if not self._compare(other, "year"): return False
-        if not self._compare(other, "volume"): return False
-        if not self._compare(other, "page"): return False
+            if not self._compare(other, "year"): return False
+            if not self._compare(other, "volume"): return False
+            if not self._compare(other, "page"): return False
 
-        return True
+            return True
+        except:
+            return False
 
     def _compare(self, other, attr):
         method = "get_%s" % attr
@@ -450,6 +453,6 @@ class MasterArchive(Archive):
     masterfile = "/Users/jjwilke/Documents/backup"
     
     def __init__(self):
-        Archive.__init__(self, masterfile)
+        Archive.__init__(self, self.masterfile)
 
 
