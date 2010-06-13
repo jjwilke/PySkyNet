@@ -17,6 +17,7 @@ class Page:
     
     def __init__(self, text):
         self.value = text
+        self.prefix = re.compile("([A-Z]*)\d+").search(text).groups()[0]
         try:
             self.number = int(re.compile("(\d+)").search(self.value).groups()[0])
         except Exception, error:
@@ -27,7 +28,7 @@ class Page:
         if case == self.INT:
             return self.number <= other
         elif case == self.PAGE:
-            return self.value <= other.value and self.number <= other.number
+            return self.number <= other.number
         elif case == self.STR:
             return self.value <= other
         else:
@@ -38,7 +39,7 @@ class Page:
         if case == self.INT:
             return self.number >= other
         elif case == self.PAGE:
-            return self.value >= other.value and self.number >= other.number
+            return self.number >= other.number
         elif case == self.STR:
             return self.value >= other
         else:
@@ -49,7 +50,7 @@ class Page:
         if case == self.INT:
             return self.number < other
         elif case == self.PAGE:
-            return self.value < other.value and self.number < other.number
+            return self.number < other.number
         elif case == self.STR:
             return self.value < other
         else:
@@ -60,7 +61,7 @@ class Page:
         if case == self.INT:
             return self.number > other
         elif case == self.PAGE:
-            return self.value > other.value and self.number > other.number
+            return self.number > other.number
         elif case == self.STR:
             return self.value > other
         else:
@@ -90,6 +91,9 @@ class Page:
             return self.PAGE
         else:
             return self.INT
+
+    def is_comparable(self, other):
+        return self.prefix == other.prefix
 
     def get_issue(self):
         if self.value[0] == "0":
