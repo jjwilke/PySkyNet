@@ -76,6 +76,7 @@ class WileyPDFFetcher(ArticleParser):
         self.url = None
 
     def start_frame(self, attrs):
+        print attrs
         name = self.get_html_attr("name", attrs)
         if not name == "main":
             return
@@ -111,6 +112,7 @@ class WileyJournal(Journal):
                 response = fetch_url(article.url)
                 pdfget = WileyPDFFetcher()
                 pdfget.feed(response)
+                print pdfget.url
                 url = pdfget.url.split("&PLAC")[0]
                 return url, issue
 

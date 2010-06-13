@@ -154,52 +154,62 @@ class ISIParser(ArticleParser):
         self.a_frame = None
         self.article = None
 
-class WOKParser:
+class WOKObject:
+    
+    def die(self, msg):
+        sys.exit("%s -> %s %d %s" % (msg, self.author, self.year, self.title))
 
-    def __init__(self, archive, journal, author, year, title, notes):
+class WOKArticle(WOKObject):
+
+    def __init__(self, archive, block):
+        self.archive = archive
+        self.block = block
+        self.article = self.archive.create_article()
+        self.build_values()
+
+    def get_papers_article(self):
+        return self.article
+
+    def set_value(self, regexp, attr, method=None, require=True):
+        match = re.compile(regexp, re.DOTALL).search(self.block)
+        if not match:
+            if require:
+                raise ISIError("Regular expression %s for attribute %s does not match block\n%s" % (regexp, attr, self.block.encode("ascii", "ignore")))
+            else:
+                return
+
+        value = match.groups()[0]
+        if method:
+            value = method(value)
+
+        set = getattr(self.article, "set_%s" % attr)
+        set(value)
+
+    def build_values(self):
+        self.set_value("Source[:]\s*(.*?)Vol", "journal", method = lambda x: x.strip())
+        self.set_value("Volume[:]\s*(\d+)", "volume", method=int)
+        self.set_value("Issue[:]\s*(\d+)", "issue", method=int, require=False)
+        try:
+            self.set_value("Pages[:]\s*(\d+)[-P]", "start_page", method = Page)
+            self.set_value("Pages[:]\s*\d+[-](\d+)", "end_page", method = Page, require=False)
+        except ISIError: #sometimes just an article number
+            self.set_value("Article\sNumber[:]\s*(\d+)\s+", "start_page", method = Page)
+        #the gd monkeys at Thompson apparently decided that periods are just as good as spaces
+        self.set_value("Author.*?[:](.*?)Source", "authors", method=lambda x: get_authors(x.replace(".", " "), ",", " "))
+        self.set_value("Record from Web of Science.*?\s(.*?)more\soptions", "title", method=clean_line)
+        self.set_value("Abstract[:](.*?)Addresses", "abstract", method=clean_entry, require=False)
+        self.set_value("Published[:].*?\s(\d{4})", "year", method=int)
+        self.set_value("DOI[:]\s+(.*?)[\n\s]", "doi", require=False)
+
+
+class WOKSearch(WOKObject):
+
+    def __init__(self, journal, author, year, title):
         self.author = author
         self.journal = journal
         self.year = year
         self.title = title
-        self.archive = Archive(archive)
-        self.master = MasterArchive()
-        self.lib = Library()
-        self.notes = notes
-
-    def test(self):
-        self.block = u"Sign In My EndNote Web My ResearcherID My Citation Alerts My Saved Searches Log Out Help    Search Search History Marked List ALL DATABASES << Back to results list Record 1  of  1 Record from Web of Science Gaussian-3 theory using reduced Moller-Plesset order more options Author(s): Curtiss LA, Redfern PC, Raghavachari K, Rassolov V, Pople JA Source: JOURNAL OF CHEMICAL PHYSICS    Volume: 110    Issue: 10    Pages: 4703-4709    Published: MAR 8 1999   Times Cited: 589     References: 15     Citation Map      Abstract: A variation of Gaussian-3 (G3) theory is presented in which the basis set extensions are obtained at the second-order Moller-Plesset level. This method, referred to as G3(MP2) theory, is assessed on 299 energies from the G2/97 test set [J. Chem. Phys. 109, 42 (1998)]. The average absolute deviation from experiment of G3(MP2) theory for the 299 energies is 1.30 kcal/mol and for the subset of 148 neutral enthalpies it is 1.18 kcal/mol. This is a significant improvement over the related G2(MP2) theory [J. Chem. Phys. 98, 1293 (1993)], which has an average absolute deviation of 1.89 kcal/mol for all 299 energies and 2.03 kcal/mol for the 148 neutral enthalpies. The corresponding average absolute deviations for full G3 theory are 1.01 and 0.94 kcal/mol, respectively. The new method provides significant savings in computational time compared to G3 theory and, also, G2(MP2) theory. (C) 1999 American Institute of Physics. [S0021-9606(99)30309-3]. Document Type: Article Language: English KeyWords Plus: ENERGIES Reprint Address: Curtiss, LA (reprint author), Argonne Natl Lab, Div Chem, 9700 S Cass Ave, Argonne, IL 60439 USA Addresses: 1. Argonne Natl Lab, Div Chem, Argonne, IL 60439 USA 2. Argonne Natl Lab, Div Sci Mat, Argonne, IL 60439 USA 3. AT&T Bell Labs, Lucent Technol, Murray Hill, NJ 07974 USA 4. Northwestern Univ, Dept Chem, Evanston, IL 60208 USA Publisher: AMER INST PHYSICS, CIRCULATION FULFILLMENT DIV, 500 SUNNYSIDE BLVD, WOODBURY, NY 11797-2999 USA Subject Category: Physics, Atomic, Molecular & Chemical IDS Number: 170XG ISSN: 0021-9606 Cited by: 589 This article has been cited 589 times (from Web of Science). Ali MA, Rajakumar B  Kinetics of OH radical reaction with CF3CHFCH2F (HFC-245eb) between 200 and 400 K: G3MP2, G3B3 and transition state theory calculations  JOURNAL OF MOLECULAR STRUCTURE-THEOCHEM  949  1-3  73-81  JUN 15 2010 Verevkin SP, Emel'yanenko VN, Hopmann E, et al.  Thermochemistry of ionic liquid-catalysed reactions. Isomerisation and transalkylation of tert-alkyl-benzenes. Are these systems ideal?  JOURNAL OF CHEMICAL THERMODYNAMICS  42  6  719-725  JUN 2010 Zhang IY, Wu JM, Luo Y, et al.  Trends in R-X Bond Dissociation Energies (R-center dot = Me, Et, i-Pr, t-Bu, X-center dot = H, Me, Cl, OH)  JOURNAL OF CHEMICAL THEORY AND COMPUTATION  6  5  1462-1469  MAY 2010 [  view all 589 citing articles  ] Related Records: Find similar records based on shared references (from Web of Science). [ view related records ] References: 15 View the bibliography of this record (from Web of Science). Additional information View author biographies (in ISI HighlyCited.com) View the journal's impact factor (in Journal Citation Reports) View the journal's Table of Contents (in Current Contents Connect)   << Back to results list Record 1  of  1 Record from Web of Science Output Record Step 1: Authors, Title, Source plus Abstract Full Record Step 2: [How do I export to bibliographic management software?] Save to other Reference Software Save to BibTeX Save to HTML Save to Plain Text Save to Tab-delimited (Win) Save to Tab-delimited (Mac)"
-        self.article = self.archive.create_article()
-        self.build_values()
-        self.store_article()
-        print self.article
-
-    def open_isi(self):
-        self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
-        self.selenium.start()
-        self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
-
-    def run(self):
-        import time
-        self.open_isi()
-        self.find_article()
-        self.open_article()
-
-        #get all possible refs on this page 
-        self.walk_references()
-
-        #if there are more pages, go through those as well
-        nstart = 31 
-        onclick = 2
-        while nstart < self.nrefs:
-            self.selenium.click("//input[@name='' and @type='image' and @onclick='javascript:this.form.elements.page.value=%d;']" % onclick)
-            self.selenium.wait_for_page_to_load("30000")
-            self.walk_references()
-
-            nstart += 30
-            onclick += 1
-        
-        time.sleep(10)
-        self.selenium.stop()
+        self.selenium = None
 
     def find_article(self):
         text = self.selenium.get_body_text()
@@ -216,17 +226,16 @@ class WOKParser:
         self.selenium.click("//input[@name='' and @type='image']")
         self.selenium.wait_for_page_to_load("30000")
 
-    def die(self, msg):
-        self.selenium.stop()
-        sys.exit("%s -> %s %d %s" % (msg, self.author, self.year, self.title))
-
     def open_article(self):
         try:
             self.selenium.click("link=*%s*" % self.title)
             self.selenium.wait_for_page_to_load("30000")
         except Exception, error:
-            self.die("Could not find title")
+            print self.selenium.get_body_text()
+            self.stop()
+            self.die("%s\nCould not find title" % traceback(error))
 
+    def open_references(self):
         text = self.selenium.get_body_text()
         match = re.compile("References[:]\s*(\d+)").search(text)
         if not match:
@@ -236,47 +245,88 @@ class WOKParser:
         self.selenium.click("link=%s" % nrefs)
         self.selenium.wait_for_page_to_load("30000")
 
-        self.nrefs = int(nrefs)
+        return int(nrefs)
+
+    def open_isi(self):
+        self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
+        self.selenium.start()
+        self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
+
+    def stop(self):
+        if self.selenium:
+            self.selenium.stop()
+        self.selenium = None
+
+    def go_back(self):
+        self.selenium.click("link=<< Back to results list")
+        self.selenium.wait_for_page_to_load("30000")
+
+    def go_to_next_page(self, number):
+        self.selenium.click("//input[@name='' and @type='image' and @onclick='javascript:this.form.elements.page.value=%d;']" % number)
+        self.selenium.wait_for_page_to_load("30000")
+
+    def go_to_list_entry(self, id):
+        self.selenium.click("xpath=//a[contains(@href,'%s')]" % id)
+        self.selenium.wait_for_page_to_load("30000")
+
+    def get_html(self):
+        return self.selenium.get_html_source()
+
+    def get_text(self):
+        return self.selenium.get_body_text()
+
+class WOKParser(WOKObject):
+
+    def __init__(self, archive, journal, author, year, title, notes):
+        self.search  = WOKSearch(journal, author, year, title)
+        self.archive = Archive(archive)
+        self.master = MasterArchive()
+        self.notes = notes
+
+    def test(self):
+        self.build_values()
+        self.store_article()
+        print self.article
+
+    def run(self):
+        import time
+        self.search.open_isi()
+        self.search.find_article()
+        self.search.open_article()
+        self.nrefs = self.search.open_references()
+
+        #get all possible refs on this page 
+        self.walk_references()
+
+        #if there are more pages, go through those as well
+        nstart = 31 
+        onclick = 2
+        while nstart < self.nrefs:
+            self.search.go_to_next_page(onclick)
+            self.walk_references()
+
+            break #debug
+
+            nstart += 30
+            onclick += 1
+        
+        time.sleep(10)
+        self.search.stop()
+
+    def die(self, msg):
+        self.search.stop()
+        WOKObject.die(self, msg)
 
     def walk_references(self):
         import time
         url_list = URLLister()
-        url_list.feed(self.selenium.get_html_source())
+        url_list.feed(self.search.get_html())
         for name in url_list:
             link = url_list[name]
             if "CitedFullRecord" in link:
                 self.process_article(link)
+                return #debug
                 time.sleep(1)
-
-    def set_value(self, regexp, attr, method=None, require=True):
-        match = re.compile(regexp, re.DOTALL).search(self.block)
-        if not match:
-            if require:
-                raise ISIError
-            else:
-                return
-
-        value = match.groups()[0]
-        if method:
-            value = method(value)
-
-        set = getattr(self.article, "set_%s" % attr)
-        set(value)
-
-    def build_values(self):
-        self.set_value("Source[:]\s*(.*?)Vol", "journal", method = lambda x: x.strip())
-        self.set_value("Volume[:]\s*(\d+)", "volume", method=int)
-        self.set_value("Issue[:]\s*(\d+)", "issue", method=int, require=False)
-        self.set_value("Pages[:]\s*(\d+)[-P]", "start_page", method = Page)
-        self.set_value("Pages[:]\s*\d+[-](\d+)", "end_page", method = Page, require=False)
-        #the gd monkeys at Thompson apparently decided that periods are just as good as spaces
-        self.set_value("Author.*?[:](.*?)Source", "authors", method=lambda x: get_authors(x.replace(".", " "), ",", " "))
-        self.set_value("Record from Web of Science.*?\s(.*?)more\soptions", "title", method=clean_line)
-        self.set_value("Abstract[:](.*?)Addresses", "abstract", method=clean_entry, require=False)
-        self.set_value("Published[:].*?\s(\d{4})", "year", method=int)
-        self.set_value("DOI[:]\s+(.*?)[\n\s]", "doi", require=False)
-
-        self.article.set_notes(self.notes)
 
     def store_article(self):
         journal = ISIArticle.get_journal(self.article.get_journal())
@@ -304,31 +354,25 @@ class WOKParser:
             print " -> downloaded %s" % path
             self.article.set_pdf(path)
 
-
-    def go_back(self):
-        self.selenium.click("link=<< Back to results list")
-        self.selenium.wait_for_page_to_load("30000")
-
     def process_article(self, link):
         id = re.compile("isickref[=]\d+").search(link).group()
         print id
-        self.selenium.click("xpath=//a[contains(@href,'%s')]" % id)
-        self.selenium.wait_for_page_to_load("30000")
+        self.search.go_to_list_entry(id)
 
-        self.article = self.archive.create_article()
-        self.block = self.selenium.get_body_text()
-
+        block = self.search.get_text()
 
         try:
-            self.build_values()
+            builder = WOKArticle(self.archive, block) 
+            self.article = builder.get_papers_article()
+            self.article.set_notes(self.notes)
             self.store_article()
         except ISIError, error:
-            sys.stderr.write("%s\n" % traceback(error))
+            sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
         except Exception, error:
-            sys.stderr.write("%s\n" % traceback(error))
+            sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
 
         self.article = None
-        self.go_back()
+        self.search.go_back()
 
 
 class SavedRecordParser:
