@@ -387,7 +387,7 @@ class SavedRecordParser:
     def feed(self, text, notes):
         journals = {}
         blocks = re.compile("PT\sJ(.*?)\nER", re.DOTALL).findall(text)
-        for block in blocks[:1]:
+        for block in blocks:
             self.block = block
             self.article = self.archive.create_article()
 
