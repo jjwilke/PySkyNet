@@ -388,39 +388,42 @@ class SavedRecordParser:
         journals = {}
         blocks = re.compile("PT\sJ(.*?)\nER", re.DOTALL).findall(text)
         for block in blocks:
-            self.block = block
-            self.article = self.archive.create_article()
+            try:
+                self.block = block
+                self.article = self.archive.create_article()
 
-            get_number = lambda x: re.compile("(\d+)").search(x).groups()[0] 
-            get_page = lambda x: Page(get_number(x))
-            clean_title = lambda x: clean_line(clean_entry(x))
+                get_number = lambda x: re.compile("(\d+)").search(x).groups()[0] 
+                get_page = lambda x: Page(get_number(x))
+                clean_title = lambda x: clean_line(clean_entry(x))
 
-            self.get_entry("journal", entries=(("so", "la"), ("so", "ab"), ("so", "sn")) )
-            self.get_entry("volume", method=int, entries=(("vl", "is"), ("vl", "bp")) )
-            self.get_entry("issue", method=lambda x: int(get_number(x)), require=False, entries=(("is", "bp"),) )
-            self.get_entry("start_page", method=get_page, exclude=("art. no.",), entries=(("bp", "ep"), ("bp", "ut"), ("ar", "di"), ("ar", "ut")) )
-            self.get_entry("end_page", method=get_page, require=False, entries=(("ep", "di"), ("ep", "ut")) )
+                self.get_entry("journal", entries=(("so", "la"), ("so", "ab"), ("so", "sn")) )
+                self.get_entry("volume", method=int, entries=(("vl", "is"), ("vl", "bp")) )
+                self.get_entry("issue", method=lambda x: int(get_number(x)), require=False, entries=(("is", "bp"),) )
+                self.get_entry("start_page", method=get_page, exclude=("art. no.",), entries=(("bp", "ep"), ("bp", "ut"), ("ar", "di"), ("ar", "ut")) )
+                self.get_entry("end_page", method=get_page, require=False, entries=(("ep", "di"), ("ep", "ut")) )
 
 
-            self.get_entry("authors", method=lambda x: get_authors(x, "\n", ","), entries=(("af", "ti"), ("au", "ti")) )
+                self.get_entry("authors", method=lambda x: get_authors(x, "\n", ","), entries=(("af", "ti"), ("au", "ti")) )
 
-            self.get_entry("title", method=clean_title, entries=(("ti", "so"),) )
-            self.get_entry("abstract", method=clean_entry, require=False, entries=(("ab", "sn"),) )
-            self.get_entry("year", method=int, entries=(("py", "vl"),) )
+                self.get_entry("title", method=clean_title, entries=(("ti", "so"),) )
+                self.get_entry("abstract", method=clean_entry, require=False, entries=(("ab", "sn"),) )
+                self.get_entry("year", method=int, entries=(("py", "vl"),) )
 
-            self.get_entry("doi", require=False, entries=(("di", "pg"), ("di", "ut"),("di", "er")) )
+                self.get_entry("doi", require=False, entries=(("di", "pg"), ("di", "ut"),("di", "er")) )
 
-            self.article.set_notes(notes)
-            
-            journal = ISIArticle.get_journal(self.article.get_journal())
-            volume = self.article.get_volume()
-            page = self.article.get_page()
-            name = "%s %d %s" % (journal, volume, page)
-            if not self.master.has(self.article):
-                self.archive.test_and_add(self.article)
-            else:
-                print "%s exists in archive" % name
-                continue
+                self.article.set_notes(notes)
+                
+                journal = ISIArticle.get_journal(self.article.get_journal())
+                volume = self.article.get_volume()
+                page = self.article.get_page()
+                name = "%s %d %s" % (journal, volume, page)
+                if not self.master.has(self.article):
+                    self.archive.test_and_add(self.article)
+                else:
+                    print "%s exists in archive" % name
+                    continue
+            except Exception, error:
+                sys.stderr.write("%s\n%s\n" % (error, block))
 
         """
             journal = self.get_text(block, "so", "ab")

@@ -1,6 +1,8 @@
 from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlexceptions import HTMLException
 
+from selenium import selenium
+
 import sys
 
 class SpringerArticle(PDFArticle):
@@ -8,6 +10,32 @@ class SpringerArticle(PDFArticle):
 
 class SpringerStopException(Exception):
     pass
+
+class SpringerQuery:
+
+    def __init__(self, volume, maxvolume):
+        idx = (volume - 1) / 5 
+        start = idx + 1
+        end = idx + 5
+
+        if maxvolume <= end:
+            self.tag = "Current-%d" % start
+        else:
+            self.tag = "%d-%d" % (end, start)
+
+    def run(self):
+        self.selenium = selenium("localhost", 4444, "*chrome", "http://www.springerlink.com/")
+        self.selenium.start()
+
+        sel = self.selenium
+        sel.open("/content/1432-881X")
+        sel.select("ctl00_MainPageContent_ctl02_ctl01_SubpaginationControl_ctl00_List", "label=%s" % self.tag)
+        sel.click("//option[@value='2']")
+        sel.wait_for_page_to_load("30000")
+
+        self.html = sel.get_html_source()
+
+        self.selenium.stop()
 
 class IssueParser(ArticleParser):
 
@@ -142,20 +170,18 @@ class SpringerJournal(Journal):
 
     def url(self, volume, issue, page):
 
-        self.validate("baseurl", "pickle")
+        self.validate("baseurl", "maxvolume")
 
         from htmlparser import URLLister, fetch_url
         import re
 
-        from utils.RM import load
-        links = load(self.pickle)
-
-        url = None
-        for entry in links:
-            vols = links[entry]
-            if volume in vols:
-                url = entry
-                break
+        query = SpringerQuery(volume, self.maxvolume)
+        query.run()
+        url_list = URLLister()
+        url_list.feed(query.html)
+        for name in url_list:
+            if "Number" in name:
+                print name
 
         if not url:
             raise HTMLException("No page found for volume %d for %s" % (volume, self.name))
@@ -182,12 +208,7 @@ class TCA(SpringerJournal):
 
     name = "Theoretical Chemistry Accounts"
     baseurl = "http://www.springerlink.com/content/1432-881X"
-
-    import webutils.pdfget
-    import os.path
-    folder = os.path.split(webutils.pdfget.__file__)[0]
-    pickle = os.path.join(folder, ".springer.tca.links")
-
+    maxvolume = 126
 
 if __name__ == "__main__":
 

@@ -4,7 +4,7 @@ class PDFGetGlobals:
     from webutils.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC, OrgLett, ChemRev, ACR
     from webutils.aip import JCP, JMP
     from webutils.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS, CPC
-    from webutils.springer import TCA
+    #from webutils.springer import TCA
     from webutils.aps import PRL, PRA, PRB, PROLA, RMP
     from webutils.wiley import AngeChem, IJQC, JPOC, JCC, ChemPhysChem
     from webutils.rsc import PCCP
@@ -27,7 +27,7 @@ class PDFGetGlobals:
         "cpl" : CPL,
         "physrep" : PhysRep,
         "chemphys" : ChemPhys,
-        "tca" : TCA,
+        #"tca" : TCA,
         "prl" : PRL,
         "pra" : PRA,
         "prb" : PRB,
@@ -68,7 +68,7 @@ class PDFGetGlobals:
         "chem phys lett" : "cpl",
         "phys rep" : "physrep",
         "chem phys" : "chemphys",
-        "theor chem acc" : "tca",
+        #"theor chem acc" : "tca",
         "phys rev lett" : "prl",
         "phys rev a": "pra",
         "angew chem int edit" : "ange",
