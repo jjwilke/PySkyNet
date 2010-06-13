@@ -28,6 +28,9 @@ def find_in_library(library, volume, page):
 def clean_entry(x):
     return x.strip().replace("\n   ", " ")
 
+def readable(x):
+    return x.encode("ascii", "ignore")
+
 def process_authors(entries):
     authors = []
     for last, first in entries:
@@ -160,12 +163,17 @@ class WOKObject:
         sys.exit("%s -> %s %d %s" % (msg, self.author, self.year, self.title))
 
 class WOKArticle(WOKObject):
+    
+    master = None
 
     def __init__(self, archive, block):
         self.archive = archive
         self.block = block
         self.article = self.archive.create_article()
         self.build_values()
+
+        if not self.master:
+            self.master = MasterArchive()
 
     def get_papers_article(self):
         return self.article
@@ -174,7 +182,7 @@ class WOKArticle(WOKObject):
         match = re.compile(regexp, re.DOTALL).search(self.block)
         if not match:
             if require:
-                raise ISIError("Regular expression %s for attribute %s does not match block\n%s" % (regexp, attr, self.block.encode("ascii", "ignore")))
+                raise ISIError("Regular expression %s for attribute %s does not match block\n%s" % (regexp, attr, readable(self.block)))
             else:
                 return
 
@@ -201,15 +209,47 @@ class WOKArticle(WOKObject):
         self.set_value("Published[:].*?\s(\d{4})", "year", method=int)
         self.set_value("DOI[:]\s+(.*?)[\n\s]", "doi", require=False)
 
+    def add_notes(self, notes):
+        self.article.set_notes(notes)
+
+    def store(self):
+        journal = ISIArticle.get_journal(self.article.get_journal())
+        volume = self.article.get_volume()
+        page = self.article.get_page()
+        name = "%s %d %s" % (self.article.get_abbrev(), volume, page)
+
+        if self.archive.has(self.article):
+            print "Already have article %s in local archive" % name
+            return
+        elif self.master.has(self.article):
+            print "Already have article %s in master archive" % name
+            return
+
+        from webutils.pdfget import download_pdf
+
+        print "Processed %s" % name
+        path = find_in_folder(journal, volume, page)
+        if path:
+            print " -> exists %s" % path
+            self.article.set_pdf(path)
+            return
+
+        path = download_pdf(journal, volume=volume, page=page)
+        if path:
+            print " -> downloaded %s" % path
+            self.article.set_pdf(path)
+
 
 class WOKSearch(WOKObject):
 
-    def __init__(self, journal, author, year, title):
+    def __init__(self, journal, author, year, volume, page):
         self.author = author
         self.journal = journal
         self.year = year
-        self.title = title
+        self.volume = volume
+        self.page = page
         self.selenium = None
+        self.title = None
 
     def find_article(self):
         text = self.selenium.get_body_text()
@@ -225,6 +265,34 @@ class WOKSearch(WOKObject):
         self.selenium.type("value(input3)", "%s*" % self.journal)
         self.selenium.click("//input[@name='' and @type='image']")
         self.selenium.wait_for_page_to_load("30000")
+
+        #figure out the title
+        text = self.selenium.get_body_text()
+        matches = re.compile("Title[:](.*?)\n(.*?)Times\sCited", re.DOTALL).findall(text)
+        if not matches:
+            self.die("Could not find list entries on page\n%s" % readable(text))
+
+        for title, entry in matches:
+            match = re.compile("Volume[:]\s*(\d+)").search(entry)
+            if not match:
+                self.die("Could not find volume for entry\n%s" % readable(text))
+            volume = int(match.groups()[0])
+
+            match = re.compile("Pages[:]\s*(\d+)").search(entry)
+            if not match:
+                match = re.compile("Article\sNumber[:]\s*(\d+)").search(entry)
+            if not match:
+                self.die("Could not find page for entry\n%s" % readable(text))
+
+            page = Page(match.groups()[0])
+
+            if volume == self.volume and page == self.page:
+                self.title = title[1:10]
+                break
+
+    def die(self, msg):
+        self.stop()
+        WOKObject.die(self, msg)
 
     def open_article(self):
         try:
@@ -275,24 +343,27 @@ class WOKSearch(WOKObject):
     def get_text(self):
         return self.selenium.get_body_text()
 
+
+    def open(self):
+        self.open_isi()
+        self.find_article()
+        self.open_article()
+
+    def get_article(self, archive):
+        block = self.get_text()
+        article = WOKArticle(archive, block) 
+        return article
+
 class WOKParser(WOKObject):
 
-    def __init__(self, archive, journal, author, year, title, notes):
-        self.search  = WOKSearch(journal, author, year, title)
+    def __init__(self, archive, journal, author, year, volume, page, notes):
         self.archive = Archive(archive)
-        self.master = MasterArchive()
+        self.search  = WOKSearch(journal, author, year, volume, page)
         self.notes = notes
-
-    def test(self):
-        self.build_values()
-        self.store_article()
-        print self.article
 
     def run(self):
         import time
-        self.search.open_isi()
-        self.search.find_article()
-        self.search.open_article()
+        self.search.open()
         self.nrefs = self.search.open_references()
 
         #get all possible refs on this page 
@@ -328,50 +399,20 @@ class WOKParser(WOKObject):
                 return #debug
                 time.sleep(1)
 
-    def store_article(self):
-        journal = ISIArticle.get_journal(self.article.get_journal())
-        volume = self.article.get_volume()
-        page = self.article.get_page()
-        name = "%s %d %s" % (self.article.get_abbrev(), volume, page)
-
-        if not self.master.has(self.article):
-            self.archive.test_and_add(self.article)
-        else:
-            print "Already have article %s" % name
-            return
-
-        from webutils.pdfget import download_pdf
-
-        print "Processed %s" % name
-        path = find_in_folder(journal, volume, page)
-        if path:
-            print " -> exists %s" % path
-            self.article.set_pdf(path)
-            return
-
-        path = download_pdf(journal, volume=volume, page=page)
-        if path:
-            print " -> downloaded %s" % path
-            self.article.set_pdf(path)
-
     def process_article(self, link):
         id = re.compile("isickref[=]\d+").search(link).group()
         print id
         self.search.go_to_list_entry(id)
 
-        block = self.search.get_text()
-
         try:
-            builder = WOKArticle(self.archive, block) 
-            self.article = builder.get_papers_article()
-            self.article.set_notes(self.notes)
-            self.store_article()
+            article = self.search.get_article(self.archive)
+            article.add_notes(self.notes)
+            article.store()
         except ISIError, error:
             sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
         except Exception, error:
             sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
 
-        self.article = None
         self.search.go_back()
 
 
