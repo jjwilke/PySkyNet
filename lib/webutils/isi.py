@@ -272,7 +272,7 @@ class WOKParser:
         #the gd monkeys at Thompson apparently decided that periods are just as good as spaces
         self.set_value("Author.*?[:](.*?)Source", "authors", method=lambda x: get_authors(x.replace(".", " "), ",", " "))
         self.set_value("Record from Web of Science.*?\s(.*?)more\soptions", "title", method=clean_line)
-        self.set_value("Abstract[:](.*?)Addresses", "abstract", method=clean_entry)
+        self.set_value("Abstract[:](.*?)Addresses", "abstract", method=clean_entry, require=False)
         self.set_value("Published[:].*?\s(\d{4})", "year", method=int)
         self.set_value("DOI[:]\s+(.*?)[\n\s]", "doi", require=False)
 
@@ -322,8 +322,8 @@ class WOKParser:
         try:
             self.build_values()
             self.store_article()
-        except ISIError:
-            pass
+        except ISIError, error:
+            sys.stderr.write("%s\n" % traceback(error))
         except Exception, error:
             sys.stderr.write("%s\n" % traceback(error))
 
