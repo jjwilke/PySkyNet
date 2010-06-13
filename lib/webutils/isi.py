@@ -76,7 +76,7 @@ class ISIArticle:
             journal = cls.journal_map[journal.lower()]
             return journal
         except KeyError:
-            name = journal.lower().replace("of","").replace("the","").replace("and", "").replace("-"," ")
+            name = journal.lower().replace("of"," ").replace("the "," ").replace("and ", " ").replace("-"," ")
             initials = map(lambda x: x[0], name.strip().split())
             return "".join(initials)
     get_journal = classmethod(get_journal)
@@ -156,7 +156,7 @@ class ISIParser(ArticleParser):
 
 class WOKParser:
 
-    def __init__(self, archive, journal, author, year, title):
+    def __init__(self, archive, journal, author, year, title, notes):
         self.author = author
         self.journal = journal
         self.year = year
@@ -164,6 +164,7 @@ class WOKParser:
         self.archive = Archive(archive)
         self.master = MasterArchive()
         self.lib = Library()
+        self.notes = notes
 
     def test(self):
         self.block = u"Sign In My EndNote Web My ResearcherID My Citation Alerts My Saved Searches Log Out Help    Search Search History Marked List ALL DATABASES << Back to results list Record 1  of  1 Record from Web of Science Gaussian-3 theory using reduced Moller-Plesset order more options Author(s): Curtiss LA, Redfern PC, Raghavachari K, Rassolov V, Pople JA Source: JOURNAL OF CHEMICAL PHYSICS    Volume: 110    Issue: 10    Pages: 4703-4709    Published: MAR 8 1999   Times Cited: 589     References: 15     Citation Map      Abstract: A variation of Gaussian-3 (G3) theory is presented in which the basis set extensions are obtained at the second-order Moller-Plesset level. This method, referred to as G3(MP2) theory, is assessed on 299 energies from the G2/97 test set [J. Chem. Phys. 109, 42 (1998)]. The average absolute deviation from experiment of G3(MP2) theory for the 299 energies is 1.30 kcal/mol and for the subset of 148 neutral enthalpies it is 1.18 kcal/mol. This is a significant improvement over the related G2(MP2) theory [J. Chem. Phys. 98, 1293 (1993)], which has an average absolute deviation of 1.89 kcal/mol for all 299 energies and 2.03 kcal/mol for the 148 neutral enthalpies. The corresponding average absolute deviations for full G3 theory are 1.01 and 0.94 kcal/mol, respectively. The new method provides significant savings in computational time compared to G3 theory and, also, G2(MP2) theory. (C) 1999 American Institute of Physics. [S0021-9606(99)30309-3]. Document Type: Article Language: English KeyWords Plus: ENERGIES Reprint Address: Curtiss, LA (reprint author), Argonne Natl Lab, Div Chem, 9700 S Cass Ave, Argonne, IL 60439 USA Addresses: 1. Argonne Natl Lab, Div Chem, Argonne, IL 60439 USA 2. Argonne Natl Lab, Div Sci Mat, Argonne, IL 60439 USA 3. AT&T Bell Labs, Lucent Technol, Murray Hill, NJ 07974 USA 4. Northwestern Univ, Dept Chem, Evanston, IL 60208 USA Publisher: AMER INST PHYSICS, CIRCULATION FULFILLMENT DIV, 500 SUNNYSIDE BLVD, WOODBURY, NY 11797-2999 USA Subject Category: Physics, Atomic, Molecular & Chemical IDS Number: 170XG ISSN: 0021-9606 Cited by: 589 This article has been cited 589 times (from Web of Science). Ali MA, Rajakumar B  Kinetics of OH radical reaction with CF3CHFCH2F (HFC-245eb) between 200 and 400 K: G3MP2, G3B3 and transition state theory calculations  JOURNAL OF MOLECULAR STRUCTURE-THEOCHEM  949  1-3  73-81  JUN 15 2010 Verevkin SP, Emel'yanenko VN, Hopmann E, et al.  Thermochemistry of ionic liquid-catalysed reactions. Isomerisation and transalkylation of tert-alkyl-benzenes. Are these systems ideal?  JOURNAL OF CHEMICAL THERMODYNAMICS  42  6  719-725  JUN 2010 Zhang IY, Wu JM, Luo Y, et al.  Trends in R-X Bond Dissociation Energies (R-center dot = Me, Et, i-Pr, t-Bu, X-center dot = H, Me, Cl, OH)  JOURNAL OF CHEMICAL THEORY AND COMPUTATION  6  5  1462-1469  MAY 2010 [  view all 589 citing articles  ] Related Records: Find similar records based on shared references (from Web of Science). [ view related records ] References: 15 View the bibliography of this record (from Web of Science). Additional information View author biographies (in ISI HighlyCited.com) View the journal's impact factor (in Journal Citation Reports) View the journal's Table of Contents (in Current Contents Connect)   << Back to results list Record 1  of  1 Record from Web of Science Output Record Step 1: Authors, Title, Source plus Abstract Full Record Step 2: [How do I export to bibliographic management software?] Save to other Reference Software Save to BibTeX Save to HTML Save to Plain Text Save to Tab-delimited (Win) Save to Tab-delimited (Mac)"
@@ -201,6 +202,11 @@ class WOKParser:
         self.selenium.stop()
 
     def find_article(self):
+        text = self.selenium.get_body_text()
+        if "establish a new session" in text:
+            self.selenium.click("link=establish a new session")
+            self.selenium.wait_for_page_to_load("30000")
+
         self.selenium.select("select1", "label=Author")
         self.selenium.type("value(input1)", "%s" % self.author)
         self.selenium.select("select2", "label=Year Published")
@@ -231,7 +237,6 @@ class WOKParser:
         self.selenium.wait_for_page_to_load("30000")
 
         self.nrefs = int(nrefs)
-        print self.nrefs
 
     def walk_references(self):
         import time
@@ -269,6 +274,9 @@ class WOKParser:
         self.set_value("Record from Web of Science.*?\s(.*?)more\soptions", "title", method=clean_line)
         self.set_value("Abstract[:](.*?)Addresses", "abstract", method=clean_entry)
         self.set_value("Published[:].*?\s(\d{4})", "year", method=int)
+        self.set_value("DOI[:]\s+(.*?)[\n\s]", "doi", require=False)
+
+        self.article.set_notes(self.notes)
 
     def store_article(self):
         journal = ISIArticle.get_journal(self.article.get_journal())
@@ -309,6 +317,7 @@ class WOKParser:
 
         self.article = self.archive.create_article()
         self.block = self.selenium.get_body_text()
+
 
         try:
             self.build_values()
@@ -378,7 +387,7 @@ class SavedRecordParser:
     def feed(self, text, notes):
         journals = {}
         blocks = re.compile("PT\sJ(.*?)\nER", re.DOTALL).findall(text)
-        for block in blocks:
+        for block in blocks[:1]:
             self.block = block
             self.article = self.archive.create_article()
 
@@ -386,7 +395,7 @@ class SavedRecordParser:
             get_page = lambda x: Page(get_number(x))
             clean_title = lambda x: clean_line(clean_entry(x))
 
-            self.get_entry("journal", entries=(("so", "ab"), ("so", "sn")) )
+            self.get_entry("journal", entries=(("so", "la"), ("so", "ab"), ("so", "sn")) )
             self.get_entry("volume", method=int, entries=(("vl", "is"), ("vl", "bp")) )
             self.get_entry("issue", method=lambda x: int(get_number(x)), require=False, entries=(("is", "bp"),) )
             self.get_entry("start_page", method=get_page, exclude=("art. no.",), entries=(("bp", "ep"), ("bp", "ut"), ("ar", "di"), ("ar", "ut")) )
@@ -399,18 +408,19 @@ class SavedRecordParser:
             self.get_entry("abstract", method=clean_entry, require=False, entries=(("ab", "sn"),) )
             self.get_entry("year", method=int, entries=(("py", "vl"),) )
 
+            self.get_entry("doi", require=False, entries=(("di", "pg"), ("di", "ut"),("di", "er")) )
+
             self.article.set_notes(notes)
             
+            journal = ISIArticle.get_journal(self.article.get_journal())
             volume = self.article.get_volume()
             page = self.article.get_page()
-            path = find_in_library(self.lib, volume, page)
-            if path: #already in library
-                print "%s exists in archive" % path
-                continue
-        
-            journal = ISIArticle.get_journal(self.article.get_journal())
+            name = "%s %d %s" % (journal, volume, page)
             if not self.master.has(self.article):
                 self.archive.test_and_add(self.article)
+            else:
+                print "%s exists in archive" % name
+                continue
 
         """
             journal = self.get_text(block, "so", "ab")
@@ -456,7 +466,6 @@ class SavedRecordParser:
 def walkISI(files, archive, notes):
     from webutils.pdfget import download_pdf
 
-    lib = Library()
     parser = SavedRecordParser(archive)
 
     for file in files:

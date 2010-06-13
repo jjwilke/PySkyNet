@@ -4,6 +4,7 @@ import os.path
 import os
 import sys
 from webutils.pdfget import Page
+from xml.parsers.expat import ExpatError
 from utils.RM import clean_line, capitalize_word
 
 class Article:
@@ -19,6 +20,7 @@ class Article:
     pdftag = "url"
     notestag = "notes"
     abstracttag = "abstract"
+    doitag = "electronic-resource-num"
 
     erase = [
         "and",
@@ -30,6 +32,14 @@ class Article:
         "nature",
         "science",
     ]
+
+    allcaps = [
+        "theochem",
+    ]
+
+    special = {
+        "structure-theochem"  : "structure",
+    }
 
     abbrevs = {
         "zeitsch" : "zeit",
@@ -186,19 +196,24 @@ class Article:
 
     def _abbrev_word(cls, word):
         new_word = word
-        for entry in cls.abbrevs:
-            if entry in word:
-                new_word = cls.abbrevs[entry] + "."
-                break
+        if not word in cls.keep:
+            new_word = word
+            for entry in cls.abbrevs:
+                if entry in word:
+                    new_word = cls.abbrevs[entry] + "."
+                    break
 
-        return capitalize_word(new_word)
+        if new_word in cls.allcaps:
+            return new_word.upper()
+        else:
+            return capitalize_word(new_word)
     _abbrev_word = classmethod(_abbrev_word)
 
     def abbreviate(cls, journal):
-        words = journal.lower().replace("-"," ").strip().split()
-
-        if len(words) == 1 and words[0] in cls.keep: #keep things like science and nature
-            return capitalize_word(words[0])
+        journal = journal.lower()
+        for entry in cls.special:
+            journal = journal.replace(entry, cls.special[entry])
+        words = journal.replace("-"," ").strip().split()
 
         str_arr = []
         for word in words:
@@ -209,10 +224,8 @@ class Article:
         return " ".join(str_arr)
     abbreviate = classmethod(abbreviate)
 
-    def get_first_author(self):
-        author = self._get_entry(self.authortag)
-        lastname = author.split(",")[0]
-        return lastname
+    def get_abbrev(self):
+        return self._get_entry(self.abbrevtag)
 
     def get_authors(self):
         authors = []
@@ -220,6 +233,14 @@ class Article:
         for node in nodes:
             text = self._get_text(node)
             authors.append(text)
+
+    def get_doi(self):
+        return self._get_entry(self.doitag)
+
+    def get_first_author(self):
+        author = self._get_entry(self.authortag)
+        lastname = author.split(",")[0]
+        return lastname
 
     def get_issue(self):
         issue = self._get_entry(self.issuetag)
@@ -230,9 +251,6 @@ class Article:
 
     def get_journal(self):
         return self._get_entry(self.journaltag)
-
-    def get_abbrev(self):
-        return self._get_entry(self.abbrevtag)
 
     def get_page(self):
         entry = self._get_entry(self.pagestag)
@@ -272,6 +290,9 @@ class Article:
         for author in authors:
             text = self._append_text_node("author", node)
             text.nodeValue = author
+
+    def set_doi(self, doi):
+        self._set_item(doi, self.doitag)
 
     def set_end_page(self, page):
         pages = self.get_pages()
@@ -374,18 +395,18 @@ class Archive:
             os.mkdir("Resources")
 
         if os.path.isfile("Info.xml"):
-            self.parser = parse("Info.xml")
-            self.records = self.parser.getElementsByTagName("records")[0]
-            nodes = self.parser.getElementsByTagName("record")
-            for node in nodes:
-                article = Article(node, self)
-                self.articles.append(article)
+            try: 
+                self.parser = parse("Info.xml")
+                self.records = self.parser.getElementsByTagName("records")[0]
+                nodes = self.parser.getElementsByTagName("record")
+                for node in nodes:
+                    article = Article(node, self)
+                    self.articles.append(article)
+            except ExpatError:
+                self._reset()
+                
         else:
-            self.parser = Document()
-            xmlnode = self.parser.createElement("xml")
-            self.parser.appendChild(xmlnode)
-            self.records = self.parser.createElement("records")
-            xmlnode.appendChild(self.records)
+            self._reset()
 
         os.chdir(topdir)
 
@@ -403,6 +424,13 @@ class Archive:
         for article in self.articles:
             str_arr.append(str(article))
         return "\n".join(str_arr)
+
+    def _reset(self):
+        self.parser = Document()
+        xmlnode = self.parser.createElement("xml")
+        self.parser.appendChild(xmlnode)
+        self.records = self.parser.createElement("records")
+        xmlnode.appendChild(self.records)
 
     def add_pdf(self, path):
         dst = os.path.join(self.folder, "Contents", "Resources")
