@@ -975,3 +975,17 @@ def getDataSets(folder = ".", glob = None):
             dset.add(obj)
     return dset
 
+def acquire(msg):
+    msg = "%s:\n" % msg
+    entries = []
+    entry = "start"
+    try:
+        while 1:
+            entry = raw_input(msg).decode("utf-8")
+            entries.append(entry)
+            msg = ""
+    except KeyboardInterrupt:
+        pass
+
+    return "\n".join(entries)
+

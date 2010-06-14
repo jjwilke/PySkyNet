@@ -160,7 +160,7 @@ class ISIParser(ArticleParser):
 class WOKObject:
     
     def die(self, msg):
-        sys.exit("%s -> %s %d %s" % (msg, self.author, self.year, self.title))
+        raise ISIError("%s -> %s %d %s" % (msg, self.author, self.year, self.title))
 
 class WOKArticle(WOKObject):
     
@@ -225,6 +225,8 @@ class WOKArticle(WOKObject):
             print "Already have article %s in master archive" % name
             return
 
+        self.archive.add(self.article)
+
         from webutils.pdfget import download_pdf
 
         print "Processed %s" % name
@@ -242,13 +244,21 @@ class WOKArticle(WOKObject):
 
 class WOKSearch(WOKObject):
 
-    def __init__(self, journal, author, year, volume, page):
+    def __init__(self, journal=None, author=None, year=None, volume=None, page=None):
         self.author = author
         self.journal = journal
         self.year = year
         self.volume = volume
         self.page = page
         self.selenium = None
+        self.title = None
+
+    def reset(self, journal, author, year, volume, page):
+        self.author = author
+        self.journal = journal
+        self.year = year
+        self.volume = volume
+        self.page = page
         self.title = None
 
     def find_article(self):
@@ -316,9 +326,11 @@ class WOKSearch(WOKObject):
         return int(nrefs)
 
     def open_isi(self):
+        self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
+
+    def start(self):
         self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
         self.selenium.start()
-        self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
 
     def stop(self):
         if self.selenium:
@@ -343,7 +355,6 @@ class WOKSearch(WOKObject):
     def get_text(self):
         return self.selenium.get_body_text()
 
-
     def open(self):
         self.open_isi()
         self.find_article()
@@ -363,6 +374,7 @@ class WOKParser(WOKObject):
 
     def run(self):
         import time
+        self.search.start()
         self.search.open()
         self.nrefs = self.search.open_references()
 
@@ -383,6 +395,7 @@ class WOKParser(WOKObject):
         
         time.sleep(10)
         self.search.stop()
+        self.archive.commit()
 
     def die(self, msg):
         self.search.stop()
@@ -467,7 +480,7 @@ class SavedRecordParser:
             sys.stderr.write("%s\n" % self.block)
             msg = "no %s for tags\n" % attr
             msg += "\n".join(str_arr)
-            sys.exit(msg)
+            raise ISIError(msg)
             
     def feed(self, text, notes):
         journals = {}
@@ -509,47 +522,6 @@ class SavedRecordParser:
                     continue
             except Exception, error:
                 sys.stderr.write("%s\n%s\n" % (error, block))
-
-        """
-            journal = self.get_text(block, "so", "ab")
-            if not journal: journal = self.get_text(block, "so", "sn")
-            if not journal:
-                print block
-                sys.exit("no journal")
-            article.set_journal(journal)
-
-            volume = self.get_text(block, "vl", "is")
-            if not volume: volume = self.get_text(block, "vl", "bp")
-            if not volume:
-                print block
-                sys.exit("no volume")
-            volume = int(volume)
-            article.set_volume(volume)
-
-            issue = self.get_text(block, "is", "bp")
-            if not issue:
-                issue = 0
-            else:
-                issue = int(re.compile("(\d+)").search(issue).groups()[0])
-            article.set_issue(issue)
-
-            page = self.get_text(block, "bp", "ep")
-            if not page: page = self.get_text(block, "bp", "ut")
-            if not page or "art. no." in page: page = self.get_text(block, "ar", "di")
-            if not page: page = self.get_text(block, "ar", "ut")
-            if not page:
-                print block
-                sys.exit("no page")
-            page = Page(page)
-            article.set_pages(page)
-
-            journals[journal] = 1
-            
-        journals = journals.keys()
-        journals.sort()
-        print "\n".join(journals)
-        sys.exit()
-        """
 
 def walkISI(files, archive, notes):
     from webutils.pdfget import download_pdf

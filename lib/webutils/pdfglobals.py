@@ -92,7 +92,7 @@ class PDFGetGlobals:
         "j phys cond matt" : "jpcm",
     }
 
-    def getJournal(cls, name):
+    def get_journal(cls, name):
         #lower case, strip periods
         name = name.replace(".", "").lower()
         if name in cls.journals:
@@ -101,7 +101,7 @@ class PDFGetGlobals:
             return cls.journals[cls.abbrevs[name]]()
         else:
             return None
-    getJournal = classmethod(getJournal)
+    get_journal = classmethod(get_journal)
 
 def run_testsuite():
     from pdfget import download_pdf, Page

@@ -455,6 +455,9 @@ class Archive:
                 return True
         return False
 
+    def add(self, article):
+        self.add_article(article)
+
     def test_and_add(self, article):
         if not self.has(article):
             self.add_article(article)

@@ -2,6 +2,47 @@ from pdfget import ArticleParser, PDFArticle, Journal, Page
 from htmlexceptions import HTMLException
 
 import sys
+import re
+
+def parse_reference(text):
+    #fix ands
+    text = text.replace(" and ", ", ")
+
+    #first strip off the rubbish
+    match = re.compile("^.*?\d+[,]\s*\d+\s*\d{4}", re.DOTALL).search(text)
+    if not match:
+        return None
+    text =  match.group()
+    #get the authors
+    matches = re.compile("([A-Z][.].*?)(?<!\d)[,]").findall(text)
+    if not matches:
+        return None
+    authors = []
+    for author in matches:
+        entries = map(lambda x: x.strip(), author.split("."))
+        initials = "".join(entries[:-1])
+        lastname = entries[-1]
+        authors.append("%s, %s" % (lastname, initials))
+    
+    match = re.compile("(\d+)[,]\s*(\d+)\s*(\d{4})").search(text)
+    if not match:
+        return None
+
+    volume, page, year = match.groups()
+
+    match = re.compile("[,]([a-zA-Z .]+)%s" % volume).search(text)
+    if not match:
+        return None
+    
+    journal = match.groups()[0].strip()
+    vals = {}
+    vals["volume"] = int(volume)
+    vals["page"] = Page(page)
+    vals["year"] = int(year)
+    vals["authors"] = authors
+    vals["journal"] = journal
+
+    return vals
 
 class APSArticle(PDFArticle):
     pass

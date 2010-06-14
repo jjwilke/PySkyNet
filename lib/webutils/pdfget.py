@@ -334,7 +334,7 @@ def download_pdf(journal, volume = 0, issue = 0, page = Page("0")):
 
     name = "%s %d %d %s" % (journal, volume, issue, page)
     try:
-        jobj = PDFGetGlobals.getJournal(journal)
+        jobj = PDFGetGlobals.get_journal(journal)
         if not jobj: #no journal
             sys.stderr.write("FAILURE: %s\tJournal not valid\n" %  name)
             return None
