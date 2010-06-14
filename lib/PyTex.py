@@ -116,7 +116,7 @@ class CiteManager:
 
     def updateBib(self, files):
         import PyBib, os.path
-        if isinstance(files, str): #single file
+        if isinstance(files, basestring): #single file
             files = [files]
 
         for file in files:
@@ -172,11 +172,11 @@ def walkForBibs(path, check=False, fields=[]):
     if os.path.isfile(path):
         bib = PyBib.Bibliography()
         bib.buildRecords(path, check, fields)
-        return bib
 
     #folder, do the walk
     allbib = PyBib.Bibliography()
     os.path.walk(path, checkFolder, allbib)
+
 
     return allbib
 
@@ -196,7 +196,7 @@ def openBibFile(file):
     return bibobj
 
 def loadBibliography(bibpaths):
-    if isinstance(bibpaths, str):
+    if isinstance(bibpaths, basestring):
         bibpaths = [bibpaths]
     
     import os.path

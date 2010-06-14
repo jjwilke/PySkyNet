@@ -54,7 +54,9 @@ class MissingDataError(BibPyError):
 class RecordClassError(BibPyError): pass
 class RecordTypeError(BibPyError): pass
 class RecordAttributeError(BibPyError): pass
-class BibformatUnspecifiedError(BibPyError): pass
+class BibformatUnspecifiedError(BibPyError): 
+    def __init__(self, msg):
+        BibPyError.__init__(self, "No format specified for %s" % title)
 class FormatOptionError(BibPyError): pass
 class DuplicateLabelError(BibPyError): pass
 class NoLabelError(BibPyError): pass
@@ -300,6 +302,8 @@ class City(Entry): pass
 class Version(Entry): pass
 class FullJournalTitle(Entry): pass
 class Keyword(Entry): pass
+class Abstract(Entry): pass
+class Notes(Entry): pass
 
 class Author:
     
@@ -390,50 +394,48 @@ class Author:
                 str_arr.append(entry + ".")
         return " ".join(str_arr)
 
-class KeywordList(Entry):
+class RecordList(Entry):
     
-    def __init__(self, keywords):
-        self.keywords = map(lambda x: Keyword(x.encode('ascii', 'ignore').strip().lower()), keywords)
-
-    def __len__(self):
-        return len(self.keywords)
-
-    def __str__(self):
-        return "; ".join(self.keywords)
-
-    def __iter__(self):
-        return iter(self.keywords)
-
-    def matches(self, match):
-        for keyword in self:
-            if keyword.matches(match):
-                return True
-        #none of the authors match
-        return False
-
-class AuthorList(Entry): 
-
-    def __init__(self, authorList):
-        self.authorList = map(lambda x: Author(x), authorList)
+    def __init__(self, method, entries):
+        self.entries = map(method, entries)
 
     def __getitem__(self, key):
-        return self.authorList[key]
+        return self.entries[key]
 
     def __len__(self):
-        return len(self.authorList)
+        return len(self.entries)
 
     def __str__(self):
-        return "; ".join(map(str,self.authorList))
+        return "; ".join(map(str,self.entries))
 
     def __iter__(self):
-        return iter(self.authorList)
+        return iter(self.entries)
 
-    def matches(self, match):
-        for author in self:
-            if author.matches(match):
+    def raw_match(self, match):
+        for entry in self:
+            if entry.matches(match):
                 return True
         #none of the authors match
         return False
+
+    def matches(self, match):
+        if isinstance(match, basestring):
+            return self.raw_match(match)
+        else:
+            for entry in match:
+                if not self.raw_match(entry):
+                    return False
+            return True #all pass
+
+class KeywordList(RecordList):
+    
+    def __init__(self, keywords):
+        RecordList.__init__(self, lambda x: Keyword(x.encode('ascii', 'ignore').strip().lower()), keywords)
+
+class AuthorList(RecordList):
+
+    def __init__(self, authorList):
+        self.authorList = RecordList.__init__(self, lambda x: Author(x), authorList)
 
 class XMLRequest:
 
@@ -571,6 +573,16 @@ class RecordObject:
             raise BibformatUnspecifiedError("%s is not a valid attribute to set on %s" % (attrname, cls))
         setattr(cls, attrname, formatobj)
 
+    def get_summary(self):
+        return "No summary"
+
+    def getText(self, attr):
+        attr = attr.lower()
+        if not attr in self.entries:
+            return ""
+        else:
+            return str(self.entries[attr])
+
     def matches(self, matchreq):
         for attrname in matchreq:
             match = matchreq[attrname]
@@ -587,6 +599,11 @@ class RecordObject:
     setBibformat = classmethod(setBibformat)
 
     def getAttribute(self, name, simple=False):
+        method = "get_%s" % name.lower()
+        if hasattr(self, method):
+            method = getattr(self, method)
+            return method()
+
         name = name.lower()
         formatter = getattr(self, name)
         if not formatter:
@@ -728,6 +745,8 @@ class JournalArticle(RecordObject):
 
     attrlist = [
         'title',
+        'abstract',
+        'notes',
         ['authors', 'author'],
         ['keywords', 'keyword'],
         'volume',
@@ -755,6 +774,8 @@ class JournalArticle(RecordObject):
         'keywords' : KeywordList,
         'authors' : AuthorList,
         'title' : Title,
+        'abstract' : Abstract,
+        'notes' : Notes,
         'volume' : Volume,
         'pages' : Pages,
         'year' : Year,
@@ -775,6 +796,20 @@ class JournalArticle(RecordObject):
 
     def citekey(self):
         return self.citekey(self)
+
+    def get_summary(self):
+        str_arr = []
+        notes = self.getText("notes")
+        if notes:
+            str_arr.append("Notes:")
+            str_arr.append(notes)
+
+        abstract = self.getText("abstract")
+        if abstract:
+            str_arr.append("Abstract:")
+            str_arr.append(abstract)
+
+        return "\n".join(str_arr)
 
 
 class Record(object):
@@ -816,8 +851,8 @@ class Record(object):
         if not JournalArticle.bibitem: #not yet formatted
 
             def journal_bibitem(r):
-                authors = record['authors']
                 format = "%s, %s %s, %s, (%s)." % (r['authors'], r['journal'], r['volume'], r['pages'], r['year'])
+                return format
 
             JournalArticle.bibitem = journal_bibitem
             set('authors', JournalArticle, delim = ',', lastname = false)
@@ -826,6 +861,7 @@ class Record(object):
             set('year', JournalArticle)
             set('journal', JournalArticle)
             set('label', JournalArticle)
+            set('title', JournalArticle)
 
             set('authors', ComputerProgram, delim = ',', lastname = false)
             set('year',    ComputerProgram)

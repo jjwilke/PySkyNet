@@ -2,6 +2,21 @@ import pygtk
 import gtk
 from PyBib import *
 
+def eighty_ify(text):
+    entries = text.split()
+    str_arr = []
+    line_arr = []
+    length = 0
+    for entry in entries:
+        line_arr.append(entry)
+        length += len(entry)
+
+        if length >= 80:
+            str_arr.append(" ".join(line_arr))
+            length = 0
+            line_arr = []
+    return "\n".join(str_arr)
+
 class PyGtkTableEntry:
 
     def __init__(self, data):
@@ -23,9 +38,9 @@ class PyGtkTable:
     def __init__(self, dataset, *cols):
         self.cols = cols[:]
         self.dataset = dataset
-
         self.init_model()
         self.init_view()
+
 
     def window(self):
         return self.scrollwindow
@@ -35,8 +50,21 @@ class PyGtkTable:
         for entry in self.dataset:
             self.listmodel.append([entry])
 
+    def update_tooltip(self, widget, data=None):
+        if data.button == 3: #right click
+            entries = self.getSelected()
+            if len(entries) == 1:
+                entry = entries[0]
+                menu = gtk.Menu()
+                text = eighty_ify(entry.getAttribute("summary"))
+                i = gtk.MenuItem(text) ; i.show()
+                menu.append(i)
+                menu.popup(None, None, None, data.button, data.time)
+
     def init_view(self):
         self.treeview = gtk.TreeView()
+        #self.tooltips.set_tip(self.treeview, "testing")
+        self.treeview.connect("button-press-event", self.update_tooltip)
         self.treeview.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
         id = 0
         for col in self.cols:
