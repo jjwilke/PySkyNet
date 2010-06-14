@@ -112,7 +112,9 @@ class WileyJournal(Journal):
                 response = fetch_url(article.url)
                 pdfget = WileyPDFFetcher()
                 pdfget.feed(response)
-                print pdfget.url
+                if not pdfget.url:
+                    raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
+
                 url = pdfget.url.split("&PLAC")[0]
                 return url, issue
 
