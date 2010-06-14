@@ -90,6 +90,7 @@ class MatchRequest:
         'year',
         'journal',
         'label',
+        'keywords',
     ]
 
     regexp = "([a-zA-Z0-9]+)[=]([a-zA-Z0-9]+)"
@@ -115,7 +116,9 @@ class MatchRequest:
         entries = re.compile(self.regexp).findall(initstring)
         for name, value in entries:
             fullname = self.findEntry(name)
-            self.matches[fullname] = value.lower()
+            if not self.matches.has_key(fullname):
+                self.matches[fullname] = []
+            self.matches[fullname].append(value.lower())
     
 class LatexFormat:
     
@@ -270,9 +273,19 @@ class Entry:
     def __str__(self):
         return self.entry
 
+    def raw_match(cls, entry, match):
+        me = entry.lower()
+        if isinstance(match, basestring):
+            return match in me
+        else:
+            for entry in match:
+                if entry in me:
+                    return True
+            return False #no match
+    raw_match = classmethod(raw_match)
+
     def matches(self, match):
-        if match in self.entry.lower():
-            return True
+        return self.raw_match(self.entry, match)
 
 class Label(Entry): pass
 class Edition(Entry): pass
@@ -286,6 +299,7 @@ class Publisher(Entry): pass
 class City(Entry): pass
 class Version(Entry): pass
 class FullJournalTitle(Entry): pass
+class Keyword(Entry): pass
 
 class Author:
     
@@ -362,8 +376,7 @@ class Author:
 
     def matches(self, match):
         simpleself = AuthorsFormat.simplify_entry(str(self))
-        if match in simpleself.lower():
-            return True
+        return Entry.raw_match(simpleself, match)
 
     def lastname(self):
         return self._lastname
@@ -376,6 +389,27 @@ class Author:
             else:
                 str_arr.append(entry + ".")
         return " ".join(str_arr)
+
+class KeywordList(Entry):
+    
+    def __init__(self, keywords):
+        self.keywords = map(lambda x: Keyword(x.encode('ascii', 'ignore').strip().lower()), keywords)
+
+    def __len__(self):
+        return len(self.keywords)
+
+    def __str__(self):
+        return "; ".join(self.keywords)
+
+    def __iter__(self):
+        return iter(self.keywords)
+
+    def matches(self, match):
+        for keyword in self:
+            if keyword.matches(match):
+                return True
+        #none of the authors match
+        return False
 
 class AuthorList(Entry): 
 
@@ -540,9 +574,14 @@ class RecordObject:
     def matches(self, matchreq):
         for attrname in matchreq:
             match = matchreq[attrname]
-            entry = self.entries[attrname]
-            if not entry.matches(match):
+            try:
+                entry = self.entries[attrname]
+                if not entry.matches(match):
+                    return False
+            except KeyError, error:
+                sys.stderr.write("%s for class %s\n" % (error, self.__class__))
                 return False
+
         return True #all match
 
     setBibformat = classmethod(setBibformat)
@@ -593,6 +632,7 @@ class ComputerProgram(RecordObject):
 
     CLASS_MAP = {
         'authors' : AuthorList,
+        'keywords' : KeywordList,
         'title' : Title,
         'year' : Year,
         'label' : Label,
@@ -689,6 +729,7 @@ class JournalArticle(RecordObject):
     attrlist = [
         'title',
         ['authors', 'author'],
+        ['keywords', 'keyword'],
         'volume',
         'year',
         'pages',
@@ -711,6 +752,7 @@ class JournalArticle(RecordObject):
     }
 
     CLASS_MAP = {
+        'keywords' : KeywordList,
         'authors' : AuthorList,
         'title' : Title,
         'volume' : Volume,
