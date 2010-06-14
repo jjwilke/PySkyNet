@@ -913,7 +913,7 @@ class Bibliography:
         try:
             xmldoc = minidom.parse(bibfile)
         except BibPyError, error: #not a valid xmldoc
-            print error
+            #print error
             return -1
 
         #lower case-ify the xml file
@@ -934,7 +934,7 @@ class Bibliography:
 
                 if errormsgs:
                     errormsgs.insert(0, error.getDescription())
-                    sys.stderr.write("%s\n" % "\n".join(errormsgs))
+                    #sys.stderr.write("%s\n" % "\n".join(errormsgs))
             except RecordTypeError, error:
                 if check:
                     sys.stderr.write("%s\n" % error)

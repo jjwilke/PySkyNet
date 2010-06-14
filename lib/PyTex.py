@@ -104,7 +104,7 @@ class CiteManager:
                 try:
                     newtable =  self.table.filter(filterstr)
                 except PyBib.BadMatchAttribute, error:
-                    print error
+                    #print error
                     #build blank table
                     newtable = self.table.subset([]) #build null table
                 newfilter = TableFilter(newtable, filterstr)
@@ -254,7 +254,8 @@ class CiteThread(threading.Thread):
                     self.citation.addReferences(objlist)
                     
             except Exception, exc:
-                print exc
+                #print exc
+                pass
 
         self.server.close()
 
@@ -343,12 +344,14 @@ def loadCitation(cword):
 
     #build the citation
     import os.path
-    if not hasattr(PyTexGlobals, "bib"):
-        import PyGui
-        filesel = PyGui.FileSelect(os.path.join(os.path.expanduser("~"), "Documents"), setBibliography, main=True)
-        gtk.main()
-        
-    bib = getattr(PyTexGlobals, "bib")
+    #if not hasattr(PyTexGlobals, "bib"):
+    #    import PyGui
+    #    filesel = PyGui.FileSelect(os.path.join(os.path.expanduser("~"), "Documents"), setBibliography, main=True)
+    #    gtk.main()
+    #    
+    #bib = getattr(PyTexGlobals, "bib")
+    import PyBib
+    bib = PyBib.Bibliography()
     title = "Reference at line %d" % PyVim.PyVimGlobals.line
     citeobj = Citation(title, bib, entries)
 

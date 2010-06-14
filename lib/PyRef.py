@@ -76,7 +76,7 @@ class PyGtkTable:
             cell.set_property('text', value)
         except Exception, error:
             import sys
-            sys.stderr.write("%s\n" % error)
+            #sys.stderr.write("%s\n" % error)
             cell.set_property('text', '') #blank
 
     def addEntries(self, entries):
