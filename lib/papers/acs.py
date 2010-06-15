@@ -3,13 +3,14 @@ from webutils.htmlparser import URLLister
 from webutils.htmlexceptions import HTMLException
 from webutils.htmlparser import fetch_url
 from selenium import selenium
-from papers.pdfglobals import PDFGetGlobals as pdfglobals
 
 import sys
 import os.path
 import re
 
 def parse_reference(text):
+    from papers.pdfglobals import PDFGetGlobals as pdfglobals
+
     repls = {
         ".," : ".",
         " and" :  ", ",

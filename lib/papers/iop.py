@@ -88,6 +88,8 @@ class IOPJournal(Journal):
 
         self.validate("baseurl")
         toc = fetch_url("%s/%d" % (self.baseurl, volume))
+        if not toc:
+            raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
 
         #figure out the issue number
         issue_parser = IssueParser()

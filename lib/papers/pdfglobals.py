@@ -2,16 +2,16 @@ import re
 
 class PDFGetGlobals:
     
-    from webutils.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC, OrgLett, ChemRev, ACR
-    from webutils.aip import JCP, JMP
-    from webutils.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS, CPC, JMB
+    from papers.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC, OrgLett, ChemRev, ACR
+    from papers.aip import JCP, JMP
+    from papers.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS, CPC, JMB
+    from papers.aps import PRL, PRA, PRB, PROLA, RMP
+    from papers.wiley import AngeChem, IJQC, JPOC, JCC, ChemPhysChem
+    from papers.rsc import PCCP, CSR
+    from papers.iop import JPA, JPB, PhysScripta, JPCM
+    from papers.informa import MolPhys
+    from papers.jstor import Science
     #from webutils.springer import TCA
-    from webutils.aps import PRL, PRA, PRB, PROLA, RMP
-    from webutils.wiley import AngeChem, IJQC, JPOC, JCC, ChemPhysChem
-    from webutils.rsc import PCCP, CSR
-    from webutils.iop import JPA, JPB, PhysScripta, JPCM
-    from webutils.informa import MolPhys
-    from webutils.jstor import Science
 
     journals = {
         "jacs" : JACS,

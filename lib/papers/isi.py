@@ -11,21 +11,6 @@ import os.path
 
 from selenium import selenium
 
-def find_in_folder(journal, volume, page):
-    pdfs = [elem for elem in os.listdir(".") if elem.endswith("pdf")]
-    abbrev = ISIArticle.get_journal(journal)
-    for pdf in pdfs:
-        if abbrev in pdf and "%d" % volume in pdf and str(page) in pdf:
-            return pdf
-    return None
-        
-def find_in_library(library, volume, page):
-    for year in library:
-        path = library.find(year, volume, page)
-        if path:
-            return path
-    return None
-
 def clean_entry(x):
     return x.strip().replace("\n   ", " ")
 
