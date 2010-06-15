@@ -5,17 +5,25 @@ import sys
 import re
 
 def parse_reference(text):
-    #fix ands
-    text = text.replace(" and ", ", ")
+    repls = {
+        ".," : ".",
+        " and" :  ", ",
+        ".-" : ". ",
+    }
+
+    for entry in repls:
+        text = text.replace(entry, repls[entry])
 
     #first strip off the rubbish
-    match = re.compile("^.*?\d+[,]\s*\d+\s*\d{4}", re.DOTALL).search(text)
+    match = re.compile("^.*?\d+[,]\s*\d+.*?\d{4}", re.DOTALL).search(text) #for some reason spaces are not matching here
     if not match:
+        sys.stderr.write("Could not find properly formatted reference\n")
         return None
     text =  match.group()
     #get the authors
-    matches = re.compile("([A-Z][.].*?)(?<!\d)[,]").findall(text)
+    matches = re.compile("([A-Z][.].*?)(?<!\d)[,]", re.DOTALL).findall(text)
     if not matches:
+        sys.stderr.write("Could not find properly formatted authors\n")
         return None
     authors = []
     for author in matches:
@@ -24,14 +32,16 @@ def parse_reference(text):
         lastname = entries[-1]
         authors.append("%s, %s" % (lastname, initials))
     
-    match = re.compile("(\d+)[,]\s*(\d+)\s*(\d{4})").search(text)
+    match = re.compile("(\d+)[,].*?(\d+).*?(\d{4})", re.DOTALL).search(text)
     if not match:
+        sys.stderr.write("Could not find properly formatted volume, page, year\n")
         return None
 
     volume, page, year = match.groups()
 
-    match = re.compile("[,]([a-zA-Z .]+)%s" % volume).search(text)
+    match = re.compile("[,]([a-zA-Z .]+)%s" % volume, re.DOTALL).search(text)
     if not match:
+        sys.stderr.write("Could not find properly formatted journal\n")
         return None
     
     journal = match.groups()[0].strip()

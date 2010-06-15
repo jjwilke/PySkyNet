@@ -238,6 +238,10 @@ class CPC(SDJournal):
     name = "Computer Physics Communications"
     baseurl = "http://www.sciencedirect.com/science/journal/00104655"
 
+class JMB(SDJournal):
+    name = "Journal of Molecular Biology"
+    baseurl = "http://www.sciencedirect.com/science/journal/00222836"
+
 if __name__ == "__main__":
     pass
 """

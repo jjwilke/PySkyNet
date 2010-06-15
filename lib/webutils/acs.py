@@ -4,6 +4,66 @@ from htmlexceptions import HTMLException
 from selenium import selenium
 import sys
 import os.path
+import re
+
+def parse_reference(text):
+    repls = {
+        ".," : ".",
+        " and" :  ", ",
+        ".-" : ". ",
+    }
+
+    for entry in repls:
+        text = text.replace(entry, repls[entry])
+
+    match = re.compile("^(.*?)\n\s*[\(]\d+[\)]", re.DOTALL).search(text)
+    if match:
+        text = match.groups()[0]
+
+    from webutils.pdfglobals import PDFGetGlobals as pdfglobals
+    journal = pdfglobals.find_journal_in_entry(text)
+    if not journal:
+        sys.stderr.write("Could not find properly formatted journal\n")
+        return None 
+
+    match = re.compile("^.*?(\d{4}[,]\s*\d+[,]\s*\d+[.]?)", re.DOTALL).search(text) #for some reason spaces are not matching here
+    if not match:
+        sys.stderr.write("Could not find properly formatted volume, page, year\n")
+        return None
+
+    numbers = match.groups()[0]
+    match = re.compile("(\d{4})[,].*?(\d+)[,].*?(\d+)", re.DOTALL).search(numbers)
+    if not match:
+        sys.stderr.write("Could not find properly formatted volume, page, year\n")
+        return None
+    year, volume, page = match.groups()
+
+
+    #throw out the journal
+    new_text = text.replace(journal, "").replace(numbers, "")
+    print new_text
+
+    #get the authors
+    matches = new_text.split(";")
+    if not matches:
+        sys.stderr.write("Could not find properly formatted authors\n")
+        return None
+
+    authors = []
+    for author in matches:
+        lastname, initials = author.split(",")
+        initials = map(lambda x: x.strip().strip("."), initials)
+        initials = "".join(initials)
+        authors.append("%s, %s" % (lastname, initials))
+
+    vals = {}
+    vals["volume"] = int(volume)
+    vals["page"] = Page(page)
+    vals["year"] = int(year)
+    vals["authors"] = authors
+    vals["journal"] = journal
+
+    return vals
 
 class ACSQuery:
     

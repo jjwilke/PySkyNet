@@ -449,11 +449,14 @@ class Archive:
         pdfs = [elem for elem in os.listdir(folder) if elem.endswith("pdf")]
         return pdfs
 
-    def has(self, article):
+    def find_match(self, article):
         for test in self.articles:
             if article == test:
-                return True
-        return False
+                return test
+        return None
+
+    def has(self, article):
+        return bool(self.find_match(article))
 
     def add(self, article):
         self.add_article(article)

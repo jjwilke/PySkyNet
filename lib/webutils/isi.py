@@ -67,11 +67,14 @@ class ISIArticle:
 
     journal_map = {
         "angewandte chemie-international edition" : "ange",
+        "angewandte chemie-international edition in english" : "ange",
         "chemical physics" : "chemphys",
         "physics reports" : "physrep",
         "physics reports-review section of physics letters" : "physrep",
         "molecular physics" : "molphys",
         "journal of computational physics" : "jcompphys",
+        "science" : "science",
+        "nature" : "nature",
     }
 
     def get_journal(cls, journal):
@@ -218,14 +221,15 @@ class WOKArticle(WOKObject):
         page = self.article.get_page()
         name = "%s %d %s" % (self.article.get_abbrev(), volume, page)
 
-        if self.archive.has(self.article):
+        local_match = self.archive.find_match(self.article)
+        if local_match:
             print "Already have article %s in local archive" % name
-            return
+            self.article = local_match
         elif self.master.has(self.article):
             print "Already have article %s in master archive" % name
             return
-
-        self.archive.add(self.article)
+        else:
+            self.archive.add(self.article)
 
         from webutils.pdfget import download_pdf
 

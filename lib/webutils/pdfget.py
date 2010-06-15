@@ -322,6 +322,10 @@ class Journal:
         if not hasattr(self, attr):
             raise HTMLException("Class %s does not have attribue %s" % (self.__class__, attr))
 
+    def url(self, volume, issue, page):
+        self.validate()
+        return None, None
+
 
 def profile_journal(journal, volume = None):
     from pdfglobals import PDFGetGlobals

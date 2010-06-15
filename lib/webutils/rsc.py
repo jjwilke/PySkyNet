@@ -115,3 +115,11 @@ class PCCP(RSCJournal):
     year1 = 1999
     template = "http://www.rsc.org/Publishing/Journals/CP/article.asp?Journal=CP5&VolumeYear=%d%d&Volume=%d&JournalCode=CP&MasterJournalCode=CP&SubYear=%d&type=Issue&Issue=%d&x=11&y=14"
 
+
+class CSR(RSCJournal):
+
+    name = "Chemical Society Reviews"
+    dropdown = "Chem. Soc. Reviews + Royal Institute of Chemistry Reviews"
+    year1 = 1972
+    template = "http://www.rsc.org/publishing/journals/cs/article.asp?Journal=CS6&VolumeYear=%d%d&Volume=%d&JournalCode=CS&MasterJournalCode=CS&SubYear=%d&type=Issue&Issue=&x=13&y=9"
+
