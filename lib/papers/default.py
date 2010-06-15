@@ -1,3 +1,3 @@
-from pdfget import Journal
+from papers.pdfget import Journal
 
 

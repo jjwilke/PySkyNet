@@ -1,8 +1,11 @@
-from htmlparser import HTMLParser
+from webutils.htmlparser import HTMLParser, save_url
+from webutils.htmlexceptions import HTMLException
 from urllib2 import HTTPError
 from utils.RM import traceback
-from htmlexceptions import HTMLException
+from utils.RM import load, save
+
 import sys
+import os.path
 import re
 
 class URLNotPDFError(Exception):
@@ -236,8 +239,7 @@ class Volume:
 class Journal:
     
     def pickle_path(self):
-        import webutils.pdfget
-        import os.path
+        import papers.pdfget
         module_file = webutils.pdfget.__file__
         folder = os.path.split(module_file)[0]
         name = ".%s.profile" % self.name.replace("-","_").replace(" ","")
@@ -278,8 +280,6 @@ class Journal:
 
                 
     def profile(self, num = None):
-        import os.path
-        from utils.RM import load, save
         volumes = load(self.pickle_path())
         if not volumes:
             volumes = {}
@@ -326,7 +326,6 @@ class Journal:
         self.validate()
         return None, None
 
-
 def profile_journal(journal, volume = None):
     from pdfglobals import PDFGetGlobals
     jobj = PDFGetGlobals.journals[journal]()
@@ -357,7 +356,6 @@ def download_pdf(journal, volume = 0, issue = 0, page = Page("0")):
         name = "%s %d %d %s" % (journal, volume, issue, page)
         filename = "%s.pdf" % name
 
-        from webutils.htmlparser import save_url
         save_url(url, filename)
         text = open(filename).read()
         if not text[:4] == "%PDF":
@@ -376,6 +374,6 @@ def download_pdf(journal, volume = 0, issue = 0, page = Page("0")):
 
 
 if __name__ == "__main__":
-    from pdfglobals import run_testsuite
+    from papers.pdfglobals import run_testsuite
     run_testsuite()
 

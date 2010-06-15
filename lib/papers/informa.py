@@ -1,6 +1,6 @@
-from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlparser import URLLister
-from htmlexceptions import HTMLException
+from papers.pdfget import ArticleParser, PDFArticle, Journal, Page
+from webutils.htmlparser import URLLister
+from webutils.htmlexceptions import HTMLException
 
 import sys
 import re

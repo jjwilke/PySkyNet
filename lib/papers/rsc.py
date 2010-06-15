@@ -1,6 +1,6 @@
-from htmlparser import URLLister
-from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlexceptions import HTMLException
+from papers.pdfget import ArticleParser, PDFArticle, Journal, Page
+from webutils.htmlexceptions import HTMLException
+from webutils.htmlparser import URLLister, fetch_url
 
 from selenium import selenium
 
@@ -75,7 +75,6 @@ class RSCJournal(Journal):
         year = self.year1 + volume - 1
         mainurl = self.template % (year, volume, volume, year, issue)
 
-        from webutils.htmlparser import fetch_url
         response = fetch_url(mainurl)
         if not response:
             return []

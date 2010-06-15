@@ -1,9 +1,13 @@
-from xml.dom.minidom import parse, Document
+
 import shutil
 import os.path
 import os
 import sys
-from webutils.pdfget import Page
+import codecs
+import re
+
+from xml.dom.minidom import parse, Document
+from papers.pdfget import Page
 from xml.parsers.expat import ExpatError
 from utils.RM import clean_line, capitalize_word
 
@@ -434,11 +438,9 @@ class Archive:
 
     def add_pdf(self, path):
         dst = os.path.join(self.folder, "Contents", "Resources")
-        import shutil
         shutil.copy(path, dst)
 
     def commit(self):
-        import codecs
         path = os.path.join(self.folder, "Contents", "Info.xml")
         fileobj = codecs.open(path, "w", "utf-8")
         fileobj.write(self.toxml())

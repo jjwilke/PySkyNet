@@ -1,9 +1,11 @@
-from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlexceptions import HTMLException
+from papers.pdfget import ArticleParser, PDFArticle, Journal, Page
+from webutils.htmlexceptions import HTMLException
+from webutils.htmlparser import URLLister, fetch_url
 
 from selenium import selenium
 
 import sys
+import re
 
 
 class JstorQuery:
@@ -33,10 +35,6 @@ class JstorQuery:
 class JstorJournal(Journal):
 
     def url(self, volume, issue, page):
-
-        from htmlparser import URLLister, fetch_url
-        import re
-
         query = JstorQuery()
         query.run(self.name, volume, page)
         url_list = URLLister()

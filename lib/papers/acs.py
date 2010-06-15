@@ -1,7 +1,10 @@
-from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlparser import URLLister
-from htmlexceptions import HTMLException
+from papers.pdfget import ArticleParser, PDFArticle, Journal, Page
+from webutils.htmlparser import URLLister
+from webutils.htmlexceptions import HTMLException
+from webutils.htmlparser import fetch_url
 from selenium import selenium
+from papers.pdfglobals import PDFGetGlobals as pdfglobals
+
 import sys
 import os.path
 import re
@@ -20,7 +23,6 @@ def parse_reference(text):
     if match:
         text = match.groups()[0]
 
-    from webutils.pdfglobals import PDFGetGlobals as pdfglobals
     journal = pdfglobals.find_journal_in_entry(text)
     if not journal:
         sys.stderr.write("Could not find properly formatted journal\n")
@@ -118,7 +120,6 @@ class ACSParser(ArticleParser):
         if self.text_frame == "pages": #nuke the frame
             self.text_frame = None
             pages = self.get_text()
-            import re
             matches = map(int, re.compile("\d+").findall(pages))
             start_page = end_page = 0
             if len(matches) == 1:
@@ -163,8 +164,6 @@ class ACSParser(ArticleParser):
 class ACSJournal(Journal):
 
     def get_issue(self, volume, page):
-        from htmlparser import fetch_url
-        import re
         mainurl = "http://pubs.acs.org/loi/%s/%d" % (self.id, volume)
         response = fetch_url(mainurl)
         url_list = URLLister()
@@ -207,7 +206,6 @@ class ACSJournal(Journal):
         else:
             mainurl = "http://pubs.acs.org/toc/%s/%d/%d" % (self.id, volume, issue)
 
-            from htmlparser import fetch_url
             response = fetch_url(mainurl)
             parser = ACSParser()
             parser.feed(response)

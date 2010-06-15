@@ -132,7 +132,7 @@ class PDFGetGlobals:
     find_journal_in_entry = classmethod(find_journal_in_entry)
 
 def run_testsuite():
-    from pdfget import download_pdf, Page
+    from papers.pdfget import download_pdf, Page
     #run the testsuite
     download_pdf("jpb", volume=32,issue=13,page=Page("R103"))
     download_pdf("jacs", volume=119,issue=38,page=Page("8925"))

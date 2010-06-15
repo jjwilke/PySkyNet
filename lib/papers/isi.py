@@ -1,9 +1,10 @@
-from pdfget import ArticleParser, PDFArticle, Page
+from papers.pdfget import ArticleParser, PDFArticle, Page, download_pdf
 from papers.index import Library
 from papers.archive import Archive, MasterArchive
-from htmlexceptions import HTMLException
 from utils.RM import save, load, clean_line, capitalize_word, traceback
+from webutils.htmlexceptions import HTMLException
 from webutils.htmlparser import URLLister
+
 import sys
 import re
 import os.path
@@ -137,7 +138,6 @@ class ISIParser(ArticleParser):
 
     def _end_citedRef(self):
         citation = " ".join(self.citation) ; self.citation = []
-        import re
         regexp = "([A-Z \-]+)(\d+)\s[:]\s(\d+)\s(\d+)"
 
         #delete the DOI part
@@ -243,7 +243,6 @@ class WOKArticle(WOKObject):
         else:
             self.archive.add(self.article)
 
-        from webutils.pdfget import download_pdf
 
         print "Processed %s" % name
         path = find_in_folder(journal, volume, page)

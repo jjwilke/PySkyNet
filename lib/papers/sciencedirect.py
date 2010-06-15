@@ -1,7 +1,9 @@
-from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlexceptions import HTMLException
+from papers.pdfget import ArticleParser, PDFArticle, Journal, Page
+from webutils.htmlexceptions import HTMLException
+from webutils.htmlparser import URLLister, fetch_url
 
 import sys
+import re
 
 class SDArticle(PDFArticle):
     pass
@@ -22,7 +24,6 @@ class SDParser(ArticleParser):
             self.append_text(text)
 
     def td_text(self, text):
-        import re
         text = text.strip()
         match1 = re.compile("\d+[.]").search(text)
         match2 = ("articles" in text) #second boolean check
@@ -99,8 +100,6 @@ class SDJournal(Journal):
         
         self.validate("baseurl")
 
-        from htmlparser import URLLister, fetch_url
-        import re
         
         response = fetch_url(self.baseurl)
         url_list = URLLister()

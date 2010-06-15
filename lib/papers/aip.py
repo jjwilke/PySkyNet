@@ -1,6 +1,7 @@
-from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlparser import URLLister
-from htmlexceptions import HTMLException
+from papers.pdfget import ArticleParser, PDFArticle, Journal, Page
+from webutils.htmlparser import URLLister
+from webutils.htmlexceptions import HTMLException
+from webutils.htmlparser import fetch_url
 
 import sys
 import re
@@ -76,7 +77,6 @@ class AIPParser(ArticleParser):
     def _end_dbtcitation(self):
         self.text_frame = None
         citation = self.get_text()
-        import re
         matches = re.compile("\d+").findall(citation)
         volume, page, year = matches[:3]
 
@@ -100,7 +100,6 @@ class AIPJournal(Journal):
     def get_articles(self, volume, issue):
         mainurl = "%s/v%d/i%d" % (self.baseurl, volume, issue)
 
-        from htmlparser import fetch_url
         response = fetch_url(mainurl)
         if not response:
             return []

@@ -1,7 +1,9 @@
-from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlexceptions import HTMLException
+from papers.pdfget import ArticleParser, PDFArticle, Journal, Page
+from webutils.htmlexceptions import HTMLException
+from webutils.htmlparser import fetch_url
 
 import sys
+import re
 
 class WileyArticle(PDFArticle):
     pass
@@ -50,7 +52,6 @@ class WileyParser(ArticleParser):
             self.href = self.get_href(attrs)
 
             #parse for the page number
-            import re
             text = self.get_text()
             start, end = map(Page, re.compile("Pages[:]\s*(\d+)[-](\d+)").search(text).groups())
             self.article.set_pages(start, end)
@@ -98,7 +99,6 @@ class WileyJournal(Journal):
         cgi = "&volume=%d&issue=&pages=%s" % (volume, page)
         mainurl = self.baseurl + cgi
 
-        from htmlparser import fetch_url
         response = fetch_url(mainurl)
 
         parser = WileyParser()

@@ -1,5 +1,6 @@
-from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlexceptions import HTMLException
+from papers.pdfget import ArticleParser, PDFArticle, Journal, Page
+from webutils.htmlexceptions import HTMLException
+from webutils.htmlparser import fetch_url
 
 import sys
 import re
@@ -96,7 +97,6 @@ class APSParser(ArticleParser):
             self.text_frame = "pages"
             self.a_frame = "pages"
         elif self.text_frame == "pages":
-            import re
             text = self.get_text()
             match = re.compile("(\d+.*)PDF", re.DOTALL).search(text)
             if not match: #just ignore this
@@ -140,7 +140,6 @@ class APSJournal(Journal):
     def get_articles(self, volume, issue):
         mainurl = "%s/toc/%s/v%d/i%d" % (self.baseurl, self.abbrev, volume, issue)
 
-        from htmlparser import fetch_url
         response = fetch_url(mainurl)
         if not response:
             return []
@@ -151,14 +150,12 @@ class APSJournal(Journal):
         return parser
 
     def url(self, volume, issue, page):
-        from webutils.htmlparser import fetch_url 
 
         self.validate("baseurl", "abbrev", "volstart", "doi")
 
         if volume >= self.volstart: #get the issue from the page number
             issue = page.get_issue()
         else:
-            import re
             url = "%s.%d.%s" % (self.doi, volume, page)
             text = fetch_url(url)
             regexp = "/toc/%s/v%d/i(\d+)" % (self.abbrev, volume)
