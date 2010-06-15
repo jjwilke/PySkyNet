@@ -1,4 +1,7 @@
 import vim
+import sys
+import os.path
+import os
 
 
 class PyVimGlobals:
@@ -13,8 +16,6 @@ def disconnectErr():
     if PyVimGlobals.stderr: #already disconnected
         return
 
-    import sys
-    import os.path, os
     home = os.environ["HOME"]
     errorfile = os.path.join(home, ".vimerr")
     fileobj = open(errorfile, "a+")
@@ -25,7 +26,6 @@ def reconnectErr():
     if not PyVimGlobals.stderr: #already connected
         return
 
-    import sys
     fileobj = sys.stderr
     sys.stderr = PyVimGlobals.stderr
     #fileobj.close()
@@ -35,8 +35,6 @@ def disconnectOut():
     if PyVimGlobals.stdout: #already disconnected
         return
 
-    import sys
-    import os.path, os
     home = os.environ["HOME"]
     errorfile = os.path.join(home, ".vimout")
     fileobj = open(errorfile, "a+")
@@ -47,7 +45,6 @@ def reconnectOut():
     if not PyVimGlobals.stdout: #already connected
         return
 
-    import sys
     fileobj = sys.stderr
     sys.stdout = PyVimGlobals.stdout
     #fileobj.close()
@@ -55,7 +52,6 @@ def reconnectOut():
 
 
 def display(msg):
-    import sys, os
     home = os.environ["HOME"]
     file = home + "/vim.out"
     fileobj = open(file, "w")
@@ -77,12 +73,12 @@ def display(msg):
     gtk.main()
 
 def openReference():
-    import PyTex
+    from pylatex.pytex import loadCitation
     #disconnect stderr and out
     #disconnectErr()
     #disconnectOut()
     cword = getCurrentWord()
-    PyTex.loadCitation(cword)
+    loadCitation(cword)
     #reconnectErr()
     #reconnectOut()
     
@@ -188,9 +184,9 @@ def initParse():
 
     #display(filename)
 
-    import PyTex
+    import pylatex.pytex
     method_map = {
-        "tex": PyTex.init,
+        "tex": pylatex.pytex.init,
     }
     
     import os.path

@@ -2,7 +2,8 @@ class SocketOpenError(Exception): pass
 class SocketConfirmError(Exception): pass
 
 class Communicator(object):
-    import os, os.path
+    import os
+    import os.path
 
     ONE_KB = 1024
     STRIDE = ONE_KB

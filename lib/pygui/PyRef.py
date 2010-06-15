@@ -1,6 +1,8 @@
 import pygtk
 import gtk
-from PyBib import *
+import sys
+
+from pylatex.pybib import *
 
 def eighty_ify(text):
     entries = text.split()
@@ -103,7 +105,6 @@ class PyGtkTable:
             value = entry.getAttribute(name, simple=True) #get simple entry, not fancy unicode ones
             cell.set_property('text', value)
         except Exception, error:
-            import sys
             #sys.stderr.write("%s\n" % error)
             cell.set_property('text', '') #blank
 
@@ -213,9 +214,9 @@ class PyRefTable:
 
 
 if __name__ == "__main__":
-    import PySave, os.path
+    import pysave, os.path
     file = os.path.join(os.path.expanduser("~"), "Documents", "pybib", "allrefs.pickle")
-    bib = PySave.load(file)
+    bib = pysave.load(file)
     if not bib:
         sys.exit("Invalid bibliography %s" % file)
     table = PyRefTable(bib, None, "journal", "year", "volume", "pages", "authors", "title")

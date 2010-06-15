@@ -1,5 +1,8 @@
 from xml.dom import minidom
-import codecs, sys, os.path, re
+import codecs
+import sys
+import os.path
+import re
 
 def lower_case_xml_node(node, newnode, depth):
     for child in node.childNodes:
@@ -934,7 +937,7 @@ class Bibliography:
         return self.records[key]
 
     def __str__(self):
-        from PyVim import display
+        from pyvim.pyvim import display
         str_arr = []
         n = 1
         for label in self.records:
@@ -1168,7 +1171,6 @@ class Bibliography:
 
 if __name__ == "__main__":
     bib = Bibliography()
-    import sys
     bib.buildRecords(sys.argv[1], check=True)
 
 

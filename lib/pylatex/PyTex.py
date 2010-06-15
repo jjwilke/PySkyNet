@@ -1,3 +1,7 @@
+from pylatex.pybib import Bibliography
+from skynet.pysock import Communicator
+import os.path
+import os
 
 class PyTexGlobals:
     pass
@@ -19,11 +23,12 @@ class CiteManager:
     REF_LISTEN_PORT = 21567
 
     def __init__(self):
-        import PySave, os.path, PyRef
         import pygtk
         import gtk
-        import PyBib
-        import PyGui
+        import pybib
+        import pygui
+        import pyref
+        import pysave
 
         self.bib = PyBib.Bibliography()
         self.table = PyRef.PyRefTable(self.bib, self.bib.labels(), "label", "journal", "year", "volume", "pages", "authors", "title")
@@ -99,11 +104,11 @@ class CiteManager:
                         self.tables.append(filter)
                         return
             else: #does not exist, make a new one
-                import PyBib
+                from pylatex.pybib import BadMatchAttribute
                 newtable = None
                 try:
                     newtable =  self.table.filter(filterstr)
-                except PyBib.BadMatchAttribute, error:
+                except BadMatchAttribute, error:
                     #print error
                     #build blank table
                     newtable = self.table.subset([]) #build null table
@@ -115,7 +120,6 @@ class CiteManager:
                 return
 
     def updateBib(self, files):
-        import PyBib, os.path
         if isinstance(files, basestring): #single file
             files = [files]
 
@@ -128,14 +132,12 @@ class CiteManager:
         pass
 
     def update(self, widget, data=None):
-        import PyGui
-        import os
+        from pygui.pygui import FileSelect
         home = os.environ["HOME"]
-        filesel = PyGui.FileSelect(home, self.updateBib)
+        filesel = FileSelect(home, self.updateBib)
 
     def load(self, widget, data=None):
-        import PyGui
-        import os
+        from pygui.pygui import FileSelect
         home = os.environ["HOME"]
         filesel = PyGui.FileSelect(home, self.loadBib)
 
@@ -145,8 +147,7 @@ class CiteManager:
 
     def insert_refs(self, widget, data=None):
         refs = self.table.getSelected()
-        import PySock
-        comm = PySock.Communicator(self.REF_LISTEN_PORT)
+        comm = Communicator(self.REF_LISTEN_PORT)
         nfailed = 0
         sent = False
         try:
@@ -159,7 +160,7 @@ class CiteManager:
 def walkForBibs(path, check=False, fields=[]):
 
     def checkFolder(args, dirname, files):
-        import glob, os, os.path
+        import glob
         topdir = os.getcwd()
         os.chdir(dirname)
         allbib = args
@@ -168,14 +169,13 @@ def walkForBibs(path, check=False, fields=[]):
             allbib.buildRecords(file, check, fields)
         os.chdir(topdir)
 
-    import os.path, PyBib
     if os.path.isfile(path):
-        bib = PyBib.Bibliography()
+        bib = Bibliography()
         bib.buildRecords(path, check, fields)
         return bib
 
     #folder, do the walk
-    allbib = PyBib.Bibliography()
+    allbib = Bibliography()
     os.path.walk(path, checkFolder, allbib)
 
 
@@ -184,11 +184,10 @@ def walkForBibs(path, check=False, fields=[]):
 def openBibFile(file):
     bibobj = None
     if file.endswith("xml"):
-        import PyBib
-        bibobj = PyBib.Bibliography()
+        bibobj = Bibliography()
         bibobj.buildRecords(file)
     else:
-        import PySave
+        from skynet.pysave import load, save
         try:
             bibobj = PySave.load(file)
         except Exception, error:
@@ -200,7 +199,6 @@ def loadBibliography(bibpaths):
     if isinstance(bibpaths, basestring):
         bibpaths = [bibpaths]
     
-    import os.path
     bibobj = None
     for bibpath in bibpaths:
         newbib = None
@@ -217,7 +215,6 @@ def loadBibliography(bibpaths):
     return bibobj
 
 def setBibliography(bibpath):
-    import PyVim
     bibobj = loadBibliography(bibpath)
     if not bibobj:
         return #nothing to do
@@ -241,10 +238,9 @@ class CiteThread(threading.Thread):
 
     def __init__(self, citation):
         
-        import PySock
         self.citation = citation
         self.stopthread = threading.Event()
-        self.server = PySock.Communicator(CiteManager.REF_LISTEN_PORT)
+        self.server = Communicator(CiteManager.REF_LISTEN_PORT)
         self.server.bind()
 
         threading.Thread.__init__(self)
@@ -263,9 +259,8 @@ class CiteThread(threading.Thread):
         self.server.close()
 
     def stop(self):
-        import PySock
         self.stopthread.set()
-        comm = PySock.Communicator(CiteManager.REF_LISTEN_PORT)
+        comm = Communicator(CiteManager.REF_LISTEN_PORT)
         comm.sendObject([]) #send blank array to bring down thread
 
 class Citation:
@@ -372,17 +367,16 @@ def loadCitation(cword):
     newtext = ''
     if labels:
         newtext = "~\cite{%s}" % ",".join(labels)
-    import PyVim
-    PyVim.replace(cword, newtext)
+
+    import pyvim.pyvim
+    pyvim.pyvim.replace(cword, newtext)
 
 def makeBib(params):
-    import sys
     if len(params) != 2:
         sys.exit("Please specify the tex file and bibfile")
 
     texfile = params[0]
     if texfile.endswith(".tex"): texfile = texfile[:-4]
-    import os.path
     auxfile = texfile + ".aux"
     if not os.path.isfile(auxfile):
         sys.exit("%s is not a valid tex root name" % texfile)
@@ -398,16 +392,15 @@ def makeBib(params):
     bib.write()
 
 def insertAlign():
-    import PyVim
-    PyVim.insertLine(r"\end{align}")
-    PyVim.insertLine(r"\begin{align}")
+    from pyvim.pyvim import insertLine
+    insertLine(r"\end{align}")
+    insertLine(r"\begin{align}")
 
 def insertEquation():
-    import PyVim
-    PyVim.insertLine(r"\end{equation}")
-    PyVim.insertLine(r"\begin{equation}")
+    from pyvim.pyvim import insertLine
+    insertLine(r"\end{equation}")
+    insertLine(r"\begin{equation}")
 
 if __name__ == "__main__":
-    import os
     startLatex(os.getcwd())
     #loadCitation("\cite{Knizia:hw2008}")
