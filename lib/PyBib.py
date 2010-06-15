@@ -4,11 +4,11 @@ import codecs, sys, os.path, re
 def lower_case_xml_node(node, newnode, depth):
     for child in node.childNodes:
         if child.nodeType == node.TEXT_NODE:
-            newchild = node.ownerDocument.createTextNode(child.nodeName.lower())
+            newchild = newnode.ownerDocument.createTextNode(child.nodeName.lower())
             newchild.nodeValue = child.nodeValue
             newnode.appendChild(newchild)
         else:
-            newchild = node.ownerDocument.createElement(child.nodeName.lower())
+            newchild = newnode.ownerDocument.createElement(child.nodeName.lower())
             newnode.appendChild(newchild)
             lower_case_xml_node(child, newchild, depth + 1)
 
@@ -16,8 +16,12 @@ def lower_case_xml(xmldoc):
     newdoc = minidom.Document()
     for child in xmldoc.childNodes:
         newchild = newdoc.createElement(child.nodeName.lower())
-        newdoc.appendChild(newchild)
-        lower_case_xml_node(child, newchild, 0)
+        try:
+            newdoc.appendChild(newchild)
+            lower_case_xml_node(child, newchild, 0)
+        except Exception, error:
+            sys.stderr.write("%s\n" % child.nodeName)
+            raise error
 
     return newdoc
 
@@ -95,7 +99,7 @@ class MatchRequest:
         'keywords',
     ]
 
-    regexp = "([a-zA-Z0-9]+)[=]([a-zA-Z0-9]+)"
+    regexp = "([a-zA-Z0-9]+)[=]([a-zA-Z0-9][a-zA-Z0-9 ]*)"
 
     def findEntry(self, subexpr):
         for entry in self.attrs:
@@ -115,8 +119,12 @@ class MatchRequest:
     def __init__(self, initstring):
         self.matches = {}
 
-        entries = re.compile(self.regexp).findall(initstring)
+        entries = map(lambda x: x.split("="), initstring.split(","))
+
+        #entries = re.compile(self.regexp).findall(initstring)
         for name, value in entries:
+            name = name.strip().lower()
+            value = value.strip().lower()
             fullname = self.findEntry(name)
             if not self.matches.has_key(fullname):
                 self.matches[fullname] = []
@@ -496,6 +504,8 @@ class XMLRequest:
                 data = self.getAttributesFromNodes(nodes, self.attrname)[0] 
             else:
                 data = self.getDataFromNodes(nodes)[0]
+        except MissingDataError:
+            raise XMLRequestError("could not find data for %s" % self.topname)
         except IndexError:
             raise XMLRequestError("could not find data for %s" % self.topname)
 
@@ -535,6 +545,8 @@ class XMLRequest:
         data = []
         for entry in nodes:
             text = ""
+            if not entry.firstChild: #nothing here... hmmm
+                raise MissingDataError("No data")
             if entry.firstChild.firstChild:
                 text = entry.firstChild.firstChild.data
             else:
@@ -822,6 +834,7 @@ class Record(object):
         "9" : ComputerProgram,
         "27" : ComputerProgram,
         "6" : Book,
+        "5" : Book,
         "Computer Program" : ComputerProgram,
     }
     
@@ -995,7 +1008,10 @@ class Bibliography:
             return -1
 
         #lower case-ify the xml file
-        xmldoc = lower_case_xml(xmldoc)
+        try:
+            xmldoc = lower_case_xml(xmldoc)
+        except Exception, error:
+            sys.exit("%s\n%s bibfile failed" % (error, bibfile))
 
         xmlrecords = xmldoc.getElementsByTagName('record')
         for rec in xmlrecords:

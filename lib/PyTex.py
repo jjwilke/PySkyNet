@@ -63,7 +63,7 @@ class CiteManager:
 
     def filter(self, widget, data=None):
         text =  self.entry.get_text()
-        cmds = text.strip().split()
+        cmds = text.strip().split(",")
         filterstrs = []
         for cmd in cmds:
             splitcmd = cmd.split("=")
@@ -75,7 +75,7 @@ class CiteManager:
 
             filterstrs.append("%s=%s" % (attr, val))
 
-        filterstr = " ".join(filterstrs)
+        filterstr = ",".join(filterstrs)
         if filterstr == self.filterstr:
             return #nothing to do
         else:
@@ -163,7 +163,7 @@ def walkForBibs(path, check=False, fields=[]):
         topdir = os.getcwd()
         os.chdir(dirname)
         allbib = args
-        xmlfiles = [elem for elem in files if elem.endswith('xml')]
+        xmlfiles = [elem for elem in files if elem.endswith('.xml')]
         for file in xmlfiles:
             allbib.buildRecords(file, check, fields)
         os.chdir(topdir)
@@ -172,6 +172,7 @@ def walkForBibs(path, check=False, fields=[]):
     if os.path.isfile(path):
         bib = PyBib.Bibliography()
         bib.buildRecords(path, check, fields)
+        return bib
 
     #folder, do the walk
     allbib = PyBib.Bibliography()
@@ -216,9 +217,11 @@ def loadBibliography(bibpaths):
     return bibobj
 
 def setBibliography(bibpath):
+    import PyVim
     bibobj = loadBibliography(bibpath)
     if not bibobj:
         return #nothing to do
+
 
     if hasattr(PyTexGlobals, "bib"):
         oldbib = getattr(PyTexGlobals, "bib")
@@ -322,6 +325,7 @@ def init(flags):
         processInitFlag(flag)
 
 def loadCitation(cword):
+    import PyVim
     import re
     import pygtk
     import gtk
@@ -339,17 +343,17 @@ def loadCitation(cword):
             entries = []
     else: #no citation, but put one in
         import PyVim
-        PyVim.appendAtWord("~\cite{}")
+        PyVim.appendAtWord("~\cite{}", ",", ".")
         cword = "~\cite{}"
 
     #build the citation
     import os.path
-    #if not hasattr(PyTexGlobals, "bib"):
-    #    import PyGui
-    #    filesel = PyGui.FileSelect(os.path.join(os.path.expanduser("~"), "Documents"), setBibliography, main=True)
-    #    gtk.main()
-    #    
-    #bib = getattr(PyTexGlobals, "bib")
+    if not hasattr(PyTexGlobals, "bib"):
+        import PyGui
+        filesel = PyGui.FileSelect(os.path.join(os.path.expanduser("~"), "Documents"), setBibliography, main=True)
+        gtk.main()
+        
+    bib = getattr(PyTexGlobals, "bib")
     import PyBib
     bib = PyBib.Bibliography()
     title = "Reference at line %d" % PyVim.PyVimGlobals.line

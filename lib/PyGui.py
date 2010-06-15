@@ -15,7 +15,7 @@ class FileSelect:
             self.filesel.connect("destroy", gtk.main_quit)
 
         if default:
-            self.filesel.set_filename(default)
+            self.filesel.set_filename("")
 
         self.filesel.show()
 

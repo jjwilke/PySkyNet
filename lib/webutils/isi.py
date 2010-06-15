@@ -33,6 +33,7 @@ def readable(x):
 
 def process_authors(entries):
     authors = []
+    print "Processing authors", entries
     for last, first in entries:
         #check to see if we have stupidness
         first_first = first.split()[0]
@@ -53,12 +54,23 @@ def process_authors(entries):
 
     return authors
 
-def get_authors(x, inter_delim, intra_delim):
-    entries  = map(lambda y: y.strip().split(intra_delim), x.split(inter_delim))
-    return process_authors(entries)
-
 class ISIError(Exception):
     pass
+
+def get_authors(x, inter_delim, intra_delim):
+    try:
+        #first check to see if we have parentheses
+        regexp = "[\(].*?[\)]"
+        matches = re.compile(regexp, re.DOTALL).findall(x)
+        entries = []
+        if matches:
+            entries = map(lambda y: y.strip().split(","), matches)
+        else:
+            entries  = map(lambda y: y.strip().split(intra_delim), x.split(inter_delim))
+        return process_authors(entries)
+    except ValueError, error:
+        sys.stderr.write("%s\n%s not properly split by intra='%s' inter='%s'\n" % (error, x, intra_delim, inter_delim))
+        raise ISIError("Author list not formatted properly")
 
 class JournalNotFoundError(Exception):
     pass
@@ -305,7 +317,6 @@ class WOKSearch(WOKObject):
                 break
 
     def die(self, msg):
-        self.stop()
         WOKObject.die(self, msg)
 
     def open_article(self):

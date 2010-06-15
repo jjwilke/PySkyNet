@@ -31,7 +31,7 @@ def parse_reference(text):
         initials = "".join(entries[:-1])
         lastname = entries[-1]
         authors.append("%s, %s" % (lastname, initials))
-    
+
     match = re.compile("(\d+)[,].*?(\d+).*?(\d{4})", re.DOTALL).search(text)
     if not match:
         sys.stderr.write("Could not find properly formatted volume, page, year\n")

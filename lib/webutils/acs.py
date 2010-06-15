@@ -41,7 +41,9 @@ def parse_reference(text):
 
     #throw out the journal
     new_text = text.replace(journal, "").replace(numbers, "")
-    print new_text
+    match = re.compile("[\(]\d+[\)](.*)", re.DOTALL).search(new_text)
+    if match:
+        new_text = match.groups()[0]
 
     #get the authors
     matches = new_text.split(";")

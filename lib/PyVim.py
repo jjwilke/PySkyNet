@@ -86,7 +86,8 @@ def openReference():
     #reconnectErr()
     #reconnectOut()
     
-def appendAtWord(word):
+def appendAtWord(word, *xargs):
+    include = xargs
     resetXY()
     col = PyVimGlobals.col
     line = PyVimGlobals.line
@@ -94,7 +95,7 @@ def appendAtWord(word):
     if not cline: #no line yet
         col = 0
     else:
-        while col < len(cline) and not cline[col] in (' ', ',', '.', ':', ';'):
+        while col < len(cline) and (not cline[col] in (' ', ',', '.', ':', ';') or cline[col] in include):
             col += 1
     begin = cline[:col]
     end = cline[col:]
