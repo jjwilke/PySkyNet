@@ -176,14 +176,41 @@ class AuthorsFormat(EntryFormat):
     finaland = False
 
     simplify_map = {
-     r'\`{o}' : 'o',
-     r'\"{a}' : 'a',
-     r'\"{o}' : 'o',
-     r'\o' : 'o',
-     r'\"{u}' : 'u',
-     r'\v{S}' : 'S',
-     r'\v{z}' : 'z',
-     r'\v{c}' : 'c',
+     r'\`{o}':'o',
+     r'\"{a}':'a',
+     r'\"{o}':'o',
+     r'\"{u}':'u',
+     r'\v{S}':'S',
+     r'\v{z}':'z',
+     r'\v{c}':'c',
+     r'\{O}' :'O', 
+     r'\'{I}':'I',
+     r'\"{U}':'U',
+     r'\ss' :'ss', 
+     r'\`{a}':'a',
+     r'\`{e}':'e',
+     r'\`{i}':'i',
+     r'\`{o}':'o',
+     r'\"{a}':'a',
+     r'\"{o}':'o',
+     r'{\o}' :'o',
+     r'\"{u}':'u',
+     r'\`{o}':'o',
+     r'\'{d}':'d',
+     r'\'{c}':'c',
+     r'\v{C}':'C',
+     r'\v{c}':'c',
+     r'\u{i}':'i',
+     r'{\l}' :'l', 
+     r'\v{r}':'r',
+     r'\v{S}':'S',
+     r'\v{Z}':'Z',
+     r'\v{z}':'z',
+     r'\"{o}':'o',
+     r'\"{u}':'u',
+     r'\v{c}':'c',
+     r'\v{r}':'r',
+     r'\v{C}':'C',
     }
 
     def bibitem(self, authorList, simple=False):
@@ -234,11 +261,57 @@ EditorsFormat = AuthorsFormat
 
 
 class JournalFormat(EntryFormat): 
+
+    repl = {
+        'ser-a' : 'Ser A',
+    }
+    
+    abbrevs = [
+        'am',
+        'angew',
+        'appl',
+        'biomol',
+        'chem',
+        'commun',
+        'comput',
+        'curr',
+        'ed',
+        'int',
+        'j',
+        'lett',
+        'lon',
+        'math',
+        'opin',
+        'org',
+        'phys',
+        'proc',
+        'res',
+        'rev',
+        'r',
+        'ser',
+        'soc',
+    ]
+
+    def abbreviate(self, word):
+        check = word.strip(".").lower()
+        for abb in self.abbrevs:
+            regexp = "^%s$" % abb
+            match = re.compile(regexp, re.IGNORECASE).search(check)
+            if match:
+                word = abb + "."
+                break
+
+        word = word[0].upper() + word[1:].lower()
+        return word
     
     def bibitem(self, obj, simple=False):
-        #by default, bibitem simplify doesn't have to do anything
-        format = EntryFormat.bibitem(self, obj, simple)
-        return format
+        journal = obj.text().split()
+        title_arr = []
+        for word in journal:
+            title_arr.append(self.abbreviate(word))
+
+        text = LatexFormat.format(self.style, " ".join(title_arr))
+        return text
 
 class PagesFormat(EntryFormat):
     
@@ -246,9 +319,11 @@ class PagesFormat(EntryFormat):
 
     def bibitem(self, obj, simple=False):
         format = EntryFormat.bibitem(self, obj, simple)
-        if not self.lastpage: #grab first one
-            format = format.split('-')[0]
-        return format
+        entries = re.split("[-]+", format)
+        if self.lastpage and len(entries) > 1:
+            return "%s--%s" % (entries[0], entries[1])
+        else:
+            return entries[0]
         
 
 class YearFormat(EntryFormat): pass
@@ -260,6 +335,38 @@ class VersionFormat(EntryFormat): pass
 class PublisherFormat(EntryFormat): pass
 class CityFormat(EntryFormat): pass
 class EditionFormat(EntryFormat): pass
+
+class TitleFormat(EntryFormat):
+
+    molecules = [
+        'H2O',
+        'NH3',
+        'CH3',
+        'CH4',
+        'N2',
+        'SiH3',
+    ]
+
+    def bibitem(self, obj, simple=False):
+        title = EntryFormat.bibitem(self, obj, simple)
+
+        #corect molecule names
+        for entry in self.molecules:
+            match = re.compile(entry, re.IGNORECASE).search(title)
+            if not match:
+                continue
+
+            number = re.compile("\d+").findall(entry)
+            repl = entry
+            for num in number:
+                repl = repl.replace(num, "$_%s$" % num)
+
+                
+            text = match.group()
+            title = title.replace(text, repl)
+
+        return title
+
     
 class CiteKey: pass
 
@@ -327,12 +434,12 @@ class Author:
             for entry in firstnames:
                 entry = entry.replace(".","") #get rid of any periods. I'll put these in
                 #split on -
-                initial = "-".join(map(lambda x: "%s." % x[0], entry.split("-")))
+                initial = "-".join(map(lambda x: "%s." % self.get_initial(x), entry.split("-")))
                 str_arr.append(initial)
             self._initials = " ".join(str_arr)
 
             #fix capitalization
-            self.capitalize()
+            #self.capitalize()
 
             return
 
@@ -343,14 +450,20 @@ class Author:
             split = author.strip().split()
             self._lastname = split[-1]
             firstname = split[0]
-            initials = [firstname[0].upper()]
+            initials = [self.get_initial(firstname)]
             for entry in split[1:-1]:
-                initials.append(entry[0].upper())
+                initials.append(sefl.get_initial(entry))
             self._initials = ". ".join(initials) + '.'
             #fix capitalization
-            self.capitalize()
+            #self.capitalize()
         except IndexError:
             raise RecordEntryError("author", "%s is not a valid author entry" % author)
+
+    def get_initial(self, name):
+        if name[0] == "{":
+            return name[:4].upper()
+        else:
+            return name[0].upper()
 
 
     def capitalize(self):
@@ -392,6 +505,10 @@ class Author:
     def matches(self, match):
         simpleself = AuthorsFormat.simplify_entry(str(self))
         return Entry.raw_match(simpleself, match)
+
+    def bibtex(self):
+        firstname = self._initials.replace(".","")
+        return "%s %s" % (firstname, self._lastname)
 
     def lastname(self):
         return self._lastname
@@ -452,9 +569,10 @@ class XMLRequest:
 
     LOOKUP_TABLE = {
         u'\xb7' : r'$\cdot$',
-        u'\xd8' : r'\O',
+        u'\xd8' : r'{\O}',
         u'\xcd' : r'\'{I}',
         u'\xdc' : r'\"{U}',
+        u'\xd0' : 'D',
         u'\xdf' : r'\ss',
         u'\xe1' : r'\`{a}',
         u'\xe9' : r'\`{e}',
@@ -462,7 +580,7 @@ class XMLRequest:
         u'\xf3' : r'\`{o}',
         u'\xe4' : r'\"{a}',
         u'\xf6' : r'\"{o}',
-        u'\xf8' : r'\o ',
+        u'\xf8' : r'{\o}',
         u'\xfc' : r'\"{u}',
         u'\xf3' : r'\`{o}',
         u'\xfd' : r'\'{d}',
@@ -470,7 +588,8 @@ class XMLRequest:
         u'\u010c' : r'\v{C}',
         u'\u010d' : r'\v{c}',
         u'\u012d' :  r'\u{i}',
-        u'\u0142' :  r'\l',
+        u'\u0142' :  r'{\l}',
+        u'\u0159' : r'\v{r}',
         u'\u0160' : r'\v{S}',
         u'\u017d' : r'\v{Z}',
         u'\u017e' : r'\v{z}',
@@ -481,6 +600,7 @@ class XMLRequest:
         u'C\u030c' : r'\v{C}', #this is not right... not sure where it is coming from
         u'\u0338' : r'\\',
         u'\u0393' : r'$\Gamma$',
+        u'\u0396' : r'$\Zeta$',
         u'\u03b6' : r'$\zeta$',
         u'\u03c0' : r'$\pi$',
         u'\u03c9' : r'$\omega$',
@@ -587,6 +707,7 @@ class RecordObject:
     mandatoryfields = ['label']
     patchlist = {}
 
+
     def __str__(self):
         str_arr = ['Record:']
         for entry in self.entries:
@@ -610,6 +731,50 @@ class RecordObject:
             return ""
         else:
             return str(self.entries[attr])
+
+    def getBibtex_authors(self):
+        alist = self.entries["authors"] 
+        str_arr = []
+        for author in alist:
+            str_arr.append(author.bibtex())
+        return " and ".join(str_arr)
+
+    def getBibtexValue(self, attr):
+        return self.getAttribute(attr)
+
+    def getBibtexEntry(self):
+        #set the necessary formatting
+        for tag in self.bibtex:
+            set(tag, self.__class__) #no formatting
+        set("pages", self.__class__, lastpage = True)
+
+        str_arr = ["@%s{%s" % (self.bibtype, self.getBibkey())]
+        for attr in self.bibtex:
+            tag = self.bibtex[attr]
+            method = None
+            name = "getBibtex_%s" % attr
+            if hasattr(self, name):
+                method = getattr(self, name)
+            else:
+                method = lambda x=attr : self.getBibtexValue(x)
+            value = method()
+            str_arr.append("%s = {%s}" % (tag, value))
+        entry = ",\n".join(str_arr)
+        entry += "\n}" #append final
+        return entry
+
+    def getBibkey(self):
+        pages = self.getAttribute("pages")
+        year = self.getAttribute("year")
+        authors = self.getAttribute("authors")
+
+        firstpage = pages.split("-")[0].strip()
+        firstauthor = AuthorsFormat.simplify_entry(authors.split(",")[0].split(".")[-1].strip().replace(" ", "").replace("-",""))
+
+        citekey = "%s:%sp%s" % (firstauthor, year, firstpage)
+        return citekey
+
+
 
     def matches(self, matchreq):
         for attrname in matchreq:
@@ -735,6 +900,16 @@ class Book(RecordObject):
     patchlist = {
     }
 
+    bibtex = {
+        "title" : "title",
+        "year" : "year",
+        "authors" : "author",
+        "publisher" : "publisher",
+        "city" : "address",
+    }
+    bibtype = "book"
+
+
     CLASS_MAP = {
         'authors' : AuthorList,
         'title' : Title,
@@ -758,6 +933,10 @@ class Book(RecordObject):
                 self.entries[entry] = classinst
             except KeyError:
                 raise RecordClassError('%s does not have a class implemented' % entry)
+
+    def getBibkey(self):
+        return self.getAttribute("label")
+
 
 class JournalArticle(RecordObject):
 
@@ -793,6 +972,17 @@ class JournalArticle(RecordObject):
         'secondary_title' : 'journal',
         'accession_number' : 'label',
     }
+
+    #get attr key and write bibtex value
+    bibtex = {
+        "title" : "title",
+        "journal" : "journal",
+        "pages" : "pages",
+        "volume" : "volume",
+        "year" : "year",
+        "authors" : "author",
+    }
+    bibtype = "article"
 
     patchlist = {
         'journal' : ['full-title'],
@@ -937,7 +1127,6 @@ class Bibliography:
         return self.records[key]
 
     def __str__(self):
-        from pyvim.pyvim import display
         str_arr = []
         n = 1
         for label in self.records:

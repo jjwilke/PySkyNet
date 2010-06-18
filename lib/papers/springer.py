@@ -213,7 +213,7 @@ class TCA(SpringerJournal):
 if __name__ == "__main__":
 
     from webutils.htmlparser import fetch_url, URLLister
-    from utils.RM import save
+    from skynet.utils.RM import save
     import re
 
     regexp = "Volume\s(\d+)"

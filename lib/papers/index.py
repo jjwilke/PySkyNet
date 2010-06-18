@@ -2,7 +2,7 @@ import os.path
 import sys
 import os
 import re
-from utils.RM import save, load
+from syknet.utils.RM import save, load
 
 class Author:
     

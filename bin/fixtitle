@@ -4,6 +4,7 @@ import os
 import sys
 import shutil
 import commands
+import codecs
 import time
 
 from papers.utils import Cleanup as cleaner
@@ -12,20 +13,33 @@ from papers.utils import Cleanup as cleaner
 #get the input from the clipboard
 old_text = None
 while 1:
-    text = commands.getoutput("pbpaste")
-    if old_text == text:
-        time.sleep(1)
-        continue
+    try:
+        os.system("osascript -e 'the clipboard as unicode text' | tr '\r' '\n' > .stdout")
+        text = codecs.open(".stdout", "r", "utf-8").read()
+        if old_text == text:
+            time.sleep(0.05)
+            continue
 
-    #clean the title
-    clean_text = cleaer.clean_title(text)
-    #put the text on the clipboard
-    fileobj = open(".stdin", "w")
-    fileobj.write("does this work")
-    fileobj.close()
-    cmd = "pbcopy < .stdin"
-    os.system(cmd)
-    os.remove(".stdin")
+        old_text = text
+        print "Got new word", text
 
-    old_text = text
+        #clean the title
+        clean_text = cleaner.clean_title(text).strip("\n") #mac os always adds this... don't know why
+        print "Cleaned word", clean_text
+
+        cmd = u"osascript -e 'set the clipboard to \"%s\"'" % clean_text
+        script = u"#! /usr/bin/env tcsh\n\n%s\n" % cmd
+
+        #put the text on the clipboard
+        scriptname = ".tcshscript"
+        fileobj = codecs.open(scriptname, "w", "utf-8")
+        fileobj.write(script)
+        fileobj.close()
+
+        os.system("chmod +x %s" % scriptname)
+        os.system("./%s" % scriptname)
+        os.remove(scriptname)
+
+    except KeyboardInterrupt:
+        sys.exit()
 

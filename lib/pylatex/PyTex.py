@@ -27,11 +27,11 @@ class CiteManager:
         import gtk
         import pybib
         import pygui
-        import pyref
-        import pysave
+        from pybib import Bibliography
+        from pygui.pyref import PyRefTable
 
-        self.bib = PyBib.Bibliography()
-        self.table = PyRef.PyRefTable(self.bib, self.bib.labels(), "label", "journal", "year", "volume", "pages", "authors", "title")
+        self.bib = Bibliography()
+        self.table = PyRefTable(self.bib, self.bib.labels(), "label", "journal", "year", "volume", "pages", "authors", "title")
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.connect("destroy", self.close)
         self.window.set_title("References")
@@ -266,16 +266,33 @@ class CiteThread(threading.Thread):
 class Citation:
 
     def __init__(self, title, bib, entries):
-        import PyRef
+        from pygui.pyref import PyRefTable
         import pygtk
         import gtk
-        self.table = PyRef.PyRefTable(bib, entries, "journal", "year", "volume", "pages", "authors", "title")
+        self.table = PyRefTable(bib, entries, "journal", "year", "volume", "pages", "authors", "title")
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.set_title(title)
         self.vbox = gtk.VBox()
+
+        self.hbox = gtk.HBox()
         self.erase_button = gtk.Button("Delete selected")
         self.erase_button.connect("clicked", self.delete_refs)
-        self.vbox.pack_start(self.erase_button, False)
+
+        self.downarrow = gtk.Arrow(gtk.ARROW_DOWN, gtk.SHADOW_IN)
+        self.uparrow = gtk.Arrow(gtk.ARROW_UP, gtk.SHADOW_IN)
+        self.downbutton = gtk.Button()
+        self.downbutton.set_image(self.downarrow)
+        self.upbutton = gtk.Button()
+        self.upbutton.set_image(self.uparrow)
+
+        self.downbutton.connect("clicked", self.table.downRef)
+        self.upbutton.connect("clicked", self.table.upRef)
+
+        self.hbox.pack_start(self.erase_button, True)
+        self.hbox.pack_start(self.upbutton, False)
+        self.hbox.pack_start(self.downbutton, False)
+        self.vbox.pack_start(self.hbox, False)
+
         self.scrollwindow = gtk.ScrolledWindow()
         self.scrollwindow.add(self.table.getTree())
         self.vbox.pack_end(self.scrollwindow, True)
@@ -320,7 +337,7 @@ def init(flags):
         processInitFlag(flag)
 
 def loadCitation(cword):
-    import PyVim
+    import pyvim.pyvim as vim
     import re
     import pygtk
     import gtk
@@ -328,7 +345,7 @@ def loadCitation(cword):
     entries = []
     if "~" in cword:
         cword = "~" + cword.split("~")[-1]
-    import PyVim
+
     if '\cite{' in cword: #we are currently on a citation
         #get the entries within the citation
         innards = re.compile(r'cite[{](.*?)[}]').search(cword).groups()[0].strip()
@@ -337,20 +354,19 @@ def loadCitation(cword):
         else:
             entries = []
     else: #no citation, but put one in
-        import PyVim
-        PyVim.appendAtWord("~\cite{}", ",", ".")
+        vim.appendAtWord("~\cite{}", ",", ".")
         cword = "~\cite{}"
 
     #build the citation
     import os.path
     if not hasattr(PyTexGlobals, "bib"):
-        import PyGui
+        #import PyGui
         #filesel = PyGui.FileSelect(os.path.join(os.path.expanduser("~"), "Documents"), setBibliography, main=True)
         #gtk.main()
         setBibliography(os.path.join(os.path.expanduser("~"), "Documents", "Manuscripts", "Grants"))
         
     bib = getattr(PyTexGlobals, "bib")
-    title = "Reference at line %d" % PyVim.PyVimGlobals.line
+    title = "Reference at line %d" % vim.PyVimGlobals.line
     citeobj = Citation(title, bib, entries)
 
     gtk.gdk.threads_init()
@@ -368,8 +384,7 @@ def loadCitation(cword):
     if labels:
         newtext = "~\cite{%s}" % ",".join(labels)
 
-    import pyvim.pyvim
-    pyvim.pyvim.replace(cword, newtext)
+    vim.replace(cword, newtext)
 
 def makeBib(params):
     if len(params) != 2:

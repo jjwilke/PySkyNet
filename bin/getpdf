@@ -1,9 +1,8 @@
 #! /usr/bin/env python
 import sys
-from utils.getoptions import InputOption, OptionList, readOptions, OptionSet
-from utils.RM import load, save
-from webutils.pdfget import Page
-from papers.index import Library
+from skynet.utils.getoptions import InputOption, OptionList, readOptions, OptionSet
+from skynet.utils.RM import load, save
+from papers.pdfget import Page
 
 
 #set the allowed command line options and user messages
@@ -34,13 +33,7 @@ if __name__ == "__main__":
             download = False
 
     if download:
-        #check if duplicate
-        lib = Library()
-        for year in lib:
-            path = lib.find(year, options.volume, options.page)
-            if path:
-                sys.exit("Paper already downloaded %s" % path)
-        from webutils.pdfget import download_pdf
+        from papers.pdfget import download_pdf
         check = download_pdf(options.journal, options.volume, options.issue, page)
         if not check:
             sys.stderr.write("FAILED\n")

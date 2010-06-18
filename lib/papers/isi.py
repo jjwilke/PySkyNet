@@ -1,7 +1,7 @@
 from papers.pdfget import ArticleParser, PDFArticle, Page, download_pdf
 from papers.index import Library
 from papers.archive import Archive, MasterArchive
-from utils.RM import save, load, clean_line, capitalize_word, traceback
+from skynet.utils.RM import save, load, clean_line, capitalize_word, traceback
 from webutils.htmlexceptions import HTMLException
 from webutils.htmlparser import URLLister
 

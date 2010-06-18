@@ -118,6 +118,13 @@ class PyGtkTable:
             iter = model.get_iter(path)
             model.remove(iter)
 
+    def getEntries(self):
+        entries = []
+        for i in range(len(self.listmodel)):
+            iter = self.listmodel.get_iter_from_string("%d" % i)
+            entries.append(self.listmodel.get_value(iter, 0))
+        return entries
+
     def getSelected(self):
         model, pathlist = self.treeview.get_selection().get_selected_rows()
         vals = []
@@ -129,6 +136,37 @@ class PyGtkTable:
 
     def getTree(self):
         return self.treeview
+
+    def upSelected(self):
+        model, pathlist = self.treeview.get_selection().get_selected_rows()
+        if not len(pathlist) == 1:
+            return
+
+        path = pathlist[0]
+        num = int(re.compile("\d+").search(str(path)).group())
+        if num == 0:
+            return #cannot move it up
+
+        next = model.get_iter_from_string("%d" % (num - 1) )
+        selected = model.get_iter(path)
+
+        model.swap(next, selected)
+
+    def downSelected(self):
+        model, pathlist = self.treeview.get_selection().get_selected_rows()
+        if not len(pathlist) == 1:
+            return
+        
+        path = pathlist[0]
+        num = int(re.compile("\d+").search(str(path)).group())
+        if num == len(model) - 1:
+            return #cannot move it down 
+
+        next = model.get_iter_from_string("%d" % (num + 1) )
+        selected = model.get_iter(path)
+
+        model.swap(next, selected)
+        path = pathlist[0]
 
 class PyRefTable:
 
@@ -184,7 +222,15 @@ class PyRefTable:
 
         self.table.addEntries(entrylist)
 
+    def upRef(self, widget, data=None):
+        self.table.upSelected()
+
+    def downRef(self, wdiget, data=None):
+        self.table.downSelected()
+
     def getEntries(self):
+        return self.table.getEntries()
+
         entries = []
         for label in self.entries:
             try:

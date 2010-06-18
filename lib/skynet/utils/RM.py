@@ -1,6 +1,11 @@
 ## @package RM A module with a bunch of random methods for stuff
-import os, os.path, sys, commands, re
-import pickle, thread
+import os
+import os.path
+import sys
+import commands
+import re
+import pickle
+import thread
 from globalvals import *
 
 def capitalize_word(word):
