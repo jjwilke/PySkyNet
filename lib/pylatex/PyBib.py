@@ -345,10 +345,23 @@ class TitleFormat(EntryFormat):
         'CH4',
         'N2',
         'SiH3',
+        'NO3',
+        'H2',
+        'F2',
+        'C2H2',
+        'C2H4',
+        'C2H6',
     ]
 
     def bibitem(self, obj, simple=False):
         title = EntryFormat.bibitem(self, obj, simple)
+
+        def repl(match):
+            repl = match.group()
+            number = re.compile("\d+").findall(entry)
+            for num in number:
+                repl = repl.replace(num, "$_%s$" % num)
+            return repl
 
         #corect molecule names
         for entry in self.molecules:
@@ -356,14 +369,20 @@ class TitleFormat(EntryFormat):
             if not match:
                 continue
 
-            number = re.compile("\d+").findall(entry)
-            repl = entry
-            for num in number:
-                repl = repl.replace(num, "$_%s$" % num)
 
-                
-            text = match.group()
-            title = title.replace(text, repl)
+            print title
+            tag = "[\s.;,!?]"
+            for start_tag in tag, "^":
+                for end_tag in tag, "$":
+                    regexp = re.compile("%s%s%s" % (start_tag, entry, end_tag), re.IGNORECASE)
+                    match = re.compile(regexp, re.IGNORECASE).search(title)
+                    #regexp = re.compile("%s" % entry, re.IGNORECASE)
+                    title, n = re.subn(regexp, repl, title)
+            print title
+
+            #    
+            #text = match.group()
+            #title = title.replace(text, repl)
 
         return title
 
