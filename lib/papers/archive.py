@@ -1,4 +1,3 @@
-
 import shutil
 import os.path
 import os
@@ -9,7 +8,7 @@ import re
 from xml.dom.minidom import parse, Document
 from papers.pdfget import Page
 from xml.parsers.expat import ExpatError
-from utils.RM import clean_line, capitalize_word
+from skynet.utils.utils import clean_line, capitalize_word
 
 class Article:
 

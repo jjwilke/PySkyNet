@@ -1,6 +1,6 @@
 # @module Molecules Contains the atom and molecule objects along with miscellaneous methods for geometry manipulation and calculation
 
-from utils.RM import *
+from skynet.utils.utils import *
 import numpy, identity
 
 MOLECULE_ATTRIBUTES = {

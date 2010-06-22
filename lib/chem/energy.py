@@ -164,10 +164,10 @@ class EnergyPoint:
         self.molfile = molfile
 
     def getEnergy(self, title):
-        import RM
+        from skynet.utils.utils import getMolecule
         btext = open(self.bfile).read()
         etext = open(self.efile).read()
-        mol = RM.getMolecule(self.molfile)
+        mol = getMolecule(self.molfile)
         basis = self.getbasis(btext)
         e = self.gete(etext)
         energy = Energy(e, mol, type=self.type, basis=basis, title=title)
@@ -178,7 +178,8 @@ class EnergyPoint:
 
 
 def energyWalk(args, dirname, files):
-    import os, RM
+    import os
+    from skynet.utils.utils import traceback
     eset, objlist, topdir = args
     os.chdir(dirname)
     title = dirname[2:].split("/")[0]
@@ -189,5 +190,5 @@ def energyWalk(args, dirname, files):
                 print title, e
                 eset.add(e)
             except Exception, error:
-                print dirname, error, RM.traceback(error)
+                print dirname, error, traceback(error)
     os.chdir(topdir)

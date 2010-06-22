@@ -1,4 +1,4 @@
-from RM import *
+from utils import *
 from skynet.errors import *
 
 SCREEN_WIDTH = 80

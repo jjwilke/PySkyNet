@@ -1,4 +1,4 @@
-from skynet.utils.RM import capitalize_word
+from skynet.utils.utils import capitalize_word
 import re
 
 def find_pdf_in_folder(journal, volume, page, folder = "."):

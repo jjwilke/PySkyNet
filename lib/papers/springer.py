@@ -210,35 +210,3 @@ class TCA(SpringerJournal):
     baseurl = "http://www.springerlink.com/content/1432-881X"
     maxvolume = 126
 
-if __name__ == "__main__":
-
-    from webutils.htmlparser import fetch_url, URLLister
-    from skynet.utils.RM import save
-    import re
-
-    regexp = "Volume\s(\d+)"
-    for journal in TCA,:
-        links = {}
-        url = journal.baseurl
-        try:
-            while 1:
-                response = fetch_url(url)
-                vols = map(int, re.compile(regexp).findall(response))
-                vols.sort()
-                print url
-                print vols
-                links[url] = vols
-                url_list = URLLister()
-                url_list.feed(response)
-                url = "http://www.springerlink.com" + url_list["Next Page"]
-
-                for entry in url_list:
-                    if "Number" in entry:
-                        print entry, url_list.get_text(entry)
-
-        except KeyError, error:
-            print error
-
-        #figure out the filename
-        save(links, journal.pickle)
-    

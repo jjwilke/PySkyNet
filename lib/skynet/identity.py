@@ -1,7 +1,7 @@
 ## @module identity  Implements the identity class, from which all classes derive.  Identity allows classes to copy themselves. 
 ## Two interfaces are also implemented.  Runnable allows a class to run a series of methods in succession.  Savable allows a class to 
 ## save and load a state from a pickle on the hard drive.
-from utils.RM import * 
+from utils.utils import * 
 from errors import *
 from utils.linkedlist import LinkedList
 
@@ -25,7 +25,6 @@ class Savable(Identity):
     #  hashing routine, and the final filename is ".%s.pickle" % hash. 
     #  @return None
     def recover(self):
-        #call to the load function in the RM module
         savedState = load(self.id)
         for entry in savedState.__dict__:
             self.__dict__[entry] = savedState.__dict__[entry]

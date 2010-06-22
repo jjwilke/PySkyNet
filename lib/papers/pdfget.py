@@ -1,7 +1,7 @@
 from webutils.htmlparser import HTMLParser, save_url
 from webutils.htmlexceptions import HTMLException
 from urllib2 import HTTPError
-from skynet.utils.RM import traceback, load, save
+from skynet.utils.utils import traceback, load, save
 
 import sys
 import os.path

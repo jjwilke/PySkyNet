@@ -1,4 +1,4 @@
-## @package RM A module with a bunch of random methods for stuff
+## @package utils A module with a bunch of random methods for stuff
 import os
 import os.path
 import sys

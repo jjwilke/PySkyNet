@@ -1,6 +1,6 @@
 import re,sys,os,os.path 
 import identity
-from utils.RM import *
+from skynet.utils.utils import *
 
 ANGULAR_MOMENTUM_VALUES = {"S" : 0, "P" : 1, "D" : 2,
               "F" : 3, "G" : 4, "H" : 5,
