@@ -338,54 +338,41 @@ class EditionFormat(EntryFormat): pass
 
 class TitleFormat(EntryFormat):
 
-    molecules = [
-        'H2O',
-        'NH3',
-        'CH3',
-        'CH4',
-        'N2',
-        'SiH3',
-        'NO3',
-        'H2',
-        'F2',
-        'C2H2',
-        'C2H4',
-        'C2H6',
-    ]
 
     def bibitem(self, obj, simple=False):
+        from utils import make_numbers_subscript as nsub
+
         title = EntryFormat.bibitem(self, obj, simple)
 
-        def repl(match):
-            repl = match.group()
-            number = re.compile("\d+").findall(entry)
-            for num in number:
-                repl = repl.replace(num, "$_%s$" % num)
-            return repl
+        def process_word(word):
+            from papers.utils import Cleanup
+            for acr in Cleanup.acronyms:
+                match = re.compile("^%s[:.!?,]?$" % acr, re.IGNORECASE).search(word)
+                if match:
+                    return word
 
-        #corect molecule names
-        for entry in self.molecules:
-            match = re.compile(entry, re.IGNORECASE).search(title)
-            if not match:
-                continue
+            return Cleanup.texify_molecule(word)
 
+        def process_entry(entry):
+            entries = entry.split("-")
+            if len(entries) == 1:
+                return process_word(word)
 
-            print title
-            tag = "[\s.;,!?]"
-            for start_tag in tag, "^":
-                for end_tag in tag, "$":
-                    regexp = re.compile("%s%s%s" % (start_tag, entry, end_tag), re.IGNORECASE)
-                    match = re.compile(regexp, re.IGNORECASE).search(title)
-                    #regexp = re.compile("%s" % entry, re.IGNORECASE)
-                    title, n = re.subn(regexp, repl, title)
-            print title
+            dash_arr = []
+            #otherwise go through the entries and process each entries between dashes
+            for entry in entries:
+                dash_arr.append(process_word(entry))
+            return "-".join(dash_arr)
+            
+        #see if we have a molecule name
+        title_arr = []
+        for word in title.split():
+            title_arr.append(process_entry(word))
 
-            #    
-            #text = match.group()
-            #title = title.replace(text, repl)
-
-        return title
-
+        
+        new_title = " ".join(title_arr)
+        return new_title
+                
     
 class CiteKey: pass
 

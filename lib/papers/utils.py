@@ -10,55 +10,122 @@ def find_pdf_in_folder(journal, volume, page, folder = "."):
     return None
 
 class Cleanup:
-    
+
     exact = [
         "van der Waals",
     ]
 
+    elements = [
+        'H',
+        'He',
+        'Li',
+        'Be',
+        'B',
+        'C',
+        'N',
+        'O',
+        'F',
+        'Ne',
+        'Na',
+        'Mg',
+        'Al',
+        'Si',
+        'P',
+        'S',
+        'Cl',
+        'Ar',
+        'K',
+        'Ca',
+        'Sc',
+        'Ti',
+        'V',
+        'Cr',
+        'Mn',
+        'Fe',
+        'Co',
+        'Ni',
+        'Cu',
+        'Zn',
+        'Ga',
+        'Ge',   
+        'As',
+        'Se',
+        'Br',
+        'Kr',
+        'Rb',
+        'Sr',
+        'Y',
+        'Zr',
+        'Nb',
+        'Mo',
+        'Tc',
+        'Ru',
+        'Rh',
+        'Pd',
+        'Ag',
+        'Cd',
+        'In',
+        'Sn',
+        'Sb',
+        'Te',
+        'I',
+        'Xe',
+        'Cs',
+        'Ba',
+        'Lu',
+        'Hf',
+        'Ta',
+        'W',
+    ]
+
+    acronyms = [
+        "PSI3",
+        "MOLPRO",
+        "ACES",
+        "TURBOMOLE",
+        "MRCI",
+        "CI",
+        "QCISD",
+        "BCCD",
+        "DIIS",
+        "CCD",
+        "CCSDT",
+        "CCSDT(Q)",
+        "CISD",
+        "CC2",
+        "EOM",
+        "ROHF",
+        "NMR",
+        "SCF",
+        "DFT",
+        "DNA",
+        "CCSD",
+        "CCSD[\(]T[\)]",
+        "MP2",
+        "MP2-R12",
+        "MP2-F12",
+        "MBPT",
+        "MP4",
+        "GIAO",
+        "IGLO",
+        "CEPA",
+        "CID",
+        "GGA",
+        "V",
+        "VI",
+        "VII"
+        "VIII",
+        "II",
+        "III",
+        "IV",
+        "CASSCF",
+        "AO",
+        "MO",
+        "PNO",
+        "R12",
+    ]
+
     caps = [
-        "mrci",
-        "ci",
-        "qcisd",
-        "bccd",
-        "diis",
-        "ccd",
-        "ccsdt",
-        "ccsdt(q)",
-        "cisd",
-        "cc2",
-        "eom",
-        "rohf",
-        "nmr",
-        "scf",
-        "dft",
-        "dna",
-        "h2o",
-        "ch4",
-        "nh3",
-        "nh4",
-        "hf",
-        "h2",
-        "ccsd",
-        "ccsd[\(]t[\)]",
-        "mp2",
-        "mbpt",
-        "mp4",
-        "giao",
-        "iglo",
-        "cepa",
-        "cid",
-        "gga",
-        "v",
-        "vi",
-        "vii"
-        "viii",
-        "ii",
-        "iii",
-        "iv",
-        "casscf",
-        "ao",
-        "mo",
-        "pno",
     ]
 
     split = {
@@ -101,26 +168,36 @@ class Cleanup:
         return "-".join(dash_arr)
     capitalize_hyphenated_word = classmethod(capitalize_hyphenated_word)
 
-    def check_lowercase(cls, word):
-        for entry in cls.lowercase:
-            regexp = "^[\(]?(%s)[\)]?[.,-]?$" % entry
-            match = re.compile(regexp, re.IGNORECASE).search(word)
-            if not match:
-                continue
+    def get_repl(cls, word, *xargs):
+        for arr in xargs:
+            for entry in arr:
+                match = cls.check_word(word)
+                if not match:
+                    continue
 
-            repl = match.groups()[0]
+                repl = match.groups()[0]
+                return repl
+
+        return None #found nothing
+    get_repl = classmethod(get_repl)
+
+    def check_word(cls, word):
+        regexp = "^[\(]?(%s)[\)]?[.,-]?$" % entry
+        match = re.compile(regexp, re.IGNORECASE).search(word)
+        return match
+    check_word = classmethod(check_word)
+
+    def check_lowercase(cls, word):
+        repl = cls.get_repl(word, cls.lowercase)
+        if repl:
             word = word.replace(repl, repl.lower())
         return word
     check_lowercase = classmethod(check_lowercase)
 
     def check_caps(cls, word):
-        for entry in cls.caps:
-            match = re.compile("^[\(]?(%s)[\)]?[.,-]?$" % entry, re.IGNORECASE).search(word)
-            if not match:
-                continue
-
-            repl = match.groups()[0]
-            word = word.replace(repl, repl.upper())
+        repl = cls.get_repl(word, cls.caps, cls.acronyms)
+        if repl:
+            word = word.replace(repl, repl.lower())
         return word
     check_caps = classmethod(check_caps)
 
@@ -137,6 +214,10 @@ class Cleanup:
         word = cls.check_caps(word)
         word = cls.check_lowercase(word)
         word = cls.check_split(word)
+
+        if cls.is_molecule(word):
+            word = word.upper()
+
         return word
     clean_word = classmethod(clean_word)
 
@@ -163,7 +244,50 @@ class Cleanup:
             title = title.replace(repl, entry)
 
         return title
+
     clean_title = classmethod(clean_title)
+
+    def get_molecular_formula(cls, word):
+        regexp = re.compile("([A-Z][a-z]{0,1})(\d{0,1}(?!\d))([+-]?\d*)")
+        elements = regexp.findall(word)
+        return elements
+    get_molecular_formula = classmethod(get_molecular_formula)
+
+    def is_molecule(cls, word):
+        elements = cls.get_molecular_formula(word)
+        if not elements:
+            return False
+
+        for element, number, charge in elements:
+            if not element in self.elements:
+                return False
+
+        return True
+
+    is_molecule = classmethod(is_molecule)
+
+    def texify_molecule(cls, word):
+        elements = cls.get_molecular_formula(word)
+        if not elements:
+            return word
+
+        #we have a molecule
+        for element, number, charge in elements:
+            if not element in cls.elements:
+                return word
+
+            repl = element
+            if number:
+                repl += "$_{%s}$" % number
+
+            if charge:
+                repl += "$^{%s}$" % charge
+            entry = "%s%s%s" % (element, number, charge)
+            word = word.replace(entry, repl)
+        
+        return word
+
+    texify_molecule = classmethod(texify_molecule)
 
     
 
