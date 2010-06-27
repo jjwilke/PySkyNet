@@ -171,7 +171,7 @@ class Cleanup:
     def get_repl(cls, word, *xargs):
         for arr in xargs:
             for entry in arr:
-                match = cls.check_word(word)
+                match = cls.check_word(entry, word)
                 if not match:
                     continue
 
@@ -181,8 +181,8 @@ class Cleanup:
         return None #found nothing
     get_repl = classmethod(get_repl)
 
-    def check_word(cls, word):
-        regexp = "^[\(]?(%s)[\)]?[.,-]?$" % entry
+    def check_word(cls, reword, word):
+        regexp = "^[\(]?(%s)[\)]?[.,-]?$" % reword
         match = re.compile(regexp, re.IGNORECASE).search(word)
         return match
     check_word = classmethod(check_word)
@@ -197,7 +197,7 @@ class Cleanup:
     def check_caps(cls, word):
         repl = cls.get_repl(word, cls.caps, cls.acronyms)
         if repl:
-            word = word.replace(repl, repl.lower())
+            word = word.replace(repl, repl.upper())
         return word
     check_caps = classmethod(check_caps)
 
@@ -215,8 +215,8 @@ class Cleanup:
         word = cls.check_lowercase(word)
         word = cls.check_split(word)
 
-        if cls.is_molecule(word):
-            word = word.upper()
+        #if cls.is_molecule(word) and cls.contains_number(word):
+        #    word = word.upper()
 
         return word
     clean_word = classmethod(clean_word)
@@ -253,13 +253,18 @@ class Cleanup:
         return elements
     get_molecular_formula = classmethod(get_molecular_formula)
 
+    def contains_number(cls, word):
+        match = re.compile("\d").search(word)
+        return bool(match)
+    contains_number = classmethod(contains_number)
+
     def is_molecule(cls, word):
         elements = cls.get_molecular_formula(word)
         if not elements:
             return False
 
         for element, number, charge in elements:
-            if not element in self.elements:
+            if not element in cls.elements:
                 return False
 
         return True

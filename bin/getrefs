@@ -2,9 +2,9 @@
 import sys
 
 from papers.archive import Archive
-from utils.getoptions import InputOption, OptionList, readOptions, OptionSet 
-from utils.RM import acquire, traceback
-from webutils.isi import ISIError
+from skynet.utils.getoptions import InputOption, OptionList, readOptions, OptionSet 
+from skynet.utils.utils import acquire, traceback
+from papers.isi import ISIError
 
 def execute_search(wok, archive, journal, author, year, volume, page, notes):
     name = "%s %s %d %s (%d)" % (author, journal, volume, page, year)
@@ -28,8 +28,8 @@ if __name__ == "__main__":
         InputOption(shortOption='p', longOption='page', optionType='string', bind=True),
         #InputOption(shortOption='t', longOption='title', optionType='string', valuesMandatory=True, bind=True),
         InputOption(shortOption='j', longOption='journal', optionType='string', bind=True),
-        InputOption(longOption='author', optionType='string', listOfValues=True, bind=True),
-        InputOption(shortOption='a', longOption='archive', optionType='string', bind=True),
+        InputOption(shortOption='a', longOption='author', optionType='string', listOfValues=True, bind=True),
+        InputOption(longOption='archive', optionType='string', bind=True, default="new"),
         InputOption(shortOption='n', longOption='notes', optionType='string', bind=True),
         InputOption(shortOption='f', longOption='format', optionType='string', bind=True),
         InputOption(shortOption='r', longOption='refs'),
@@ -43,22 +43,27 @@ if __name__ == "__main__":
                             optionsList=opts)
     options_given = readOptions(optionList, optionSet=options)
 
-    from webutils.isi import WOKParser, WOKSearch
+    from papers.isi import WOKParser, WOKSearch
 
     for option in options_given:
         if option in ('r', 'refs'):
             page = options.page
             parser = WOKParser(options.archive, options.journal, options.author, options.year, options.volume, page, options.notes)
-            parser.run()
+            try:
+                parser.run()
+            except Exception, error:
+                pass
+            except KeyboardInterrupt:
+                pass
             parser.archive.commit()
         elif option in ('g', 'grab'):
             notes = options.notes
 
             import unicodedata
-            from webutils.pdfglobals import PDFGetGlobals as pdfglobals
+            from papers.pdfglobals import PDFGetGlobals as pdfglobals
 
 
-            cmd = "import webutils.%s as journal_format" % options.format
+            cmd = "import papers.%s as journal_format" % options.format
             exec(cmd)
             method = getattr(journal_format, "parse_reference")
 
@@ -81,7 +86,7 @@ if __name__ == "__main__":
                     vals = {}
                     if "format" in text: #change the format method
                         format = text.split("=")[-1].strip()
-                        cmd = "import webutils.%s as journal_format" % format
+                        cmd = "import papers.%s as journal_format" % format
                         exec(cmd)
                         method = getattr(journal_format, "parse_reference")
                         print "Switched to %s format" % format

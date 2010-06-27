@@ -1,6 +1,7 @@
 from papers.pdfget import ArticleParser, PDFArticle, Page, download_pdf
 from papers.index import Library
 from papers.archive import Archive, MasterArchive
+from papers.utils import Cleanup
 from skynet.utils.utils import save, load, clean_line, capitalize_word, traceback
 from webutils.htmlexceptions import HTMLException
 from webutils.htmlparser import URLLister
@@ -222,19 +223,12 @@ class WOKArticle(WOKObject):
         if local_match:
             print "Already have article %s in local archive" % name
             self.article = local_match
+            return
         elif self.master.has(self.article):
             print "Already have article %s in master archive" % name
             return
         else:
             self.archive.add(self.article)
-
-
-        print "Processed %s" % name
-        path = find_in_folder(journal, volume, page)
-        if path:
-            print " -> exists %s" % path
-            self.article.set_pdf(path)
-            return
 
         path = download_pdf(journal, volume=volume, page=page)
         if path:
@@ -245,8 +239,9 @@ class WOKArticle(WOKObject):
 class WOKSearch(WOKObject):
 
     def __init__(self, journal=None, author=None, year=None, volume=None, page=None):
+        from papers.pdfglobals import PDFGetGlobals as globals
+        self.journal = globals.get_journal(journal)
         self.author = author
-        self.journal = journal
         self.year = year
         self.volume = volume
         self.page = page
@@ -254,8 +249,9 @@ class WOKSearch(WOKObject):
         self.title = None
 
     def reset(self, journal, author, year, volume, page):
+        from papers.pdfglobals import PDFGetGlobals as globals
+        self.journal = globals.get_journal(journal)
         self.author = author
-        self.journal = journal
         self.year = year
         self.volume = volume
         self.page = page
@@ -272,7 +268,7 @@ class WOKSearch(WOKObject):
         self.selenium.select("select2", "label=Year Published")
         self.selenium.type("value(input2)", "%d" % self.year)
         self.selenium.select("select3", "label=Publication Name")
-        self.selenium.type("value(input3)", "%s*" % self.journal)
+        self.selenium.type("value(input3)", "%s*" % self.journal.name)
         self.selenium.click("//input[@name='' and @type='image']")
         self.selenium.wait_for_page_to_load("30000")
 
@@ -280,7 +276,11 @@ class WOKSearch(WOKObject):
         text = self.selenium.get_body_text()
         matches = re.compile("Title[:](.*?)\n(.*?)Times\sCited", re.DOTALL).findall(text)
         if not matches:
-            self.die("Could not find list entries on page\n%s" % readable(text))
+            msg_arr = ["\nAuthor=%s" % self.author]
+            msg_arr.append("Year=%d" % self.year)
+            msg_arr.append("Journal=%s" % self.journal.name)
+            msg_arr.append("Could not find list entries on page\n%s" % readable(text))
+            self.die("\n".join(msg_arr))
 
         for title, entry in matches:
             match = re.compile("Volume[:]\s*(\d+)").search(entry)
@@ -372,29 +372,33 @@ class WOKParser(WOKObject):
         self.notes = notes
 
     def run(self):
-        import time
-        self.search.start()
-        self.search.open()
-        self.nrefs = self.search.open_references()
+        try:
+            import time
+            self.search.start()
+            self.search.open()
+            self.nrefs = self.search.open_references()
 
-        #get all possible refs on this page 
-        self.walk_references()
-
-        #if there are more pages, go through those as well
-        nstart = 31 
-        onclick = 2
-        while nstart < self.nrefs:
-            self.search.go_to_next_page(onclick)
+            #get all possible refs on this page 
             self.walk_references()
 
-            break #debug
+            #if there are more pages, go through those as well
+            nstart = 31 
+            onclick = 2
+            while nstart < self.nrefs:
+                self.search.go_to_next_page(onclick)
+                self.walk_references()
 
-            nstart += 30
-            onclick += 1
-        
-        time.sleep(10)
-        self.search.stop()
-        self.archive.commit()
+                break #debug
+
+                nstart += 30
+                onclick += 1
+            
+            time.sleep(10)
+            self.search.stop()
+            self.archive.commit()
+        except ISIError, error:
+            self.search.stop()
+            raise error
 
     def die(self, msg):
         self.search.stop()
@@ -408,7 +412,6 @@ class WOKParser(WOKObject):
             link = url_list[name]
             if "CitedFullRecord" in link:
                 self.process_article(link)
-                return #debug
                 time.sleep(1)
 
     def process_article(self, link):
@@ -491,7 +494,8 @@ class SavedRecordParser:
 
                 get_number = lambda x: re.compile("(\d+)").search(x).groups()[0] 
                 get_page = lambda x: Page(get_number(x))
-                clean_title = lambda x: clean_line(clean_entry(x))
+                #clean_title = lambda x: clean_line(clean_entry(x))
+                clean_title = Cleanup.clean_title
 
                 self.get_entry("journal", entries=(("so", "la"), ("so", "ab"), ("so", "sn")) )
                 self.get_entry("volume", method=int, entries=(("vl", "is"), ("vl", "bp")) )
@@ -539,12 +543,6 @@ def walkISI(files, archive, notes):
             start = article.get_start_page() 
             name = "%s %d %s" % (abbrev, volume, start)
             print "Downloading %s" % name,
-
-            path = find_in_folder(journal, volume, start)
-            if path:
-                print " -> exists %s" % path
-                article.set_pdf(path)
-                continue
 
             path = name + ".pdf"
             if os.path.isfile(path):

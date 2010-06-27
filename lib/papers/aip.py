@@ -10,23 +10,24 @@ from selenium import selenium
 
 class AIPQuery:
     
-    def __init__(self, volume, page):
+    def __init__(self, volume, page, baseurl):
         self.volume = volume
         self.page = page
+        self.baseurl = baseurl
 
     def run(self):
-        self.selenium = selenium("localhost", 4444, "*chrome", "http://jcp.aip.org")
+        self.selenium = selenium("localhost", 4444, "*chrome", self.baseurl)
         self.selenium.start()
     
         sel = self.selenium
-        sel.open("/jcpsa6")
+        sel.open("/")
         sel.type("vol", "%d" % self.volume)
         sel.type("pg", "%s" % self.page)
         sel.click("//input[@value='' and @type='submit']")
         sel.wait_for_page_to_load("30000")
         sel.wait_for_pop_up("_self", "30000")
         self.aiphtml = sel.get_html_source()
-    
+
         self.selenium.stop()
 
 if __name__ == "__main__":
@@ -116,7 +117,7 @@ class AIPJournal(Journal):
             issue = page.get_issue()
 
         if not issue:
-            query = AIPQuery(volume, page)
+            query = AIPQuery(volume, page, self.baseurl)
             query.run()
             url_list = URLLister()
             url_list.feed(query.aiphtml)
