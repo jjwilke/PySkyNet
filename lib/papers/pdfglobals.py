@@ -11,7 +11,7 @@ class PDFGetGlobals:
     from papers.iop import JPA, JPB, PhysScripta, JPCM
     from papers.informa import MolPhys
     from papers.jstor import Science
-    #from webutils.springer import TCA
+    from papers.springer import TCA, TCActa
 
     journals = {
         "jacs" : JACS,
@@ -29,7 +29,8 @@ class PDFGetGlobals:
         "cpl" : CPL,
         "physrep" : PhysRep,
         "chemphys" : ChemPhys,
-        #"tca" : TCA,
+        "tca" : TCA,
+        "tcacta" : TCActa,
         "prl" : PRL,
         "pra" : PRA,
         "prb" : PRB,
@@ -37,7 +38,7 @@ class PDFGetGlobals:
         "pr" : PROLA,
         "prola" : PROLA,
         "ange" : AngeChem,
-        #"ijqc" : IJQC,
+        "ijqc" : IJQC,
         "pccp" : PCCP,
         "csr" : CSR,
         "jpoc" : JPOC,
@@ -73,11 +74,12 @@ class PDFGetGlobals:
         "chem phys lett" : "cpl",
         "phys rep" : "physrep",
         "chem phys" : "chemphys",
-        #"theor chem acc" : "tca",
+        "theor chem acc" : "tca",
+        "theo chim acta" : "tcacta",
         "phys rev lett" : "prl",
         "phys rev a": "pra",
         "angew chem int edit" : "ange",
-        #"int j quantum chem": "ijqc",
+        "int j quantum chem": "ijqc",
         "phys chem chem phys" : "pccp",
         "j phys org chem" : "jpoc",
         "j comput chem" : "jcc",
@@ -128,8 +130,13 @@ class PDFGetGlobals:
 
                 journal = match.group()
                 return journal
-    
     find_journal_in_entry = classmethod(find_journal_in_entry)
+
+    def get_valid_journals(cls):
+        journals = cls.journals.keys()
+        journals.sort()
+        return journals
+    get_valid_journals = classmethod(get_valid_journals)
 
 def run_testsuite():
     from papers.pdfget import download_pdf, Page

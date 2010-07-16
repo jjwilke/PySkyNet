@@ -5,6 +5,7 @@ from papers.utils import Cleanup
 from skynet.utils.utils import save, load, clean_line, capitalize_word, traceback
 from webutils.htmlexceptions import HTMLException
 from webutils.htmlparser import URLLister
+from papers.utils import Cleanup
 
 import sys
 import re
@@ -205,7 +206,7 @@ class WOKArticle(WOKObject):
             self.set_value("Article\sNumber[:]\s*(\d+)\s+", "start_page", method = Page)
         #the gd monkeys at Thompson apparently decided that periods are just as good as spaces
         self.set_value("Author.*?[:](.*?)Source", "authors", method=lambda x: get_authors(x.replace(".", " "), ",", " "))
-        self.set_value("Record from Web of Science.*?\s(.*?)more\soptions", "title", method=clean_line)
+        self.set_value("Record from Web of Science.*?\s(.*?)more\soptions", "title", method=Cleanup.clean_title)
         self.set_value("Abstract[:](.*?)Addresses", "abstract", method=clean_entry, require=False)
         self.set_value("Published[:].*?\s(\d{4})", "year", method=int)
         self.set_value("DOI[:]\s+(.*?)[\n\s]", "doi", require=False)

@@ -1,5 +1,5 @@
 from pdfget import ArticleParser, PDFArticle, Journal, Page
-from htmlexceptions import HTMLException
+from webutils.htmlexceptions import HTMLException
 
 from selenium import selenium
 
@@ -172,7 +172,7 @@ class SpringerJournal(Journal):
 
         self.validate("baseurl", "maxvolume")
 
-        from htmlparser import URLLister, fetch_url
+        from webutils.htmlparser import URLLister, fetch_url
         import re
 
         query = SpringerQuery(volume, self.maxvolume)
@@ -208,5 +208,11 @@ class TCA(SpringerJournal):
 
     name = "Theoretical Chemistry Accounts"
     baseurl = "http://www.springerlink.com/content/1432-881X"
+    maxvolume = 126
+
+class TCActa(SpringerJournal):
+
+    name = "Theoretica Chimica Acta"
+    baseurl = "http://www.springerlink.com/content/100493"
     maxvolume = 126
 

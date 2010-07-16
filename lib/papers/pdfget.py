@@ -339,6 +339,7 @@ def download_pdf(journal, volume = 0, issue = 0, page = Page("0")):
         jobj = PDFGetGlobals.get_journal(journal)
         if not jobj: #no journal
             sys.stderr.write("FAILURE: %s\tJournal not valid\n" %  name)
+            sys.stderr.write("\n".join(PDFGetGlobals.get_valid_journals()) + "\n")
             return None
 
         #we might have to fetch the issue
