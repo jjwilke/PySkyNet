@@ -297,3 +297,139 @@ class Cleanup:
     
 
 
+class JournalCleanup:
+
+    erase = [
+        "and",
+        "of",
+        "the",
+    ]
+
+    keep = [
+        "nature",
+        "science",
+    ]
+
+    upper = [
+        "theochem",
+    ]
+
+    lower = [
+    ],
+
+    special = {
+        "structure-theochem"  : "structure",
+    }
+
+    abbrevs = [
+        'am',
+        'angew',
+        'appl',
+        'biomol',
+        'chem',
+        'commun',
+        'comput',
+        'curr',
+        'ed',
+        'int',
+        'j',
+        'lett',
+        'lon',
+        'math',
+        'opin',
+        'org',
+        'phys',
+        'proc',
+        'res',
+        'rev',
+        'r',
+        'ser',
+        'soc',
+    ]
+
+    repl = {
+        'ser-a' : 'Ser A',
+    }
+
+    abbrev_map = {
+        "zeitsch" : "zeit",
+        "account" : "acc",
+        "advance" : "adv",
+        "americ" : "am",
+        "angewan" : "angew",
+        "annual" : "ann",
+        "biomol" : "biomol",
+        "chem" : "chem",
+        "chimica" : "chim",
+        "collect" : "collect",
+        "czech" : "czech",
+        "comput" : "comput",
+        "condensed" : "cond",
+        "edition" : "ed",
+        "inorg" : "inorg",
+        "intern" : "int",
+        "journal" : "j",
+        "letter" : "lett",
+        "material" : "mat",
+        "math" : "math",
+        "matter" : "matt",
+        "molec" : "mol",
+        "organ" : "org",
+        "phys" : "phys",
+        "proc" : "proc",
+        "rep" : "rep",
+        "review" : "rev",
+        "royal" : "r",
+        "sci" : "sci",
+        "society" : "soc",
+        "struct" : "struct",
+        "spectros" : "spectrosc",
+        "theor" : "theor",
+        "topic" : "top",
+    }
+
+    def _abbrev_word(cls, word):
+        new_word = word
+        if not word in cls.keep:
+            new_word = word
+            for entry in cls.abbrev_map:
+                if entry in word:
+                    new_word = cls.abbrev_map[entry] + "."
+                    break
+
+        if new_word in cls.upper:
+            return new_word.upper()
+        elif new_word in cls.lower:
+            return new_word.lower()
+        else:
+            return capitalize_word(new_word)
+    _abbrev_word = classmethod(_abbrev_word)
+
+    def _add_period(cls, word):
+        check = word.strip(".").lower()
+        for abb in self.abbrevs:
+            regexp = "^%s$" % abb
+            match = re.compile(regexp, re.IGNORECASE).search(check)
+            if match:
+                word = abb + "."
+                break
+
+        word = word[0].upper() + word[1:].lower()
+        return word
+
+
+    def abbreviate(cls, journal):
+        journal = journal.lower()
+        for entry in cls.special:
+            journal = journal.replace(entry, cls.special[entry])
+        words = journal.replace("-"," ").strip().split()
+
+        str_arr = []
+        for word in words:
+            if word in cls.erase:
+                continue
+
+            str_arr.append(cls._abbrev_word(word))
+        return " ".join(str_arr)
+    abbreviate = classmethod(abbreviate)
+

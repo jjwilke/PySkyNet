@@ -259,56 +259,14 @@ class AuthorsFormat(EntryFormat):
 EditorsFormat = AuthorsFormat
 
 
-
 class JournalFormat(EntryFormat): 
 
-    repl = {
-        'ser-a' : 'Ser A',
-    }
-    
-    abbrevs = [
-        'am',
-        'angew',
-        'appl',
-        'biomol',
-        'chem',
-        'commun',
-        'comput',
-        'curr',
-        'ed',
-        'int',
-        'j',
-        'lett',
-        'lon',
-        'math',
-        'opin',
-        'org',
-        'phys',
-        'proc',
-        'res',
-        'rev',
-        'r',
-        'ser',
-        'soc',
-    ]
-
-    def abbreviate(self, word):
-        check = word.strip(".").lower()
-        for abb in self.abbrevs:
-            regexp = "^%s$" % abb
-            match = re.compile(regexp, re.IGNORECASE).search(check)
-            if match:
-                word = abb + "."
-                break
-
-        word = word[0].upper() + word[1:].lower()
-        return word
-    
     def bibitem(self, obj, simple=False):
+        from papers.utils import JournalCleanup
         journal = obj.text().split()
         title_arr = []
         for word in journal:
-            title_arr.append(self.abbreviate(word))
+            title_arr.append(JournalCleanup.abbreviate(word))
 
         text = LatexFormat.format(self.style, " ".join(title_arr))
         return text
@@ -458,7 +416,7 @@ class Author:
             firstname = split[0]
             initials = [self.get_initial(firstname)]
             for entry in split[1:-1]:
-                initials.append(sefl.get_initial(entry))
+                initials.append(self.get_initial(entry))
             self._initials = ". ".join(initials) + '.'
             #fix capitalization
             #self.capitalize()
@@ -599,6 +557,8 @@ class XMLRequest:
         u'\u0160' : r'\v{S}',
         u'\u017d' : r'\v{Z}',
         u'\u017e' : r'\v{z}',
+        u'i\u0308' : r'\"{i}', #this is not right... not sure where it is coming from
+        u'a\u0308' : r'\"{a}', #this is not right... not sure where it is coming from
         u'o\u0308' : r'\"{o}', #this is not right... not sure where it is coming from
         u'u\u0308' : r'\"{u}', #this is not right... not sure where it is coming from
         u'c\u030c' : r'\v{c}', #this is not right... not sure where it is coming from

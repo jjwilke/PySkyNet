@@ -7,6 +7,7 @@ import re
 
 from xml.dom.minidom import parse, Document
 from papers.pdfget import Page
+from papers.utils import JournalCleanup
 from xml.parsers.expat import ExpatError
 from skynet.utils.utils import clean_line, capitalize_word
 
@@ -25,61 +26,6 @@ class Article:
     abstracttag = "abstract"
     doitag = "electronic-resource-num"
 
-    erase = [
-        "and",
-        "of",
-        "the",
-    ]
-
-    keep = [
-        "nature",
-        "science",
-    ]
-
-    allcaps = [
-        "theochem",
-    ]
-
-    special = {
-        "structure-theochem"  : "structure",
-    }
-
-    abbrevs = {
-        "zeitsch" : "zeit",
-        "account" : "acc",
-        "advance" : "adv",
-        "americ" : "am",
-        "angewan" : "angew",
-        "annual" : "ann",
-        "biomol" : "biomol",
-        "chem" : "chem",
-        "chimica" : "chim",
-        "collect" : "collect",
-        "czech" : "czech",
-        "comput" : "comput",
-        "condensed" : "cond",
-        "edition" : "ed",
-        "inorg" : "inorg",
-        "intern" : "int",
-        "journal" : "j",
-        "letter" : "lett",
-        "material" : "mat",
-        "math" : "math",
-        "matter" : "matt",
-        "molec" : "mol",
-        "organ" : "org",
-        "phys" : "phys",
-        "proc" : "proc",
-        "rep" : "rep",
-        "review" : "rev",
-        "royal" : "r",
-        "sci" : "sci",
-        "society" : "soc",
-        "struct" : "struct",
-        "spectros" : "spectrosc",
-        "theor" : "theor",
-        "topic" : "top",
-    }
     
     def __init__(self, node, archive):
         self.topnode = node
@@ -197,36 +143,6 @@ class Article:
     def _get_text(self, node):
         return node.firstChild.firstChild.nodeValue
 
-    def _abbrev_word(cls, word):
-        new_word = word
-        if not word in cls.keep:
-            new_word = word
-            for entry in cls.abbrevs:
-                if entry in word:
-                    new_word = cls.abbrevs[entry] + "."
-                    break
-
-        if new_word in cls.allcaps:
-            return new_word.upper()
-        else:
-            return capitalize_word(new_word)
-    _abbrev_word = classmethod(_abbrev_word)
-
-    def abbreviate(cls, journal):
-        journal = journal.lower()
-        for entry in cls.special:
-            journal = journal.replace(entry, cls.special[entry])
-        words = journal.replace("-"," ").strip().split()
-
-        str_arr = []
-        for word in words:
-            if word in cls.erase:
-                continue
-
-            str_arr.append(cls._abbrev_word(word))
-        return " ".join(str_arr)
-    abbreviate = classmethod(abbreviate)
-
     def get_abbrev(self):
         return self._get_entry(self.abbrevtag)
 
@@ -321,7 +237,7 @@ class Article:
 
         #and do the abbreviation
         node = self._fetch_node("periodical")
-        abbrev = self.abbreviate(journal)
+        abbrev = JournalCleanup.abbreviate(journal)
         self._set_item(abbrev, self.abbrevtag, node)
 
     def set_notes(self, notes):
