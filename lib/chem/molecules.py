@@ -1,7 +1,8 @@
 # @module Molecules Contains the atom and molecule objects along with miscellaneous methods for geometry manipulation and calculation
 
 from skynet.utils.utils import *
-import numpy, identity
+import numpy
+import skynet.identity
 
 MOLECULE_ATTRIBUTES = {
     "charge" : 0,
@@ -308,7 +309,7 @@ def canonicalizeGeometryLabel(label):
         return straight
 
 ## This class encapsulates a molecule
-class Molecule(identity.Identity):
+class Molecule(skynet.identity.Identity):
 
     discontinuity = -90
 
@@ -1366,7 +1367,7 @@ def canonicalizeAtomLabel(label):
             return symbol
 
 ## This class encapsulates an atom
-class Atom(identity.Identity):
+class Atom(skynet.identity.Identity):
     ## Constructor
     # @param atomName Either the atomic symbol or the name of the atom
     # @param coords The xyz coordinates of the atom.  This should be a list of 3 floats
@@ -1374,7 +1375,7 @@ class Atom(identity.Identity):
     def __init__(self, label, coordinates = [0,0,0], units="angstrom", number=1):        
         self.coordinates = numpy.array(coordinates)
 
-        identity.Identity.__init__(self)
+        skynet.identity.Identity.__init__(self)
 
         #and set some attributes
         atomicSymbol = label.upper()

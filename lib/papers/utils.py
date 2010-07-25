@@ -322,11 +322,13 @@ class JournalCleanup:
     }
 
     abbrevs = [
+        'adv',
         'am',
         'angew',
         'appl',
         'biomol',
         'chem',
+        'chim',
         'commun',
         'comput',
         'curr',
@@ -345,6 +347,7 @@ class JournalCleanup:
         'r',
         'ser',
         'soc',
+        'theor',
     ]
 
     repl = {
@@ -394,28 +397,31 @@ class JournalCleanup:
             new_word = word
             for entry in cls.abbrev_map:
                 if entry in word:
-                    new_word = cls.abbrev_map[entry] + "."
+                    new_word = cls.abbrev_map[entry]
                     break
 
+
         if new_word in cls.upper:
-            return new_word.upper()
+            new_word = new_word.upper()
         elif new_word in cls.lower:
-            return new_word.lower()
+            new_word = new_word.lower()
         else:
-            return capitalize_word(new_word)
+            new_word = capitalize_word(new_word)
+
+        new_word = cls._add_period(new_word)
+        return new_word
     _abbrev_word = classmethod(_abbrev_word)
 
     def _add_period(cls, word):
-        check = word.strip(".").lower()
-        for abb in self.abbrevs:
+        word = word.strip(".")
+        check = word.lower()
+        for abb in cls.abbrevs:
             regexp = "^%s$" % abb
             match = re.compile(regexp, re.IGNORECASE).search(check)
             if match:
-                word = abb + "."
-                break
-
-        word = word[0].upper() + word[1:].lower()
+                return word + "."
         return word
+    _add_period = classmethod(_add_period)
 
 
     def abbreviate(cls, journal):

@@ -266,7 +266,9 @@ class JournalFormat(EntryFormat):
         journal = obj.text().split()
         title_arr = []
         for word in journal:
+            #print word, JournalCleanup.abbreviate(word)
             title_arr.append(JournalCleanup.abbreviate(word))
+        #print title_arr
 
         text = LatexFormat.format(self.style, " ".join(title_arr))
         return text

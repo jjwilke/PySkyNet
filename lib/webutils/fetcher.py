@@ -6,32 +6,35 @@ PROGRAM_DICTIONARY = {
     }
 import re
 import sys
+import time
+from selenium import selenium
 
 def getBasisSet(basis, atomList, verbatim=False):
     import urllib
     import chem.basisset
 
     program = "Gaussian94"
-    basis_array = []
+    atoms = []
+    #we want to work with atom objects, not atom names
+    from chem.molecules import Atom
     for atom in atomList:
-        text = getBasisForAtom(atom, basis, program, verbatim)
-        basis_array.append(text)
-   
-    basisText = "\n".join(basis_array)
-
+        if not isinstance(atom, Atom): 
+            atom = Atom(atom)
+        atoms.append(atom)
+    basisText = getBasis(atoms, basis, program, verbatim)
+    print basisText
     basisSet = chem.basisset.processBasisText(basisText, atomList, program)
-
     return basisSet
 
-def getBasisForAtom(atom, basis="STO-3G", program="Gaussian94", verbatim=False):    
+def getBasis(atomList, basis="STO-3G", program="Gaussian94", verbatim=False):    
     import urllib
     import chem.basisset
     
-    #we want to work with atom objects, not atom names
-    from chem.molecules import Atom
-    if not isinstance(atom, Atom): atom = Atom(atom)
 
-    if not verbatim: #take the name as is... don't "spell" check it
+    def fix_basis(basis):
+        if verbatim:
+            return basis
+
         basis=basis.upper()
 
         def checkPlusD(basis):
@@ -47,31 +50,41 @@ def getBasisForAtom(atom, basis="STO-3G", program="Gaussian94", verbatim=False):
         elif atom.isFirstRow():
             basis = checkPlusD(basis)
         basis = basis.upper().replace("W", "w").replace("CC-P", "cc-p").replace("AUG", "aug").replace("+D", "+d")
+        return basis
 
     prog_name = PROGRAM_DICTIONARY[ program[:4].upper() ]
-    url = "http://www.emsl.pnl.gov/cgi-bin/ecce/basis_old.pl"
-    urlObj = urllib.URLopener()
-    query = urllib.urlencode({"BasisSets": "%s" % basis, "Atoms":atom.getSymbol(), "Codes": prog_name,
-                       "Optimize" : "off", "ECP" : "off", "Email" : "jjwilke@uga.edu"})
-    response = urlObj.open(url, query).read()
 
-    #clean up the response
-    regExp = "<pre>!\n!\s+REFERENCE\n(.*?)</pre>" 
-    htmlCleanBasis = re.compile(regExp, re.DOTALL).search(response)
-    #that reg exp may have or have not work, try again if not
-    if not htmlCleanBasis: 
-        htmlCleanBasis = re.compile("BASIS.*?\n(.*[*]{4})", re.DOTALL).search(response)
+    print "Fetching", basis
+    text_arr = ["****"]
+    sel = selenium("localhost", 4444, "*chrome", "https://bse.pnl.gov/")
+    sel.start()
+    sel.open("/bse/portal")
+    sel.select_frame("Main11535052407933")
+    sel.select("outputcode", "label=Gaussian94")
+    sel.click("contraction") #turn off optimize general contractions
+    time.sleep(5)
+    for atom in atomList:
+        submit_basis = fix_basis(basis)
+        sel.select("blist", "label=%s" % submit_basis)
+        number = "%d" % atom.getAtomicNumber()
+        sel.type("searchstr", submit_basis)
+        sel.click(number)
+        sel.click("getBasisSet")
+        sel.wait_for_pop_up("", "30000")
+        main, popup = sel.get_all_window_titles()
+        sel.select_window(popup)
+        time.sleep(5)
+        response = sel.get_body_text()
+        sel.close()
+        sel.select_window(main)
+        sel.click(number) #deselect atom
+        time.sleep(5)
+        text = re.compile("[*]{4}\n(.*)", re.DOTALL).search(response).groups()[0]
+        text_arr.append(text)
+    sel.click("getBasisSet")
+    sel.stop()
 
-    #okay, we should have found a reg expression that works by now
-    htmlCleanBasis = htmlCleanBasis.groups()[0]
-    clean_basis = []
-    for line in htmlCleanBasis.splitlines():
-        #if a comment line, don't include
-        if len(line) > 0 and line[0] == "!": pass
-        else: clean_basis.append(line)    
-    
-    #return both the basis text and the name of the basis because it may have changed
-    return "\n".join(clean_basis)
+    return "\n".join(text_arr)
 
 def getPetersonBasis(atom, basis, program, ri = False):    
     import urllib

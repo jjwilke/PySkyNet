@@ -1,5 +1,5 @@
 import re,sys,os,os.path 
-import identity
+import skynet.identity
 from skynet.utils.utils import *
 
 ANGULAR_MOMENTUM_VALUES = {"S" : 0, "P" : 1, "D" : 2,
@@ -42,7 +42,7 @@ BASIS_LETTERS = {
 
 BASIS_REGEXP = "([tdq56x])z"
 
-class Basis(identity.Identity):
+class Basis(skynet.identity.Identity):
 
     def __init__(self, basis):
         self.basis = str(basis).lower()
@@ -188,7 +188,7 @@ def getBasisNumber(basis):
         if number: return BASIS_NUMBERS[ number.groups()[0] ]
         else: return None
 
-class Shell(identity.Identity):
+class Shell(skynet.identity.Identity):
 
     # @param basisDictionary The basis set dictionary that holds all the basis function
     #        Dictionary has the form key = angular momentum, value = list of basis functions
@@ -301,7 +301,7 @@ class Shell(identity.Identity):
     def __len__(self):
         return len(self.coefficients)
 
-class BasisSet(identity.Identity):
+class BasisSet(skynet.identity.Identity):
 
     ## Constructor
     #  @param basisDictionary The basis set dictionary that will hold all the basis functions
