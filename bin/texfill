@@ -1,0 +1,48 @@
+#! /usr/bin/env python
+
+import sys
+import re
+import os
+
+def get_file(path):
+    import glob
+    files = glob.glob("%s*" % path)
+    if len(files) > 1:
+        sys.exit("file glob on %s produced more than 1 file" % path)
+    elif len(files) == 0:
+        sys.exit("file glob on %s produced no files" % path)
+    return files[0]
+
+text = open(sys.argv[1]).read()
+
+
+retext = "input[{](.*)[}]"
+matches = re.compile(retext).findall(text)
+
+for match in matches:
+    path = match
+    if not path.endswith(".tex"):
+        path = path + ".tex"
+    print match
+    filetext = open(path).read()
+    entry = r"\input{%s}" % match
+    print entry
+    text = text.replace(entry, filetext)
+
+retext = r"\includegraphics.*?[{].*[}]"
+matches = re.compile(retext).findall(text)
+n = 1
+for match in matches:
+    entry = re.compile("[{](.*?)[}]").search(match).groups()[0]
+    path = get_file(entry)
+    ext = path.split(".")[-1]
+    newpath = "figure%d.%s" % (n, ext)
+    os.system("cp %s %s" % (path, newpath))
+    repl = match.replace(entry, newpath)
+    text = text.replace(match, repl)
+    n += 1
+
+fileobj = open("manuscript.tex", "w")
+fileobj.write(text)
+fileobj.close()
+

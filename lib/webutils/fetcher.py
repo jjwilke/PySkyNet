@@ -62,7 +62,6 @@ def getBasis(atomList, basis="STO-3G", program="Gaussian94", verbatim=False):
     sel.select_frame("Main11535052407933")
     sel.select("outputcode", "label=Gaussian94")
     sel.click("contraction") #turn off optimize general contractions
-    time.sleep(5)
     for atom in atomList:
         submit_basis = fix_basis(basis)
         sel.select("blist", "label=%s" % submit_basis)
@@ -73,12 +72,10 @@ def getBasis(atomList, basis="STO-3G", program="Gaussian94", verbatim=False):
         sel.wait_for_pop_up("", "30000")
         main, popup = sel.get_all_window_titles()
         sel.select_window(popup)
-        time.sleep(5)
         response = sel.get_body_text()
         sel.close()
         sel.select_window(main)
         sel.click(number) #deselect atom
-        time.sleep(5)
         text = re.compile("[*]{4}\n(.*)", re.DOTALL).search(response).groups()[0]
         text_arr.append(text)
     sel.click("getBasisSet")
