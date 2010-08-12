@@ -179,9 +179,6 @@ class SpringerJournal(Journal):
         query.run()
         url_list = URLLister()
         url_list.feed(query.html)
-        for name in url_list:
-            if "Number" in name:
-                print name
 
         if not url:
             raise HTMLException("No page found for volume %d for %s" % (volume, self.name))

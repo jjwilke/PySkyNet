@@ -21,8 +21,8 @@ def readable(x):
 
 def process_authors(entries):
     authors = []
-    print "Processing authors", entries
-    for last, first in entries:
+    for entry in entries:
+        last, first = entry[:2]
         #check to see if we have stupidness
         first_first = first.split()[0]
         match = re.compile("[A-Z]{2}").search(first_first)
@@ -48,7 +48,7 @@ class ISIError(Exception):
 def get_authors(x, inter_delim, intra_delim):
     try:
         #first check to see if we have parentheses
-        regexp = "[\(].*?[\)]"
+        regexp = "[\(](.*?)[\)]"
         matches = re.compile(regexp, re.DOTALL).findall(x)
         entries = []
         if matches:
@@ -58,34 +58,13 @@ def get_authors(x, inter_delim, intra_delim):
         return process_authors(entries)
     except ValueError, error:
         sys.stderr.write("%s\n%s not properly split by intra='%s' inter='%s'\n" % (error, x, intra_delim, inter_delim))
+        sys.stderr.write(traceback(error) + "\n")
         raise ISIError("Author list not formatted properly")
 
 class JournalNotFoundError(Exception):
     pass
 
-class ISIArticle:
-
-    journal_map = {
-        "angewandte chemie-international edition" : "ange",
-        "angewandte chemie-international edition in english" : "ange",
-        "chemical physics" : "chemphys",
-        "physics reports" : "physrep",
-        "physics reports-review section of physics letters" : "physrep",
-        "molecular physics" : "molphys",
-        "journal of computational physics" : "jcompphys",
-        "science" : "science",
-        "nature" : "nature",
-    }
-
-    def get_journal(cls, journal):
-        try:
-            journal = cls.journal_map[journal.lower()]
-            return journal
-        except KeyError:
-            name = journal.lower().replace("of"," ").replace("the "," ").replace("and ", " ").replace("-"," ")
-            initials = map(lambda x: x[0], name.strip().split())
-            return "".join(initials)
-    get_journal = classmethod(get_journal)
+class ISIArticle: pass
 
 class ISIParser(ArticleParser):
 
@@ -143,9 +122,11 @@ class ISIParser(ArticleParser):
             return
 
         journal, volume, page, year = match.groups()
+
+        from papers.utils import JournaCleanup
         name = "%s %s %s %s" % (journal, volume, page, year)
         try:
-            self.article.set_journal(journal.strip())
+            self.article.set_journal(journal)
             self.article.set_volume(int(volume))
             self.article.set_pages(Page(page))
             self.article.set_year(int(year))
@@ -168,13 +149,15 @@ class WOKArticle(WOKObject):
     
     master = None
 
-    def __init__(self, archive, block):
+    def __init__(self, archive, block, master = None):
         self.archive = archive
         self.block = block
         self.article = self.archive.create_article()
         self.build_values()
 
-        if not self.master:
+        if master:
+            self.master = master
+        elif not self.master:
             self.master = MasterArchive()
 
     def get_papers_article(self):
@@ -196,9 +179,13 @@ class WOKArticle(WOKObject):
         set(value)
 
     def build_values(self):
-        self.set_value("Source[:]\s*(.*?)Vol", "journal", method = lambda x: x.strip())
-        self.set_value("Volume[:]\s*(\d+)", "volume", method=int)
+        try:
+            self.set_value("Source[:]\s*(.*?)Vol", "journal", method = lambda x: x.strip())
+        except ISIError: #might not have volume
+            self.set_value("Source[:]\s*(.*?)Iss", "journal", method = lambda x: x.strip())
         self.set_value("Issue[:]\s*(\d+)", "issue", method=int, require=False)
+        self.set_value("Volume[:]\s*(\d+)", "volume", method=int, require=False)
+
         try:
             self.set_value("Pages[:]\s*(\d+)[-P]", "start_page", method = Page)
             self.set_value("Pages[:]\s*\d+[-](\d+)", "end_page", method = Page, require=False)
@@ -214,40 +201,51 @@ class WOKArticle(WOKObject):
     def add_notes(self, notes):
         self.article.set_notes(notes)
 
-    def store(self):
-        journal = ISIArticle.get_journal(self.article.get_journal())
+    def store(self, download = False):
+        journal = self.article.get_journal()
         volume = self.article.get_volume()
         page = self.article.get_page()
-        name = "%s %d %s" % (self.article.get_abbrev(), volume, page)
+        year = self.article.get_year()
+        name = "%s %d %s (%d)" % (self.article.get_abbrev(), volume, page, year)
 
         local_match = self.archive.find_match(self.article)
         if local_match:
-            print "Already have article %s in local archive" % name
+            sys.stdout.write("Already have article %s in local archive\n" % name)
             self.article = local_match
             return
         elif self.master.has(self.article):
-            print "Already have article %s in master archive" % name
+            sys.stdout.write("Already have article %s in master archive\n" % name)
             return
         else:
             self.archive.add(self.article)
 
-        path = download_pdf(journal, volume=volume, page=page)
-        if path:
-            print " -> downloaded %s" % path
-            self.article.set_pdf(path)
+        if download:
+            path = download_pdf(journal, volume=volume, page=page)
+            if path:
+                sys.stdout.write(" -> downloaded %s\n" % path)
+                self.article.set_pdf(path)
+
+        sys.stdout.write("Completed storage of %s\n" % name)
 
 
 class WOKSearch(WOKObject):
 
     def __init__(self, journal=None, author=None, year=None, volume=None, page=None):
         from papers.pdfglobals import PDFGetGlobals as globals
-        self.journal = globals.get_journal(journal)
-        self.author = author
-        self.year = year
-        self.volume = volume
-        self.page = page
+
         self.selenium = None
-        self.title = None
+        self.journal = ""
+        self.author = ""
+        self.year = ""
+        self.volume = ""
+        self.page = ""
+        self.title = ""
+
+        if journal: self.journal = globals.get_journal(journal)
+        if author: self.author = author
+        if year: self.year = year
+        if volume: self.volume = volume
+        if page: self.page = page
 
     def reset(self, journal, author, year, volume, page):
         from papers.pdfglobals import PDFGetGlobals as globals
@@ -258,7 +256,7 @@ class WOKSearch(WOKObject):
         self.page = page
         self.title = None
 
-    def find_article(self):
+    def isi_search(self):
         text = self.selenium.get_body_text()
         if "establish a new session" in text:
             self.selenium.click("link=establish a new session")
@@ -268,48 +266,39 @@ class WOKSearch(WOKObject):
         self.selenium.type("value(input1)", "%s" % self.author)
         self.selenium.select("select2", "label=Year Published")
         self.selenium.type("value(input2)", "%d" % self.year)
-        self.selenium.select("select3", "label=Publication Name")
-        self.selenium.type("value(input3)", "%s*" % self.journal.name)
+        if self.journal:
+            self.selenium.select("select3", "label=Publication Name")
+            self.selenium.type("value(input3)", "%s*" % self.journal.name)
+
         self.selenium.click("//input[@name='' and @type='image']")
+        self.selenium.wait_for_page_to_load("30000")
+
+        self.selenium.select("pageSize", "label=Show 50 per page")
         self.selenium.wait_for_page_to_load("30000")
 
         #figure out the title
         text = self.selenium.get_body_text()
-        matches = re.compile("Title[:](.*?)\n(.*?)Times\sCited", re.DOTALL).findall(text)
+        matches = re.compile("Title[:]\s*(.*?)\n(.*?)Times\sCited", re.DOTALL).findall(text)
         if not matches:
             msg_arr = ["\nAuthor=%s" % self.author]
             msg_arr.append("Year=%d" % self.year)
             msg_arr.append("Journal=%s" % self.journal.name)
             msg_arr.append("Could not find list entries on page\n%s" % readable(text))
             self.die("\n".join(msg_arr))
+        return matches
 
-        for title, entry in matches:
-            match = re.compile("Volume[:]\s*(\d+)").search(entry)
-            if not match:
-                self.die("Could not find volume for entry\n%s" % readable(text))
-            volume = int(match.groups()[0])
-
-            match = re.compile("Pages[:]\s*(\d+)").search(entry)
-            if not match:
-                match = re.compile("Article\sNumber[:]\s*(\d+)").search(entry)
-            if not match:
-                self.die("Could not find page for entry\n%s" % readable(text))
-
-            page = Page(match.groups()[0])
-
-            if volume == self.volume and page == self.page:
-                self.title = title[1:10]
-                break
 
     def die(self, msg):
         WOKObject.die(self, msg)
 
-    def open_article(self):
+    def open_article(self, title):
         try:
-            self.selenium.click("link=*%s*" % self.title)
+            linktitle = title.strip()[1:-1]
+            link = "link=*%s*" % linktitle
+            self.selenium.click(link)
             self.selenium.wait_for_page_to_load("30000")
         except Exception, error:
-            print self.selenium.get_body_text()
+            sys.stderr.write("Error on block:\n%s\n" % self.selenium.get_body_text())
             self.stop()
             self.die("%s\nCould not find title" % traceback(error))
 
@@ -357,8 +346,6 @@ class WOKSearch(WOKObject):
 
     def open(self):
         self.open_isi()
-        self.find_article()
-        self.open_article()
 
     def get_article(self, archive):
         block = self.get_text()
@@ -367,16 +354,22 @@ class WOKSearch(WOKObject):
 
 class WOKParser(WOKObject):
 
-    def __init__(self, archive, journal, author, year, volume, page, notes):
+    def __init__(self, archive, journal=None, author=None, year=None, volume=None, page=None, notes=None, download=False):
         self.archive = Archive(archive)
         self.search  = WOKSearch(journal, author, year, volume, page)
         self.notes = notes
+        self.volume = volume
+        self.page = page
+        self.download = download
 
-    def run(self):
+    def run_citedrefs(self):
         try:
             import time
             self.search.start()
             self.search.open()
+            matches = self.search.isi_search()
+            title = self.pick_article(matches)
+            self.search.open_article(title)
             self.nrefs = self.search.open_references()
 
             #get all possible refs on this page 
@@ -394,7 +387,27 @@ class WOKParser(WOKObject):
                 nstart += 30
                 onclick += 1
             
-            time.sleep(10)
+            self.search.stop()
+            self.archive.commit()
+        except KeyboardInterrupt, error:
+            self.search.stop()
+            raise error
+        except ISIError, error:
+            self.search.stop()
+            raise error
+
+    def run_allrefs(self):
+        try:
+            import time
+            self.search.start()
+            self.search.open()
+            matches = self.search.isi_search()
+            for title, entry in matches:
+                self.search.open_article(title)
+                article = self.search.get_article(self.archive)
+                article.add_notes(self.notes)
+                article.store(self.download)
+                self.search.go_back()
             self.search.stop()
             self.archive.commit()
         except ISIError, error:
@@ -413,11 +426,9 @@ class WOKParser(WOKObject):
             link = url_list[name]
             if "CitedFullRecord" in link:
                 self.process_article(link)
-                time.sleep(1)
 
     def process_article(self, link):
         id = re.compile("isickref[=]\d+").search(link).group()
-        print id
         self.search.go_to_list_entry(id)
 
         try:
@@ -430,6 +441,24 @@ class WOKParser(WOKObject):
             sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
 
         self.search.go_back()
+
+    def pick_article(self, matches):
+        for title, entry in matches:
+            match = re.compile("Volume[:]\s*(\d+)").search(entry)
+            if not match:
+                self.die("Could not find volume for entry\n%s" % readable(text))
+            volume = int(match.groups()[0])
+
+            match = re.compile("Pages[:]\s*(\d+)").search(entry)
+            if not match:
+                match = re.compile("Article\sNumber[:]\s*(\d+)").search(entry)
+            if not match:
+                self.die("Could not find page for entry\n%s" % readable(text))
+
+            page = Page(match.groups()[0])
+
+            if volume == self.volume and page == self.page:
+                return title
 
 
 class SavedRecordParser:
@@ -505,11 +534,11 @@ class SavedRecordParser:
                 self.get_entry("end_page", method=get_page, require=False, entries=(("ep", "di"), ("ep", "ut")) )
 
 
-                self.get_entry("authors", method=lambda x: get_authors(x, "\n", ","), entries=(("af", "ti"), ("au", "ti")) )
+                self.get_entry("authors", method=lambda x: get_authors(x, "\n", ","), entries=(("af", "ti"), ("au", "ti"), ("au", "so")))
 
                 self.get_entry("title", method=clean_title, entries=(("ti", "so"),) )
                 self.get_entry("abstract", method=clean_entry, require=False, entries=(("ab", "sn"),) )
-                self.get_entry("year", method=int, entries=(("py", "vl"),) )
+                self.get_entry("year", method=int, entries=(("py", "vl"), ("py", "tc") ) )
 
                 self.get_entry("doi", require=False, entries=(("di", "pg"), ("di", "ut"),("di", "er")) )
 
@@ -522,20 +551,20 @@ class SavedRecordParser:
                 if not self.master.has(self.article):
                     self.archive.test_and_add(self.article)
                 else:
-                    print "%s exists in archive" % name
+                    sys.stdout.write("%s exists in archive\n" % name)
                     continue
             except Exception, error:
                 sys.stderr.write("%s\n%s\n" % (error, block))
 
 def walkISI(files, archive, notes):
-    from webutils.pdfget import download_pdf
+    from papers.pdfget import download_pdf
 
     parser = SavedRecordParser(archive)
 
     for file in files:
         text = open(file).read()
         parser.feed(text, notes)
-        print "%d new articles" % len(parser.archive)
+        sys.stdout.write("%d new articles\n" % len(parser.archive))
 
         for article in parser:
             journal = article.get_journal()
@@ -543,24 +572,113 @@ def walkISI(files, archive, notes):
             volume = article.get_volume()
             start = article.get_start_page() 
             name = "%s %d %s" % (abbrev, volume, start)
-            print "Downloading %s" % name,
+            sys.stdout.write("Downloading %s" % name)
 
             path = name + ".pdf"
             if os.path.isfile(path):
-                print " -> exists %s" % path
+                sys.stdout.write(" -> exists %s" % path)
                 article.set_pdf(path)
                 continue
 
             #check to see if we already have it
             path = download_pdf(ISIArticle.get_journal(journal), volume, 0, start) #don't require issue
             if path:
-                print " -> %s" % path
+                sys.stdout.write(" -> %s" % path)
                 article.set_pdf(path)
             else:
-                print " -> FAILED"
+                sys.stdout.write(" -> FAILED")
     parser.archive.commit()
                 
 
     
+
+
+if __name__ == "__main__":
+    archive = Archive("test") 
+    block = u"""
+Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My Saved Searches       Log Out      Help   
+    
+     
+                                    
+                                         Search      Search History      Marked List (0)    
+
+
+                                         ALL DATABASES
+                                          
+                                            
+                                            << Back to results list     
+                                                     Record 1  of  2        
+                                                     Record from Web of Science®
+
+
+                                                        
+                                                        Unique homonuclear multiple bonding in main group compounds
+                                                            
+                                                                    more options
+                                                                    Author(s): Wang YZ (Wang, Yuzhong)1, Robinson GH (Robinson, Gregory H.)1
+                                                                    Source: CHEMICAL COMMUNICATIONS    Issue: 35    Pages: 5201-5213    Published: 2009  
+                                                                    Times Cited: 8     References: 152     Citation Map     
+                                                                    Abstract: Significant progress in the chemistry of main group compounds (group 13, 14, and 15) containing homonuclear multiple bonds has been made over the past three decades. This feature article addresses the unique structural and bonding motifs of these compounds, with a particular emphasis on both iconic molecules and recent novel discoveries.
+                                                                    Document Type: Review
+                                                                    Language: English
+                                                                    KeyWords Plus: SI=SI DOUBLE-BOND; ELECTRON PI-BOND; DENSITY-FUNCTIONAL THEORY; RAY CRYSTAL-STRUCTURE; GALLIUM TRIPLE BOND; B=B DOUBLE-BOND; GROUP ELEMENTS; MOLECULAR-STRUCTURE; TERPHENYL LIGANDS; STABLE COMPOUND
+                                                                    Reprint Address: Robinson, GH (reprint author), Univ Georgia, Dept Chem, Athens, GA 30602 USA
+                                                                    Addresses: 
+                                                                    1. Univ Georgia, Dept Chem, Athens, GA 30602 USA
+                                                                    E-mail Addresses: robinson@chem.uga.edu
+                                                                    Funding Acknowledgement:
+                                                                    Funding Agency  Grant Number
+                                                                    National Science Foundation      
+                                                                    [Show funding text]   
+                                                                    Publisher: ROYAL SOC CHEMISTRY, THOMAS GRAHAM HOUSE, SCIENCE PARK, MILTON RD, CAMBRIDGE CB4 0WF, CAMBS, ENGLAND
+                                                                    IDS Number: 488CO
+                                                                    ISSN: 1359-7345
+                                                                    DOI: 10.1039/b908048a
+
+                                                                    Cited by: 8
+                                                                    This article has been cited 8 times (from Web of Science).
+                                                                    Fischer RC, Power PP  pi-Bonding and the Lone Pair Effect in Multiple Bonds Involving Heavier Main Group Elements: Developments in the New Millennium  CHEMICAL REVIEWS  110  7  3877-3923  JUL 2010
+                                                                    Gerdes C, Muller T  News from Silicon: An Isomer of Hexasilabenzene and A Metal-Silicon Triple Bond  ANGEWANDTE CHEMIE-INTERNATIONAL EDITION  49  29  4860-4862  2010
+                                                                    Wehmschulte RJ  At Last: A Stable Univalent Gallium Cation  ANGEWANDTE CHEMIE-INTERNATIONAL EDITION  49  28  4708-4709  2010
+                                                                    [  view all 8 citing articles  ]
+
+
+                                                                    Related Records:
+                                                                    Find similar records based on shared references (from Web of Science).
+                                                                    [ view related records ]
+
+                                                                    References: 152
+                                                                    View the bibliography of this record (from Web of Science).
+
+                                                                    Additional information
+                                                                    View the journal's impact factor (in Journal Citation Reports)
+                                                                    View the journal's Table of Contents (in Current Contents Connect)
+                                                                    View this record in other databases:
+                                                                    View citation data (in Web of Science)
+                                                                        
+
+                                                                            
+
+
+                                                                            << Back to results list     
+                                                                                     Record 1  of  2        
+                                                                                     Record from Web of Science®
+
+
+                                                                                     Output Record
+                                                                                        
+                                                                                        Step 1:
+                                                                                          Authors, Title, Source
+                                                                                                  plus Abstract
+                                                                                                   Full Record
+                                                                                                           plus Cited Reference     
+                                                                                                           Step 2: [How do I export to bibliographic management software?]
+                                                                                                                     
+                                                                                                                      
+
+    """
+    master = Archive("nullmaster")
+    article = WOKArticle(archive, readable(block), master)
+    article.store()
 
 

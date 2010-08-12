@@ -228,6 +228,10 @@ class JPC(ACSJournal):
     name = "Journal of Physical Chemistry"
     id = "jpchax"
 
+class JPCL(ACSJournal):
+    name = "Journal of Physical Chemistry Letters"
+    id = "jpclcd"
+
 class JPCA(ACSJournal):
     name = "Journal of Physical Chemistry A"
     id = "jpcafh"

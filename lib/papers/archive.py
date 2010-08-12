@@ -191,8 +191,13 @@ class Article:
 
     def get_title(self):
         return self._get_entry(self.titletag)
+
     def get_volume(self):
-        return int(self._get_entry(self.volumetag))
+        volume = self._get_entry(self.volumetag)
+        if volume:
+            return int(volume)
+        else:
+            return 0
 
     def get_year(self):
         return int(self._get_entry(self.yeartag))

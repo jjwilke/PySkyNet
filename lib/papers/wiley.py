@@ -77,7 +77,6 @@ class WileyPDFFetcher(ArticleParser):
         self.url = None
 
     def start_frame(self, attrs):
-        print attrs
         name = self.get_html_attr("name", attrs)
         if not name == "main":
             return

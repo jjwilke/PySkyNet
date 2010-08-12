@@ -182,15 +182,6 @@ class SDJournal(Journal):
 
         response = fetch_url(nexturl)
 
-        """
-        url_lister = URLLister("Pages %s" % page, "Related")
-        for name in url_lister:
-            print name
-            if "PDF" in name:
-                return url_lister[name], issue
-        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
-        """
-
         sdparser = SDParser()
         sdparser.feed(response)
 
@@ -243,32 +234,4 @@ class JMB(SDJournal):
 
 if __name__ == "__main__":
     pass
-"""
-    from htmlparser import URLLister, fetch_url 
-    lister = URLLister()
-    response = fetch_url("http://www.sciencedirect.com/science/journal/00092614")
-    lister.feed(response)
-    for name in lister:
-        print name, lister[name]
-
-    data = {
-        "_ob" : "QuickSearchURL",
-        "_method" : "submitForm",
-        "_acct" : "C000033918",
-        "md5" : "4f3c1bb84b148e0df0ee45b739b18663",
-        "qs_smi" : "5231",
-        "qs_title" : "chemical physics letters",
-        "qs_vol" : 291,
-        "qs_pages" : 109,
-        "qs_issue" : "",
-        "qs_all" : "",
-        "qs_author" : "",
-    }
-"""
-
-    #params = urllib.urlencode(data)
-    #url = "http://www.sciencedirect.com/science?%s" % params
-    #print url
-    #response = urllib.urlopen(url).read()
-    #print response
 

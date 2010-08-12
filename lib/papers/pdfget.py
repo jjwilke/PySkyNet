@@ -132,7 +132,8 @@ class PDFArticle:
             self.end_page = end_page
 
     def set_journal(self, journal):
-        self.journal = journal
+        from papers.utils import JournalCleanup
+        self.journal = JournalCleanup.abbreviate(journal)
 
     def set_volume(self, volume):
         self.volume = volume

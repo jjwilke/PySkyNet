@@ -2,7 +2,7 @@ import re
 
 class PDFGetGlobals:
     
-    from papers.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC, OrgLett, ChemRev, ACR
+    from papers.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC, OrgLett, ChemRev, ACR, JPCL
     from papers.aip import JCP, JMP
     from papers.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS, CPC, JMB
     from papers.aps import PRL, PRA, PRB, PROLA, RMP
@@ -105,15 +105,42 @@ class PDFGetGlobals:
         "chem soc rev" : "csr",
     }
 
+    def get_initials(cls, journal):
+        str_arr = []
+        for word in journal.split():
+            str_arr.append(word[0])
+        return "".join(str_arr)
+    get_initials = classmethod(get_initials)
+
+    def get_object(cls, abbrev):
+        if abbrev in cls.journals:
+            return cls.journals[abbrev]()
+
+        #attempt to build the journal object as a name
+        abbrev = abbrev.upper()
+        if hasattr(cls, abbrev):
+            obj = getattr(cls, abbrev)
+            return obj()
+
+        #if we are here, no object
+        return None
+    get_object = classmethod(get_object)
+
     def get_journal(cls, name):
+        from papers.utils import JournalCleanup
         #lower case, strip periods
-        name = name.replace(".", "").lower()
-        if name in cls.journals:
-            return cls.journals[name]()
-        elif name in cls.abbrevs:
-            return cls.journals[cls.abbrevs[name]]()
-        else:
-            return None
+        name = JournalCleanup.abbreviate(name).replace(".", "").lower()
+        
+        #attempt to object assuming this is the abbreviation
+        jobj = cls.get_object(name)
+        if jobj:
+            return jobj
+
+        #nope! no worries!
+        abbrev = cls.get_initials(name)
+        if abbrev in cls.abbrevs:
+            abbrev = cls.abbrevs[abbrev]
+        return cls.get_object(abbrev)
     get_journal = classmethod(get_journal)
 
     def find_journal_in_entry(cls, entry):

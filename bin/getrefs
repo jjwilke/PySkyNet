@@ -32,10 +32,13 @@ if __name__ == "__main__":
         InputOption(longOption='archive', optionType='string', bind=True, default="new"),
         InputOption(shortOption='n', longOption='notes', optionType='string', bind=True),
         InputOption(shortOption='f', longOption='format', optionType='string', bind=True),
-        InputOption(shortOption='r', longOption='refs'),
-        InputOption(shortOption='d', longOption='download'),
+        InputOption(longOption='download', setbool=True),
+        InputOption(shortOption='c', longOption='cited'),
+        InputOption(shortOption='l', longOption='list'),
         InputOption(shortOption='g', longOption='grab'),
         ]
+
+
 
     options=OptionSet()
     optionList = OptionList(commandName="getisi",
@@ -45,17 +48,33 @@ if __name__ == "__main__":
 
     from papers.isi import WOKParser, WOKSearch
 
+    print options.__dict__
+
     for option in options_given:
-        if option in ('r', 'refs'):
+        if option in ('c', 'cited'):
             page = options.page
-            parser = WOKParser(options.archive, options.journal, options.author, options.year, options.volume, page, options.notes)
+            parser = WOKParser(options.archive, options.journal, options.author, options.year, options.volume, page, options.notes, download=options.download)
             try:
-                parser.run()
+                parser.run_citedrefs()
             except Exception, error:
-                pass
-            except KeyboardInterrupt:
+                print traceback(error)
+                print error
+            except KeyboardInterrupt, error:
+                print traceback(error)
                 pass
             parser.archive.commit()
+        elif option in ('l', 'list'):
+            parser = WOKParser(options.archive, author=options.author, year=options.year, notes=options.notes, download=options.download)
+            try:
+                parser.run_allrefs()
+            except Exception, error:
+                print traceback(error)
+                print error
+            except KeyboardInterrupt, error:
+                print traceback(error)
+                pass
+            parser.archive.commit()
+            
         elif option in ('g', 'grab'):
             notes = options.notes
 

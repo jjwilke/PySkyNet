@@ -52,7 +52,11 @@ def fetch_url(url):
 def save_url(url, filename):
     print "Downloading %s" % url
     fileobj = open(filename, "w")
-    fileobj.write(fetch_url(url))
+    text = fetch_url(url)
+    if not text:
+        sys.stderr.write("Download failed on page %s\n" % url)
+        return
+    fileobj.write(text)
     fileobj.close()
 
 class HTMLParser(SGMLParser):

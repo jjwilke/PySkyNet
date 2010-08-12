@@ -208,11 +208,12 @@ class Cleanup:
             return word
     check_split = classmethod(check_split)
 
-    def clean_word(cls, word):
+    def clean_word(cls, word, newsentence = False):
         word = word.lower()
         word = cls.capitalize_word(word)
+        if not newsentence:
+            word = cls.check_lowercase(word)
         word = cls.check_caps(word)
-        word = cls.check_lowercase(word)
         word = cls.check_split(word)
 
         #if cls.is_molecule(word) and cls.contains_number(word):
@@ -227,11 +228,23 @@ class Cleanup:
         return word
     first_word = classmethod(first_word)
 
+    def ends_sentence(cls, word):
+        if not word:
+            return ""
+
+        matches = [".", ":", "!", "?"]
+        return word[-1] in matches
+    ends_sentence = classmethod(ends_sentence)
+
     def clean_title(cls, line):
         entries = line.lower().split(" ")
         words = [ cls.first_word(entries[0]) ]
+        newsentence = cls.ends_sentence(entries[0])
         for entry in entries[1:]:
-            words.append(cls.clean_word(entry))
+            if not entry:
+                continue
+            words.append(cls.clean_word(entry, newsentence))
+            newsentence = cls.ends_sentence(entry)
         title = " ".join(words)
 
         for entry in cls.exact:
@@ -321,41 +334,11 @@ class JournalCleanup:
         "structure-theochem"  : "structure",
     }
 
-    abbrevs = [
-        'adv',
-        'am',
-        'angew',
-        'appl',
-        'biomol',
-        'chem',
-        'chim',
-        'commun',
-        'comput',
-        'curr',
-        'ed',
-        'int',
-        'j',
-        'lett',
-        'lon',
-        'math',
-        'opin',
-        'org',
-        'phys',
-        'proc',
-        'res',
-        'rev',
-        'r',
-        'ser',
-        'soc',
-        'theor',
-    ]
-
     repl = {
         'ser-a' : 'Ser A',
     }
 
     abbrev_map = {
-        "zeitsch" : "zeit",
         "account" : "acc",
         "advance" : "adv",
         "americ" : "am",
@@ -365,9 +348,10 @@ class JournalCleanup:
         "chem" : "chem",
         "chimica" : "chim",
         "collect" : "collect",
-        "czech" : "czech",
         "comput" : "comput",
+        "commun" : "commun",
         "condensed" : "cond",
+        "czech" : "czech",
         "edition" : "ed",
         "inorg" : "inorg",
         "intern" : "int",
@@ -385,11 +369,14 @@ class JournalCleanup:
         "royal" : "r",
         "sci" : "sci",
         "society" : "soc",
-        "struct" : "struct",
         "spectros" : "spectrosc",
+        "struct" : "struct",
         "theor" : "theor",
         "topic" : "top",
+        "zeitsch" : "zeit",
     }
+
+    abbrevs = abbrev_map.values()
 
     def _abbrev_word(cls, word):
         new_word = word
