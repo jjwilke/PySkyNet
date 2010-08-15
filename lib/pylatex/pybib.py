@@ -2,6 +2,7 @@ from xml.dom import minidom
 import codecs
 import sys
 import os.path
+import os
 import re
 
 def lower_case_xml_node(node, newnode, depth):
@@ -303,35 +304,7 @@ class TitleFormat(EntryFormat):
         from utils import make_numbers_subscript as nsub
 
         title = EntryFormat.bibitem(self, obj, simple)
-
-        def process_word(word):
-            from papers.utils import Cleanup
-            for acr in Cleanup.acronyms:
-                match = re.compile("^%s[:.!?,]?$" % acr, re.IGNORECASE).search(word)
-                if match:
-                    return word
-
-            return Cleanup.texify_molecule(word)
-
-        def process_entry(entry):
-            entries = entry.split("-")
-            if len(entries) == 1:
-                return process_word(word)
-
-            dash_arr = []
-            #otherwise go through the entries and process each entries between dashes
-            for entry in entries:
-                dash_arr.append(process_word(entry))
-            return "-".join(dash_arr)
-            
-        #see if we have a molecule name
-        title_arr = []
-        for word in title.split():
-            title_arr.append(process_entry(word))
-
-        
-        new_title = " ".join(title_arr)
-        return new_title
+        return title
                 
     
 class CiteKey: pass
@@ -742,8 +715,6 @@ class RecordObject:
         citekey = "%s:%sp%s" % (firstauthor, year, firstpage)
         return citekey
 
-
-
     def matches(self, matchreq):
         for attrname in matchreq:
             match = matchreq[attrname]
@@ -771,6 +742,12 @@ class RecordObject:
             raise BibformatUnspecifiedError(name)
         text = formatter.bibitem(self.entries[name], simple)
         return text
+
+    def get(self, attr):
+        try:
+            return self.entries[attr]
+        except KeyError:
+            return None
 
     def __getitem__(self, name, simple=False):
         formatter = getattr(self, name)
@@ -918,6 +895,8 @@ class JournalArticle(RecordObject):
     label = None
     bibitem = None
 
+    mandatoryfields = []
+
     attrlist = [
         'title',
         'abstract',
@@ -973,12 +952,15 @@ class JournalArticle(RecordObject):
     def __init__(self, **kwargs):
         self.entries = {}
         for entry in kwargs:
+            self.addAttribute(entry, kwargs[entry])
+    
+    def addAttribute(self, key, value):
             try:
-                classtype = self.CLASS_MAP[entry]
-                classinst = classtype(kwargs[entry])
-                self.entries[entry] = classinst
+                classtype = self.CLASS_MAP[key]
+                classinst = classtype(value)
+                self.entries[key] = classinst
             except KeyError:
-                raise RecordClassError('%s does not have a class implemented' % entry)
+                raise RecordClassError('%s does not have a class implemented' % key)
 
     def citekey(self):
         return self.citekey(self)
@@ -1011,6 +993,8 @@ class Record(object):
         "5" : Book,
         "Computer Program" : ComputerProgram,
     }
+
+    formatted = False
     
     def __new__(cls, **kwargs):
         type = None
@@ -1034,7 +1018,22 @@ class Record(object):
         return classtype
     getClassType = classmethod(getClassType)
 
+    def setFormat(cls, format):
+        format = format.lower()
+        try:
+            cmd = "from pylatex.%s import set_%s_format as set_format" % (format, format)
+            exec(cmd)
+        except ImportError:
+            sys.stderr.write("invalid format %s" % format)
+            return
+        set_format()
+        cls.formatted = True
+    setFormat = classmethod(setFormat)
+
     def setDefaults(cls):
+        if cls.formatted:
+            return #format already done
+
         if not JournalArticle.bibitem: #not yet formatted
 
             def journal_bibitem(r):
@@ -1079,7 +1078,8 @@ class Record(object):
 
 
 class Bibliography:
-
+    
+    ENDNOTE_XML_LIB = os.environ["ENDNOTE_XML_LIB"]
 
     def __init__(self):
         self.records = {}
@@ -1121,6 +1121,7 @@ class Bibliography:
     def labels(self):
         return self.records.keys()
 
+
     def subset(self, labels):
         newbib = Bibliography()
         newrecs = {}
@@ -1156,6 +1157,9 @@ class Bibliography:
         fileobj = open(file, "w")
         fileobj.write("\n".join(str_arr))
         fileobj.close()
+
+    def buildBibAll(self):
+        self.bibcites = self.records.keys()
 
     def buildBibliography(self, texfile):
         auxfile = open(texfile + ".aux").read()
@@ -1226,6 +1230,28 @@ class Bibliography:
                 if check:
                     sys.stderr.write("%s\n" % error)
 
+    def findEntry(self, journal, volume, page):
+        from papers.pdfglobals import PDFGetGlobals
+        for label in self.records:
+            try:
+                record = self.records[label]
+                volcheck = str(record.get("volume"))
+                if not volume == volcheck:
+                    continue
+
+                pagecheck = str(record.get("pages")).split("-")[0].strip()
+                if not page == pagecheck:
+                    continue
+
+                jobj = PDFGetGlobals.get_journal(journal)
+                jrec = PDFGetGlobals.get_journal(str(record.get("journal")))
+                if jobj and jobj.name != jrec.name:
+                    continue
+
+                return record
+            except Exception, error:
+                continue
+
     def addRecord(self, xmlrec):
         kwargs = {}
         errors = []
@@ -1289,19 +1315,22 @@ class Bibliography:
             fatal_errors.extend(optional_errors)
             raise MissingDataError(str(kwargs), *fatal_errors)
 
-        #get the label
-        label = kwargs['label']
-
-        if label in self.records:
-            raise DuplicateLabelError("duplicate label %s" % label)
-
 
         try:
             rec = Record(**kwargs)
-            #everything good, add the record
+            label = kwargs["label"]
+            if not label:
+                label = rec.getBibkey()
+                rec.addAttribute("label", label)
+            if label in self.records:
+                raise DuplicateLabelError("duplicate label %s" % label)
             self.records[label] = rec
+            title = kwargs["title"]
         except RecordTypeError, error:
             sys.stderr.write("%s\nfor record\n%s\n" % (error, kwargs))
+        except Exception, error:
+            sys.stderr.write("%s\n" % error)
+            raise error
 
         if optional_errors:
             raise MissingDataError(str(kwargs), *optional_errors)
@@ -1328,7 +1357,9 @@ class Bibliography:
 
 if __name__ == "__main__":
     bib = Bibliography()
-    bib.buildRecords(sys.argv[1], check=True)
+    #bib.buildRecords(sys.argv[1], check=True)
+    bib.buildRecords(Bibliography.ENDNOTE_XML_LIB)
+    print bib.findEntry("jcp", "131", "244116")
 
 
 

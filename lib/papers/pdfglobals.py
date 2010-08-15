@@ -9,7 +9,7 @@ class PDFGetGlobals:
     from papers.wiley import AngeChem, IJQC, JPOC, JCC, ChemPhysChem
     from papers.rsc import PCCP, CSR
     from papers.iop import JPA, JPB, PhysScripta, JPCM
-    from papers.informa import MolPhys
+    from papers.informa import MolPhys, IRPC
     from papers.jstor import Science
     from papers.springer import TCA, TCActa
 
@@ -128,6 +128,7 @@ class PDFGetGlobals:
 
     def get_journal(cls, name):
         from papers.utils import JournalCleanup
+
         #lower case, strip periods
         name = JournalCleanup.abbreviate(name).replace(".", "").lower()
         

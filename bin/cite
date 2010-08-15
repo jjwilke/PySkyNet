@@ -1,0 +1,43 @@
+#! /usr/bin/env python
+
+import sys
+import os
+
+if len(sys.argv) < 2:
+    sys.exit("You must give a citation label")
+
+from skynet.utils.getoptions import OptionSet,OptionList,readOptions,InputOption
+opts = [
+    InputOption(shortOption='f', longOption='format', optionType='string', bind=True, default="nsf"),
+    InputOption(shortOption='c', longOption='citation', optionType='string', listOfValues=True, bind=True, default=None),
+    InputOption(shortOption='l', longOption='label', optionType='string', default=None, bind=True),
+    ]
+options=OptionSet()
+optionList = OptionList(commandName="cite",
+                        usageStructure=[ "[options] citelabel"],
+                        optionsList=opts)
+options_given = readOptions(optionList, optionSet=options)
+
+value = []
+if   hasattr(options, "label"):
+    value = options.label
+elif hasattr(options, "citation"):
+    value = options.citation
+else:
+    sys.exit("I need a citation or a label")
+
+from pylatex.pybib import Record
+Record.setFormat(options.format)
+from pylatex.refserver import CiteRequest
+req = CiteRequest()
+record = req.run(value)
+if not record:
+    sys.exit("no record found")
+citation = record.bibitem()
+print citation
+citation = citation.replace("''","'\\'\\''")
+citation = citation.replace(r"\t", r"\\t") 
+cmd = "osascript -e 'set the clipboard to \"%s\"'" % citation
+os.system(cmd)
+
+

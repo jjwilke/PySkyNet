@@ -141,7 +141,8 @@ class URLLister(HTMLParser):
         if self.href:
             self.link = Link(self.href)
             if self.status == self.STARTED:
-                self.links[self.linktext] = self.link
+                if not self.linktext in self.links:
+                    self.links[self.linktext] = self.link
             self.href = None
             self.linktext = ""
             self.storelink = False

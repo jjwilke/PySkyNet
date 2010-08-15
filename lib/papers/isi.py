@@ -22,6 +22,8 @@ def readable(x):
 def process_authors(entries):
     authors = []
     for entry in entries:
+        if len(entry) == 1: #hmm, chinese name
+            entry = map(lambda x: x.strip(), entry[0].split())
         last, first = entry[:2]
         #check to see if we have stupidness
         first_first = first.split()[0]
@@ -45,7 +47,11 @@ def process_authors(entries):
 class ISIError(Exception):
     pass
 
-def get_authors(x, inter_delim, intra_delim):
+    def __init__(self, msg, block = ""):
+        Exception.__init__(self, msg)
+        self.block = readable(block)
+
+def get_authors(x, inter_delim = ",", intra_delim = " "):
     try:
         #first check to see if we have parentheses
         regexp = "[\(](.*?)[\)]"
@@ -167,7 +173,7 @@ class WOKArticle(WOKObject):
         match = re.compile(regexp, re.DOTALL).search(self.block)
         if not match:
             if require:
-                raise ISIError("Regular expression %s for attribute %s does not match block\n%s" % (regexp, attr, readable(self.block)))
+                raise ISIError("Regular expression %s for attribute %s does not match block\n" % (regexp, attr), self.block)
             else:
                 return
 
@@ -247,6 +253,8 @@ class WOKSearch(WOKObject):
         if volume: self.volume = volume
         if page: self.page = page
 
+        self.is_forward = False
+
     def reset(self, journal, author, year, volume, page):
         from papers.pdfglobals import PDFGetGlobals as globals
         self.journal = globals.get_journal(journal)
@@ -295,12 +303,14 @@ class WOKSearch(WOKObject):
         try:
             linktitle = title.strip()[1:-1]
             link = "link=*%s*" % linktitle
+            self.lasturl = self.selenium.browserURL
             self.selenium.click(link)
             self.selenium.wait_for_page_to_load("30000")
+            self.is_forward = True
         except Exception, error:
-            sys.stderr.write("Error on block:\n%s\n" % self.selenium.get_body_text())
-            self.stop()
-            self.die("%s\nCould not find title" % traceback(error))
+            sys.stderr.write("Error on title %s:\n%s\n" % (readable(title), readable(self.selenium.get_body_text())))
+            self.go_back()
+            raise ISIError("%s\nCould not find title" % traceback(error))
 
     def open_references(self):
         text = self.selenium.get_body_text()
@@ -327,8 +337,15 @@ class WOKSearch(WOKObject):
         self.selenium = None
 
     def go_back(self):
-        self.selenium.click("link=<< Back to results list")
-        self.selenium.wait_for_page_to_load("30000")
+        if not self.is_forward:
+            return
+
+        try:
+            self.selenium.click("link=<< Back to results list")
+            self.selenium.wait_for_page_to_load("30000")
+        except Exception, error:
+            self.selenium.go_back()
+        self.is_forward = False
 
     def go_to_next_page(self, number):
         self.selenium.click("//input[@name='' and @type='image' and @onclick='javascript:this.form.elements.page.value=%d;']" % number)
@@ -394,23 +411,28 @@ class WOKParser(WOKObject):
             raise error
         except ISIError, error:
             self.search.stop()
+            sys.stderr.write("%s\nFailed on block:\n%s\n" % (error, error.block))
             raise error
 
     def run_allrefs(self):
         try:
-            import time
             self.search.start()
             self.search.open()
             matches = self.search.isi_search()
             for title, entry in matches:
-                self.search.open_article(title)
-                article = self.search.get_article(self.archive)
-                article.add_notes(self.notes)
-                article.store(self.download)
+                try:
+                    self.search.open_article(title)
+                    article = self.search.get_article(self.archive)
+                    article.add_notes(self.notes)
+                    article.store(self.download)
+                except ISIError, error: #don't stop because of one error
+                    sys.stderr.write("%s\nFailed on block:\n%s\n" % (error, error.block))
+                except Exception, error:
+                    sys.stderr.write("Unknown error:\n%s\n%s\n" % (traceback(error), error))
                 self.search.go_back()
             self.search.stop()
+        except Exception, error:
             self.archive.commit()
-        except ISIError, error:
             self.search.stop()
             raise error
 
@@ -597,23 +619,12 @@ if __name__ == "__main__":
     archive = Archive("test") 
     block = u"""
 Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My Saved Searches       Log Out      Help   
-    
-     
-                                    
                                          Search      Search History      Marked List (0)    
-
-
                                          ALL DATABASES
-                                          
-                                            
                                             << Back to results list     
                                                      Record 1  of  2        
                                                      Record from Web of Science®
-
-
-                                                        
                                                         Unique homonuclear multiple bonding in main group compounds
-                                                            
                                                                     more options
                                                                     Author(s): Wang YZ (Wang, Yuzhong)1, Robinson GH (Robinson, Gregory H.)1
                                                                     Source: CHEMICAL COMMUNICATIONS    Issue: 35    Pages: 5201-5213    Published: 2009  
@@ -677,8 +688,10 @@ Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My S
                                                                                                                       
 
     """
-    master = Archive("nullmaster")
-    article = WOKArticle(archive, readable(block), master)
-    article.store()
+    #master = Archive("nullmaster")
+    #article = WOKArticle(archive, readable(block), master)
+    #article.store()
+    x = "Wang HY (Wang Hong-Yan), Li XB (Li Xi-Bo), Tang YJ (Tang Yong-Jian), King RB (King, R. Bruce), Schaefer HF (Schaefer, Henry F., III)"
+    print get_authors(x, intra_delim=" ", inter_delim=",")
 
 

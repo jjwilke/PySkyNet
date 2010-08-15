@@ -25,6 +25,7 @@ class Article:
     notestag = "notes"
     abstracttag = "abstract"
     doitag = "electronic-resource-num"
+    labeltag = "accession-num"
 
     
     def __init__(self, node, archive):

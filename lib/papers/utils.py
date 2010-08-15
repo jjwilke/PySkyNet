@@ -17,6 +17,8 @@ class Cleanup:
 
     elements = [
         'H',
+        'D',
+        'X',
         'He',
         'Li',
         'Be',
@@ -76,6 +78,7 @@ class Cleanup:
         'Hf',
         'Ta',
         'W',
+        'V',
     ]
 
     acronyms = [
@@ -123,6 +126,8 @@ class Cleanup:
         "MO",
         "PNO",
         "R12",
+        "DNA",
+        "RNA",
     ]
 
     caps = [
@@ -154,18 +159,19 @@ class Cleanup:
     ]
 
     def capitalize_word(cls, word):
-        if "-" in word:
-            return cls.capitalize_hyphenated_word(word)
+        for delim in "/", "-":
+            if delim in word:
+                return cls.capitalize_hyphenated_word(word, delim)
         else:
             return capitalize_word(word)
     capitalize_word = classmethod(capitalize_word)
 
-    def capitalize_hyphenated_word(cls, word):
+    def capitalize_hyphenated_word(cls, word, delim):
         dash_arr = []
-        dashes = word.split("-")
+        dashes = word.split(delim)
         for dash in dashes:
             dash_arr.append(cls.clean_word(dash))
-        return "-".join(dash_arr)
+        return delim.join(dash_arr)
     capitalize_hyphenated_word = classmethod(capitalize_hyphenated_word)
 
     def get_repl(cls, word, *xargs):
@@ -216,8 +222,8 @@ class Cleanup:
         word = cls.check_caps(word)
         word = cls.check_split(word)
 
-        #if cls.is_molecule(word) and cls.contains_number(word):
-        #    word = word.upper()
+        if cls.is_molecule(word) and cls.contains_number(word):
+            word = cls.texify_molecule(word)
 
         return word
     clean_word = classmethod(clean_word)
@@ -261,22 +267,27 @@ class Cleanup:
     clean_title = classmethod(clean_title)
 
     def get_molecular_formula(cls, word):
-        regexp = re.compile("([A-Z][a-z]{0,1})(\d{0,1}(?!\d))([+-]?\d*)")
+        regexp = re.compile("([\(]?)([A-Za-z]{1,2})([-]?)(\d{0,1}(?!\d))([+-]?\d*)([)]?)")
         elements = regexp.findall(word)
         return elements
     get_molecular_formula = classmethod(get_molecular_formula)
 
     def contains_number(cls, word):
         match = re.compile("\d").search(word)
-        return bool(match)
+        return bool(match) or "(n)" in word
     contains_number = classmethod(contains_number)
 
     def is_molecule(cls, word):
+        for delim in "=", ":":
+            if delim in word:
+                return False
+
         elements = cls.get_molecular_formula(word)
         if not elements:
             return False
 
-        for element, number, charge in elements:
+        for open, element, dash, number, charge, close in elements:
+            element = element[0].upper() + element[1:].lower()
             if not element in cls.elements:
                 return False
 
@@ -290,24 +301,31 @@ class Cleanup:
             return word
 
         #we have a molecule
-        for element, number, charge in elements:
-            if not element in cls.elements:
+        word_arr = []
+        for open, element, dash, number, charge, close in elements:
+            elem = element[0].upper() + element[1:].lower()
+            if not elem in cls.elements:
                 return word
 
-            repl = element
+            repl = "%s%s" % (open, elem)
             if number:
                 repl += "$_{%s}$" % number
 
             if charge:
                 repl += "$^{%s}$" % charge
-            entry = "%s%s%s" % (element, number, charge)
-            word = word.replace(entry, repl)
-        
+            repl += close
+            #entry = "%s%s%s%s" % (element, dash, number, charge)
+            #word = word.replace(entry, repl)
+            word_arr.append(repl)
+        word = "".join(word_arr)
+
+        parnums = re.compile("\(([\dnN])\)").findall(word)
+        for entry in parnums:
+            word = word.replace("(%s)" % entry, "$_{%s}$" % entry.lower())
+        word = word.replace("(+)", "$^{+}$")
+        word = word.replace("$$", "")
         return word
-
     texify_molecule = classmethod(texify_molecule)
-
-    
 
 
 class JournalCleanup:
@@ -316,11 +334,11 @@ class JournalCleanup:
         "and",
         "of",
         "the",
+        "&",
     ]
 
     keep = [
-        "nature",
-        "science",
+        "cancer",
     ]
 
     upper = [
@@ -336,6 +354,7 @@ class JournalCleanup:
 
     repl = {
         'ser-a' : 'Ser A',
+        '&' : '',
     }
 
     abbrev_map = {
@@ -345,14 +364,18 @@ class JournalCleanup:
         "angewan" : "angew",
         "annual" : "ann",
         "biomol" : "biomol",
+        "biochem" : "biochem",
+        "canad" : "can",
         "chem" : "chem",
         "chimica" : "chim",
         "collect" : "collect",
         "comput" : "comput",
         "commun" : "commun",
         "condensed" : "cond",
+        "coord" : "coord",
         "czech" : "czech",
         "edition" : "ed",
+        "europ" : "eur",
         "inorg" : "inorg",
         "intern" : "int",
         "journal" : "j",
@@ -361,7 +384,8 @@ class JournalCleanup:
         "math" : "math",
         "matter" : "matt",
         "molec" : "mol",
-        "organ" : "org",
+        "organic" : "org",
+        "organomet" : "organomet",
         "phys" : "phys",
         "proc" : "proc",
         "rep" : "rep",
@@ -378,12 +402,17 @@ class JournalCleanup:
 
     abbrevs = abbrev_map.values()
 
+    def _startswith(cls, word, fragment):
+        length = len(fragment)
+        return word[:length] == fragment
+    _startswith = classmethod(_startswith)
+
     def _abbrev_word(cls, word):
         new_word = word
         if not word in cls.keep:
             new_word = word
             for entry in cls.abbrev_map:
-                if entry in word:
+                if cls._startswith(word, entry):
                     new_word = cls.abbrev_map[entry]
                     break
 
@@ -417,6 +446,10 @@ class JournalCleanup:
             journal = journal.replace(entry, cls.special[entry])
         words = journal.replace("-"," ").strip().split()
 
+        if len(words) == 1: #don't abbreivate
+            title = capitalize_word(words[0])
+            return title
+
         str_arr = []
         for word in words:
             if word in cls.erase:
@@ -426,3 +459,7 @@ class JournalCleanup:
         return " ".join(str_arr)
     abbreviate = classmethod(abbreviate)
 
+
+if __name__ == "__main__":
+    x = "Infrared Spectroscopy and Structures of Manganese Carbonyl Cations, Mn(co)(n)(+) (N=1-9)"
+    print Cleanup.clean_title(x)

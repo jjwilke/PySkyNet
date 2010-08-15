@@ -4,12 +4,14 @@ from webutils.htmlexceptions import HTMLException
 
 import sys
 import re
+import time
 
 from selenium import selenium
 
 class InformaQuery:
     
-    def __init__(self, volume, page):
+    def __init__(self, journal, volume, page):
+        self.journal = journal
         self.volume = volume
         self.page = page
 
@@ -19,7 +21,7 @@ class InformaQuery:
         sel = self.selenium
         sel.open("/smpp/search~db=all~searchmode=citation?newsearch=true")
         sel.click("//input[@name='sourcematch' and @value='exact']")
-        sel.type("source", "molecular physics")
+        sel.type("source", self.journal.lower())
         sel.type("volume", "%d" % self.volume)
         sel.type("page", "%s" % self.page)
         sel.click("//input[@value='Search']")
@@ -34,7 +36,7 @@ class InformaJournal(Journal):
 
         self.validate()
         
-        query = InformaQuery(volume, page)
+        query = InformaQuery(self.name, volume, page)
         query.run()
         url_list = URLLister()
         url_list.feed(query.html)
@@ -46,7 +48,10 @@ class InformaJournal(Journal):
             
 
 class MolPhys(InformaJournal):
-    
     name = "Molecular Physics"
+
+class IRPC(InformaJournal):
+    name = "International Reviews in Physical Chemistry"
+
 
 

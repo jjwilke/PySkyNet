@@ -87,6 +87,8 @@ class ACSQuery:
         self.selenium.click("qsCitSubmit");
         self.selenium.wait_for_page_to_load("30000");
         self.html = self.selenium.get_html_source()
+        import time
+        time.sleep(25)
         self.selenium.stop()
 
 class ACSArticle(PDFArticle):
