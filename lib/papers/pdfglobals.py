@@ -60,26 +60,26 @@ class PDFGetGlobals:
     }
 
     abbrevs = {
+        "accounts chem res" : "acr",
+        "chem phys" : "chemphys",
+        "chem phys lett" : "cpl",
+        "chem rev" : "chemrev",
+        "inorg chem" : "ioc",
+        "int j quantum chem": "ijqc",
         "j am chem soc" : "jacs",
         "j chem theory comput" : "jctc",
         "j phys chem a" : "jpca",
         "j phys chem b" : "jpcb",
         "j org chem" : "joc",
         "j phys chem" : "jpc",
-        "inorg chem" : "ioc",
-        "chem rev" : "chemrev",
-        "accounts chem res" : "acr",
         "j chem phys" : "jcp",
         "j math phys" : "jmp",
-        "chem phys lett" : "cpl",
         "phys rep" : "physrep",
-        "chem phys" : "chemphys",
         "theor chem acc" : "tca",
         "theo chim acta" : "tcacta",
         "phys rev lett" : "prl",
         "phys rev a": "pra",
         "angew chem int edit" : "ange",
-        "int j quantum chem": "ijqc",
         "phys chem chem phys" : "pccp",
         "j phys org chem" : "jpoc",
         "j comput chem" : "jcc",
@@ -131,12 +131,15 @@ class PDFGetGlobals:
 
         #lower case, strip periods
         name = JournalCleanup.abbreviate(name).replace(".", "").lower()
+
+        if name in cls.abbrevs:
+            return cls.get_object(cls.abbrevs[name])
         
         #attempt to object assuming this is the abbreviation
         jobj = cls.get_object(name)
         if jobj:
             return jobj
-
+        
         #nope! no worries!
         abbrev = cls.get_initials(name)
         if abbrev in cls.abbrevs:

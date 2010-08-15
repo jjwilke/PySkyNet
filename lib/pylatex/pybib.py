@@ -264,14 +264,8 @@ class JournalFormat(EntryFormat):
 
     def bibitem(self, obj, simple=False):
         from papers.utils import JournalCleanup
-        journal = obj.text().split()
-        title_arr = []
-        for word in journal:
-            #print word, JournalCleanup.abbreviate(word)
-            title_arr.append(JournalCleanup.abbreviate(word))
-        #print title_arr
-
-        text = LatexFormat.format(self.style, " ".join(title_arr))
+        journal = JournalCleanup.abbreviate(obj.text())
+        text = LatexFormat.format(self.style, journal)
         return text
 
 class PagesFormat(EntryFormat):
@@ -1230,6 +1224,10 @@ class Bibliography:
                 if check:
                     sys.stderr.write("%s\n" % error)
 
+    def clear(self):
+        self.records = {}
+        self.bibcites = []
+
     def findEntry(self, journal, volume, page):
         from papers.pdfglobals import PDFGetGlobals
         for label in self.records:
@@ -1359,7 +1357,7 @@ if __name__ == "__main__":
     bib = Bibliography()
     #bib.buildRecords(sys.argv[1], check=True)
     bib.buildRecords(Bibliography.ENDNOTE_XML_LIB)
-    print bib.findEntry("jcp", "131", "244116")
+    print bib.findEntry("ioc", "49", "7080")
 
 
 

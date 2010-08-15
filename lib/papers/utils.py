@@ -416,7 +416,6 @@ class JournalCleanup:
                     new_word = cls.abbrev_map[entry]
                     break
 
-
         if new_word in cls.upper:
             new_word = new_word.upper()
         elif new_word in cls.lower:
@@ -456,6 +455,7 @@ class JournalCleanup:
                 continue
 
             str_arr.append(cls._abbrev_word(word))
+
         return " ".join(str_arr)
     abbreviate = classmethod(abbreviate)
 

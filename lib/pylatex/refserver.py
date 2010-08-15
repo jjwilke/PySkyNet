@@ -39,6 +39,8 @@ class CiteServer:
     REQUEST_PORT = 22347
     ANSWER_PORT = 22348
 
+    REBUILD = "rebuild"
+
     def __init__(self):
         self.server = Communicator(self.REQUEST_PORT)
         self.server.bind()
@@ -68,7 +70,11 @@ class CiteServer:
             try:
                 obj = self.server.acceptObject()
                 record = ""
-                if isinstance(obj, list):
+                if obj == self.REBUILD:
+                    self.bib.clear()
+                    self.bib.buildRecords(Bibliography.ENDNOTE_XML_LIB)
+                    record = "completed"
+                elif isinstance(obj, list):
                     record = self.get_record_from_citation(obj)
                 elif isinstance(obj, str):
                     record = self.get_record_from_label(obj)
