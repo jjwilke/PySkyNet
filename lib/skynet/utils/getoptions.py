@@ -143,16 +143,17 @@ class InputOption:
             self.values = [True]
 
     def hasDefault(self):
-        return self.default
+        return self.default != None
 
     def chooseDefault(self):
-        if not self.default:
+        if self.default == None:
             return
 
         self.reset()
         if self.isList:
+            print self.default
             for entry in self.default:
-                self.addEntry(entry)
+                self.addValue(entry)
         else:
             self.addValue(self.default)
 
@@ -287,7 +288,7 @@ class InputOption:
         return self.bind
 
     def bindValue(self, optionSet):
-        if not self.values: #nothing to bind   
+        if self.values == None: #nothing to bind   
             return 
 
         if not optionSet: #null value

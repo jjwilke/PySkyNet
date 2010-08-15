@@ -23,19 +23,21 @@ def execute_search(wok, archive, journal, author, year, volume, page, notes):
 #set the allowed command line options and user messages
 if __name__ == "__main__":
     opts = [
-        InputOption(shortOption='y', longOption='year', optionType='int', bind=True),
-        InputOption(shortOption='v', longOption='volume', optionType='int', bind=True),
-        InputOption(shortOption='p', longOption='page', optionType='string', bind=True),
+        InputOption(shortOption='y', longOption='year', optionType='string', bind=True, default=""),
+        InputOption(shortOption='v', longOption='volume', optionType='string', bind=True, default=""),
+        InputOption(shortOption='p', longOption='page', optionType='string', bind=True, default=""),
         #InputOption(shortOption='t', longOption='title', optionType='string', valuesMandatory=True, bind=True),
-        InputOption(shortOption='j', longOption='journal', optionType='string', bind=True),
-        InputOption(shortOption='a', longOption='author', optionType='string', listOfValues=True, bind=True),
+        InputOption(shortOption='j', longOption='journal', optionType='string', bind=True, default=""),
+        InputOption(shortOption='a', longOption='author', optionType='string', listOfValues=True, bind=True, default=""),
         InputOption(longOption='archive', optionType='string', bind=True, default="new"),
-        InputOption(shortOption='n', longOption='notes', optionType='string', bind=True),
+        InputOption(shortOption='n', longOption='notes', optionType='string', bind=True, default=""),
+        InputOption(shortOption='k', longOption='keywords', optionType='string', listOfValues=True, bind=True, default=""),
         InputOption(shortOption='f', longOption='format', optionType='string', bind=True),
         InputOption(longOption='download', setbool=True),
         InputOption(shortOption='c', longOption='cited'),
         InputOption(shortOption='l', longOption='list'),
         InputOption(shortOption='g', longOption='grab'),
+        InputOption(shortOption='r', longOption='ref'),
         ]
 
 
@@ -52,8 +54,9 @@ if __name__ == "__main__":
 
     for option in options_given:
         if option in ('c', 'cited'):
-            page = options.page
-            parser = WOKParser(options.archive, options.journal, options.author, options.year, options.volume, page, options.notes, download=options.download)
+            parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year,
+                               volume=options.volume, page=options.page, notes=options.notes, download=options.download,
+                               keywords=options.keywords)
             try:
                 parser.run_citedrefs()
             except Exception, error:
@@ -64,7 +67,9 @@ if __name__ == "__main__":
                 pass
             parser.archive.commit()
         elif option in ('l', 'list'):
-            parser = WOKParser(options.archive, author=options.author, year=options.year, notes=options.notes, download=options.download)
+            parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year, 
+                               volume=options.volume, page=options.page, notes=options.notes, download=options.download,
+                               keywords=options.keywords)
             try:
                 parser.run_allrefs()
             except Exception, error:
@@ -148,5 +153,18 @@ if __name__ == "__main__":
             execute_search(wok, archive, options.journal, options.author, options.year, options.volume, page, notes)
             wok.stop()
             archive.commit()
+
+        elif option in ('r', 'ref'): #single reference
+            parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year,
+                               volume=options.volume, page=options.page, notes=options.notes, download=options.download,
+                               keywords=options.keywords)
+            try:
+                parser.run_getref()
+            except Exception, error:
+                print traceback(error)
+                print error
+            except KeyboardInterrupt, error:
+                print traceback(error)
+            parser.archive.commit()
 
 

@@ -6,6 +6,7 @@ from skynet.utils.utils import save, load, clean_line, capitalize_word, tracebac
 from webutils.htmlexceptions import HTMLException
 from webutils.htmlparser import URLLister
 from papers.utils import Cleanup
+from skynet.pysock import Communicator
 
 import sys
 import re
@@ -146,10 +147,7 @@ class ISIParser(ArticleParser):
         self.a_frame = None
         self.article = None
 
-class WOKObject:
-    
-    def die(self, msg):
-        raise ISIError("%s -> %s %d %s" % (msg, self.author, self.year, self.title))
+class WOKObject: pass
 
 class WOKArticle(WOKObject):
     
@@ -161,10 +159,11 @@ class WOKArticle(WOKObject):
         self.article = self.archive.create_article()
         self.build_values()
 
-        if master:
-            self.master = master
-        elif not self.master:
-            self.master = MasterArchive()
+        if not master == None:
+            WOKArticle.master = master
+        elif WOKArticle.master == None:
+            print "rebuilding master archive"
+            WOKArticle.master = MasterArchive()
 
     def get_papers_article(self):
         return self.article
@@ -207,6 +206,9 @@ class WOKArticle(WOKObject):
     def add_notes(self, notes):
         self.article.set_notes(notes)
 
+    def add_keywords(self, keywords):
+        self.article.set_keywords(keywords)
+
     def store(self, download = False):
         journal = self.article.get_journal()
         volume = self.article.get_volume()
@@ -233,71 +235,156 @@ class WOKArticle(WOKObject):
 
         sys.stdout.write("Completed storage of %s\n" % name)
 
+class WOKArticleSearch:
 
-class WOKSearch(WOKObject):
-
-    def __init__(self, journal=None, author=None, year=None, volume=None, page=None):
-        from papers.pdfglobals import PDFGetGlobals as globals
-
-        self.selenium = None
-        self.journal = ""
-        self.author = ""
-        self.year = ""
-        self.volume = ""
-        self.page = ""
-        self.title = ""
-
-        if journal: self.journal = globals.get_journal(journal)
-        if author: self.author = author
-        if year: self.year = year
-        if volume: self.volume = volume
-        if page: self.page = page
-
-        self.is_forward = False
-
-    def reset(self, journal, author, year, volume, page):
-        from papers.pdfglobals import PDFGetGlobals as globals
-        self.journal = globals.get_journal(journal)
-        self.author = author
-        self.year = year
+    def __init__(self, title=None, source=None, volume=None, issue=None, page=None, year=None):
+        self.title = title
+        self.journal = source.lower()
         self.volume = volume
+        self.issue = issue
         self.page = page
-        self.title = None
+        self.year = year
 
-    def isi_search(self):
+class ISIVoid: #pseudo nonetype
+    
+    def __len__(self):
+        return 0
+
+import threading
+class ISIAnswer(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.response = None
+
+    def run(self):
+        comm = Communicator(ISIServer.ANSWER_PORT)
+        comm.bind()
+        self.response = comm.acceptObject()
+        comm.close()
+
+class ISIServerCommand:
+    
+    def __init__(self, method, args = None):
+        self.method = method
+        self.args = args
+
+class ISIServer:
+
+    REQUEST_PORT = 22349
+    ANSWER_PORT = 22350
+    
+    def __init__(self):
+        devnull = open("/dev/null", "w")
+        sys.stdout = devnull
+        #start selenium running
+        import os
+        import time
+        self.pid = os.fork()
+        if self.pid:
+            time.sleep(5)
+            self.selenium = None
+            self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
+            self.selenium.start()
+            self.go_home()
+            self.server = Communicator(self.REQUEST_PORT)
+            self.server.bind()
+            self.run()
+        else:
+            sys.exit()
+            #os.system("selenium") #start selenium running
+
+    def go_home(self):
+        self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
         text = self.selenium.get_body_text()
         if "establish a new session" in text:
             self.selenium.click("link=establish a new session")
             self.selenium.wait_for_page_to_load("30000")
 
-        self.selenium.select("select1", "label=Author")
-        self.selenium.type("value(input1)", "%s" % self.author)
-        self.selenium.select("select2", "label=Year Published")
-        self.selenium.type("value(input2)", "%d" % self.year)
-        if self.journal:
-            self.selenium.select("select3", "label=Publication Name")
-            self.selenium.type("value(input3)", "%s*" % self.journal.name)
+    def run(self):
+        while 1:
+            ret = ""
+            try:
+                obj = self.server.acceptObject()
+                method = getattr(self, obj.method)
+                sys.stdout.write("Running %s\n" % obj.method)
+                ret = ""
+                if obj.args:
+                    ret = method(obj.args)
+                else:
+                    ret = method()
+            except Exception, error:
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
 
+            comm = Communicator(self.ANSWER_PORT)
+            try:
+                if ret:
+                    comm.sendObject(ret)
+                else:
+                    comm.sendObject(ISIVoid())
+            except Exception, error:
+                pass
+            comm.close()
+
+    def add_field(self):
+        pass
+
+    def isi_search(self, search):
+        fields = search.fields
+        self.go_home()
+        text = self.selenium.get_body_text()
+        nfields = text.count("Example:")
+        #count the number of occurrences of Example in text
+        #we currently have 3 fields
+        for i in range(nfields, len(fields) + 1): #add another field
+            self.add_field()
+
+        i = 1
+        for field in fields:
+            self.selenium.select("select%d" % i, "label=%s" % field.name)
+            self.selenium.type("value(input%d)" % i, "%s" % field.value)
+            i += 1
+            
         self.selenium.click("//input[@name='' and @type='image']")
         self.selenium.wait_for_page_to_load("30000")
 
         self.selenium.select("pageSize", "label=Show 50 per page")
-        self.selenium.wait_for_page_to_load("30000")
+        #self.selenium.wait_for_page_to_load("30000")
 
+    def get_articles(self):
         #figure out the title
         text = self.selenium.get_body_text()
         matches = re.compile("Title[:]\s*(.*?)\n(.*?)Times\sCited", re.DOTALL).findall(text)
         if not matches:
-            msg_arr = ["\nAuthor=%s" % self.author]
-            msg_arr.append("Year=%d" % self.year)
-            msg_arr.append("Journal=%s" % self.journal.name)
-            msg_arr.append("Could not find list entries on page\n%s" % readable(text))
-            self.die("\n".join(msg_arr))
-        return matches
+            raise ISIError("No valid titles appear on this search page")
 
+        def get_value(entry, name, regexp, fxn, require = True):
+            match = re.compile(regexp).search(entry)
+            if not match:
+                if require:
+                    raise ISIError("Could not find %s for entry\n%s" % (name, readable(text)))
+                else:
+                    return None
+            try:
+                val = fxn(match.groups()[0])
+                return val
+            except Exception, error:
+                if require:
+                    raise ISIError("Could not find properly formattaed %s for entry\n%s" % (name, readable(text)))
+                else:
+                    return None
 
-    def die(self, msg):
-        WOKObject.die(self, msg)
+        articles = []
+        for title, entry in matches:
+            volume = get_value(entry, "volume", "Volume[:]\s*(\d+)", int)
+            page = get_value(entry, "page", "Pages[:]\s*(\d+)", Page, require=False)
+            if not page:
+                page = get_value(entry, "page", "Article\sNumber[:]\s*(\d+)", Page, require=True)
+            issue = get_value(entry, "issue", "Issue[:]\s*(\d+)", int)
+            year = get_value(entry, "year", "Published[:]\s*(\d+)", int)
+            source = get_value(entry, "source", "Source[:]\s*(.*?)Vol", lambda x: x.strip())
+            article = WOKArticleSearch(title=title, volume=volume, issue=issue, year=year, source=source, page=page)
+            articles.append(article)
+        return articles
 
     def open_article(self, title):
         try:
@@ -306,10 +393,8 @@ class WOKSearch(WOKObject):
             self.lasturl = self.selenium.browserURL
             self.selenium.click(link)
             self.selenium.wait_for_page_to_load("30000")
-            self.is_forward = True
         except Exception, error:
             sys.stderr.write("Error on title %s:\n%s\n" % (readable(title), readable(self.selenium.get_body_text())))
-            self.go_back()
             raise ISIError("%s\nCould not find title" % traceback(error))
 
     def open_references(self):
@@ -321,31 +406,11 @@ class WOKSearch(WOKObject):
         nrefs = match.groups()[0]
         self.selenium.click("link=%s" % nrefs)
         self.selenium.wait_for_page_to_load("30000")
-
         return int(nrefs)
 
-    def open_isi(self):
-        self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
-
-    def start(self):
-        self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
-        self.selenium.start()
-
-    def stop(self):
-        if self.selenium:
-            self.selenium.stop()
-        self.selenium = None
-
     def go_back(self):
-        if not self.is_forward:
-            return
-
-        try:
-            self.selenium.click("link=<< Back to results list")
-            self.selenium.wait_for_page_to_load("30000")
-        except Exception, error:
-            self.selenium.go_back()
-        self.is_forward = False
+        self.selenium.go_back()
+        self.selenium.wait_for_page_to_load("30000")
 
     def go_to_next_page(self, number):
         self.selenium.click("//input[@name='' and @type='image' and @onclick='javascript:this.form.elements.page.value=%d;']" % number)
@@ -361,33 +426,126 @@ class WOKSearch(WOKObject):
     def get_text(self):
         return self.selenium.get_body_text()
 
-    def open(self):
-        self.open_isi()
 
-    def get_article(self, archive):
-        block = self.get_text()
-        article = WOKArticle(archive, block) 
-        return article
+class WOKField: 
+    name = None
+
+    def __init__(self, value):
+        self.value = str(value)
+
+    def __str__(self):
+        return str(self.value)
+
+    def get(cls, key, value):
+        key = key.lower()
+        if not key in cls.fields:
+            return None
+        
+        return cls.fields[key](value)
+    get = classmethod(get)
+
+class Journal(WOKField):
+    name = "Publication Name"
+
+    def __init__(self, value):
+        from papers.pdfglobals import PDFGetGlobals as globals
+        self.value = globals.get_journal(journal)
+
+class Year(WOKField):
+    name = "Year Published"
+
+class Author(WOKField):
+    name = "Author"
+
+class Title(WOKField):
+    name = "Title"
+
+WOKField.fields = {
+    "journal" : Journal,
+    "year" : Year,
+    "author" : Author,
+    "title" : Title,
+}
+
+class WOKSearch(WOKObject):
+
+    def __init__(self, **kwargs):
+        self.fields = []
+        for key, value in kwargs.items():
+            field = WOKField.get(key, value)
+            if field:
+                self.fields.append(field)
+                setattr(self, key, str(field))
+            else:
+                setattr(self, key, value)
+
 
 class WOKParser(WOKObject):
 
-    def __init__(self, archive, journal=None, author=None, year=None, volume=None, page=None, notes=None, download=False):
+    def __init__(self, archive, journal=None, author=None, year=None, volume=None, page=None, notes=None, download=False, keywords=None):
         self.archive = Archive(archive)
-        self.search  = WOKSearch(journal, author, year, volume, page)
-        self.notes = notes
-        self.volume = volume
-        self.page = page
         self.download = download
+        self.notes = notes
+        self.keywords = keywords
+        self.kwargs = {}
+        if journal: self.kwargs["journal"] = journal
+        if author: self.kwargs["author"] = author
+        if year: self.kwargs["year"] = year
+        if volume: self.kwargs["volume"] = volume
+        if page: self.kwargs["page"] = page
+        self.search = WOKSearch(**self.kwargs)
 
+    def run(self, method, args=None):
+        cmd = ISIServerCommand(method, args)
+        answer = ISIAnswer()
+        answer.start()
+        try:
+            comm = Communicator(ISIServer.REQUEST_PORT)
+            comm.open()
+            comm.sendObject(cmd)
+        except Exception, error:
+            sys.stderr.write("%s\n" % error)
+        comm.close()
+        answer.join()
+        return answer.response
+
+    def pick_article(self, articles):
+        for article in articles:
+            foundmatch = True
+            for key, value in self.kwargs.items():
+                if not hasattr(article, key): #don't use this for matching
+                    continue
+
+                match = getattr(article, key)
+                if str(value) != str(match):
+                    foundmatch = False
+                    break;
+            
+            if foundmatch:
+                return article
+
+    def store_article(self):
+        block = self.run("get_text")
+        article = WOKArticle(self.archive, block) 
+        if article:
+            article.add_notes(self.notes)
+            article.add_keywords(self.keywords)
+            article.store(self.download)
+        return article
+                
     def run_citedrefs(self):
         try:
             import time
-            self.search.start()
-            self.search.open()
-            matches = self.search.isi_search()
-            title = self.pick_article(matches)
-            self.search.open_article(title)
-            self.nrefs = self.search.open_references()
+            void = self.run("isi_search", self.search)
+            articles = self.run("get_articles")
+
+            title = ""
+            article = self.pick_article(articles)
+            if not article:
+                raise ISIError("Could not find article with given specifications");
+
+            self.run("open_article", article.title)
+            nrefs = self.run("open_references")
 
             #get all possible refs on this page 
             self.walk_references()
@@ -395,55 +553,80 @@ class WOKParser(WOKObject):
             #if there are more pages, go through those as well
             nstart = 31 
             onclick = 2
-            while nstart < self.nrefs:
-                self.search.go_to_next_page(onclick)
+            while nstart < nrefs:
+                self.run("go_to_next_page", onclick)
                 self.walk_references()
-
-                break #debug
 
                 nstart += 30
                 onclick += 1
             
-            self.search.stop()
             self.archive.commit()
         except KeyboardInterrupt, error:
-            self.search.stop()
             raise error
         except ISIError, error:
-            self.search.stop()
+            sys.stderr.write("%s\nFailed on block:\n%s\n" % (error, error.block))
+            raise error
+
+    def run_getref(self):
+        try:
+            print 572
+            void = self.run("isi_search", self.search)
+            print 574
+            articles = self.run("get_articles")
+
+            title = ""
+            article = self.pick_article(articles)
+            print 579
+            if not article:
+                raise ISIError("Could not find article with given specifications");
+
+            print 582
+            self.run("open_article", article.title)
+            print 585
+            article = self.store_article()
+            print 587
+            if not article:
+                raise ISIError("No article found")
+            print 590
+            self.archive.commit()
+        except KeyboardInterrupt, error:
+            print 593
+            self.archive.commit()
+            raise error
+        except ISIError, error:
+            self.archive.commit()
             sys.stderr.write("%s\nFailed on block:\n%s\n" % (error, error.block))
             raise error
 
     def run_allrefs(self):
         try:
-            self.search.start()
-            self.search.open()
-            matches = self.search.isi_search()
-            for title, entry in matches:
+            void = self.run("isi_search", self.search)
+            articles = self.run("get_articles")
+            print void
+            print articles
+            if not articles:
+                raise ISIError("no articles found")
+            for article in articles:
                 try:
-                    self.search.open_article(title)
-                    article = self.search.get_article(self.archive)
-                    article.add_notes(self.notes)
-                    article.store(self.download)
+                    self.run("open_article", article.title)
+                    article = self.store_article()
+                    if not article:
+                        continue
                 except ISIError, error: #don't stop because of one error
                     sys.stderr.write("%s\nFailed on block:\n%s\n" % (error, error.block))
                 except Exception, error:
                     sys.stderr.write("Unknown error:\n%s\n%s\n" % (traceback(error), error))
-                self.search.go_back()
-            self.search.stop()
+                self.run("go_back")
         except Exception, error:
             self.archive.commit()
-            self.search.stop()
+            sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             raise error
-
-    def die(self, msg):
-        self.search.stop()
-        WOKObject.die(self, msg)
 
     def walk_references(self):
         import time
         url_list = URLLister()
-        url_list.feed(self.search.get_html())
+        text = self.run("get_html")
+        url_list.feed(text)
         for name in url_list:
             link = url_list[name]
             if "CitedFullRecord" in link:
@@ -451,37 +634,16 @@ class WOKParser(WOKObject):
 
     def process_article(self, link):
         id = re.compile("isickref[=]\d+").search(link).group()
-        self.search.go_to_list_entry(id)
+        self.run("go_to_list_entry", id)
 
         try:
-            article = self.search.get_article(self.archive)
-            article.add_notes(self.notes)
-            article.store()
+            article = self.store_article()
         except ISIError, error:
             sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
         except Exception, error:
             sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
 
-        self.search.go_back()
-
-    def pick_article(self, matches):
-        for title, entry in matches:
-            match = re.compile("Volume[:]\s*(\d+)").search(entry)
-            if not match:
-                self.die("Could not find volume for entry\n%s" % readable(text))
-            volume = int(match.groups()[0])
-
-            match = re.compile("Pages[:]\s*(\d+)").search(entry)
-            if not match:
-                match = re.compile("Article\sNumber[:]\s*(\d+)").search(entry)
-            if not match:
-                self.die("Could not find page for entry\n%s" % readable(text))
-
-            page = Page(match.groups()[0])
-
-            if volume == self.volume and page == self.page:
-                return title
-
+        self.run("go_back")
 
 class SavedRecordParser:
     
@@ -688,10 +850,13 @@ Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My S
                                                                                                                       
 
     """
-    #master = Archive("nullmaster")
-    #article = WOKArticle(archive, readable(block), master)
-    #article.store()
-    x = "Wang HY (Wang Hong-Yan), Li XB (Li Xi-Bo), Tang YJ (Tang Yong-Jian), King RB (King, R. Bruce), Schaefer HF (Schaefer, Henry F., III)"
-    print get_authors(x, intra_delim=" ", inter_delim=",")
+    master = Archive("nullmaster")
+    article = WOKArticle(archive, readable(block), master)
+    print article
+    article.store()
+    article = WOKArticle(archive, readable(block))
+    article.store()
+    #x = "Wang HY (Wang Hong-Yan), Li XB (Li Xi-Bo), Tang YJ (Tang Yong-Jian), King RB (King, R. Bruce), Schaefer HF (Schaefer, Henry F., III)"
+    #print get_authors(x, intra_delim=" ", inter_delim=",")
 
 

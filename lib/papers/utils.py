@@ -244,7 +244,10 @@ class Cleanup:
 
     def clean_title(cls, line):
         entries = line.lower().split(" ")
-        words = [ cls.first_word(entries[0]) ]
+        words = []
+        firstword = entries[0]
+        if firstword:
+            words.append(cls.first_word(firstword))
         newsentence = cls.ends_sentence(entries[0])
         for entry in entries[1:]:
             if not entry:
@@ -375,6 +378,7 @@ class JournalCleanup:
         "coord" : "coord",
         "czech" : "czech",
         "edition" : "ed",
+        "edit" : "ed",
         "europ" : "eur",
         "inorg" : "inorg",
         "intern" : "int",

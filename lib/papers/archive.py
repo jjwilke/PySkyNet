@@ -23,6 +23,7 @@ class Article:
     titletag = "title"
     pdftag = "url"
     notestag = "notes"
+    keywordstag = "keywords"
     abstracttag = "abstract"
     doitag = "electronic-resource-num"
     labeltag = "accession-num"
@@ -248,6 +249,10 @@ class Article:
 
     def set_notes(self, notes):
         self._set_item(notes, self.notestag)
+
+    def set_keywords(self, keywords):
+        text = ",".join(keywords)
+        self._set_item(text, self.keywordstag)
 
     def set_pages(self, pages):
         self._set_item(pages, self.pagestag)
