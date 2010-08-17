@@ -6,7 +6,8 @@ from skynet.utils.utils import save, load, clean_line, capitalize_word, tracebac
 from webutils.htmlexceptions import HTMLException
 from webutils.htmlparser import URLLister
 from papers.utils import Cleanup
-from skynet.pysock import Communicator
+from skynet.socket.server import ServerRequest, ServerAnswer, Server
+from papers.archive import ArchiveRequest
 
 import sys
 import re
@@ -151,19 +152,11 @@ class WOKObject: pass
 
 class WOKArticle(WOKObject):
     
-    master = None
-
-    def __init__(self, archive, block, master = None):
+    def __init__(self, archive, block):
         self.archive = archive
         self.block = block
         self.article = self.archive.create_article()
         self.build_values()
-
-        if not master == None:
-            WOKArticle.master = master
-        elif WOKArticle.master == None:
-            print "rebuilding master archive"
-            WOKArticle.master = MasterArchive()
 
     def get_papers_article(self):
         return self.article
@@ -217,11 +210,12 @@ class WOKArticle(WOKObject):
         name = "%s %d %s (%d)" % (self.article.get_abbrev(), volume, page, year)
 
         local_match = self.archive.find_match(self.article)
+        artreq = ArchiveRequest(self.article)
         if local_match:
             sys.stdout.write("Already have article %s in local archive\n" % name)
             self.article = local_match
             return
-        elif self.master.has(self.article):
+        elif artreq.run(): #query master
             sys.stdout.write("Already have article %s in master archive\n" % name)
             return
         else:
@@ -250,17 +244,10 @@ class ISIVoid: #pseudo nonetype
     def __len__(self):
         return 0
 
-import threading
-class ISIAnswer(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.response = None
+class ISIAnswer(ServerAnswer):
 
-    def run(self):
-        comm = Communicator(ISIServer.ANSWER_PORT)
-        comm.bind()
-        self.response = comm.acceptObject()
-        comm.close()
+    def __init__(self):
+        ServerAnswer.__init__(self, ISIServer.ANSWER_PORT)
 
 class ISIServerCommand:
     
@@ -268,12 +255,13 @@ class ISIServerCommand:
         self.method = method
         self.args = args
 
-class ISIServer:
+class ISIServer(Server):
 
     REQUEST_PORT = 22349
     ANSWER_PORT = 22350
     
     def __init__(self):
+        Server.__init__(self, self.REQUEST_PORT, self.ANSWER_PORT)
         devnull = open("/dev/null", "w")
         sys.stdout = devnull
         #start selenium running
@@ -286,8 +274,6 @@ class ISIServer:
             self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
             self.selenium.start()
             self.go_home()
-            self.server = Communicator(self.REQUEST_PORT)
-            self.server.bind()
             self.run()
         else:
             sys.exit()
@@ -300,30 +286,19 @@ class ISIServer:
             self.selenium.click("link=establish a new session")
             self.selenium.wait_for_page_to_load("30000")
 
-    def run(self):
-        while 1:
-            ret = ""
-            try:
-                obj = self.server.acceptObject()
-                method = getattr(self, obj.method)
-                sys.stdout.write("Running %s\n" % obj.method)
-                ret = ""
-                if obj.args:
-                    ret = method(obj.args)
-                else:
-                    ret = method()
-            except Exception, error:
-                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
+    def process(self, obj):
+        ret = ISIVoid() #default nothing
+        try:
+            method = getattr(self, obj.method)
+            sys.stdout.write("Running %s\n" % obj.method)
+            if obj.args:
+                ret = method(obj.args)
+            else:
+                ret = method()
+        except Exception, error:
+            sys.stderr.write("%s\n%s\n" % (traceback(error), error))
 
-            comm = Communicator(self.ANSWER_PORT)
-            try:
-                if ret:
-                    comm.sendObject(ret)
-                else:
-                    comm.sendObject(ISIVoid())
-            except Exception, error:
-                pass
-            comm.close()
+        return ret
 
     def add_field(self):
         pass
@@ -480,9 +455,10 @@ class WOKSearch(WOKObject):
                 setattr(self, key, value)
 
 
-class WOKParser(WOKObject):
+class WOKParser(WOKObject, ServerRequest):
 
     def __init__(self, archive, journal=None, author=None, year=None, volume=None, page=None, notes=None, download=False, keywords=None):
+        ServerRequest.__init__(self, ISIServer.REQUEST_PORT, ISIAnswer)
         self.archive = Archive(archive)
         self.download = download
         self.notes = notes
@@ -497,17 +473,8 @@ class WOKParser(WOKObject):
 
     def run(self, method, args=None):
         cmd = ISIServerCommand(method, args)
-        answer = ISIAnswer()
-        answer.start()
-        try:
-            comm = Communicator(ISIServer.REQUEST_PORT)
-            comm.open()
-            comm.sendObject(cmd)
-        except Exception, error:
-            sys.stderr.write("%s\n" % error)
-        comm.close()
-        answer.join()
-        return answer.response
+        response = ServerRequest.run(self, cmd)
+        return response
 
     def pick_article(self, articles):
         for article in articles:
@@ -569,28 +536,20 @@ class WOKParser(WOKObject):
 
     def run_getref(self):
         try:
-            print 572
             void = self.run("isi_search", self.search)
-            print 574
             articles = self.run("get_articles")
 
             title = ""
             article = self.pick_article(articles)
-            print 579
             if not article:
                 raise ISIError("Could not find article with given specifications");
 
-            print 582
             self.run("open_article", article.title)
-            print 585
             article = self.store_article()
-            print 587
             if not article:
                 raise ISIError("No article found")
-            print 590
             self.archive.commit()
         except KeyboardInterrupt, error:
-            print 593
             self.archive.commit()
             raise error
         except ISIError, error:
@@ -602,8 +561,6 @@ class WOKParser(WOKObject):
         try:
             void = self.run("isi_search", self.search)
             articles = self.run("get_articles")
-            print void
-            print articles
             if not articles:
                 raise ISIError("no articles found")
             for article in articles:
@@ -850,8 +807,7 @@ Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My S
                                                                                                                       
 
     """
-    master = Archive("nullmaster")
-    article = WOKArticle(archive, readable(block), master)
+    article = WOKArticle(archive, readable(block))
     print article
     article.store()
     article = WOKArticle(archive, readable(block))

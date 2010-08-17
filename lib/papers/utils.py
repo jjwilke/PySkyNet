@@ -160,7 +160,7 @@ class Cleanup:
 
     def capitalize_word(cls, word):
         for delim in "/", "-":
-            if delim in word:
+            if delim in word and not word[-1] == delim:
                 return cls.capitalize_hyphenated_word(word, delim)
         else:
             return capitalize_word(word)
@@ -215,6 +215,10 @@ class Cleanup:
     check_split = classmethod(check_split)
 
     def clean_word(cls, word, newsentence = False):
+        for delim in "$",:
+            if delim in word:
+                return word #return verbatim
+
         word = word.lower()
         word = cls.capitalize_word(word)
         if not newsentence:
@@ -243,13 +247,14 @@ class Cleanup:
     ends_sentence = classmethod(ends_sentence)
 
     def clean_title(cls, line):
-        entries = line.lower().split(" ")
+        entries = line.split(" ")
         words = []
         firstword = entries[0]
         if firstword:
             words.append(cls.first_word(firstword))
         newsentence = cls.ends_sentence(entries[0])
         for entry in entries[1:]:
+            entry = entry.strip()
             if not entry:
                 continue
             words.append(cls.clean_word(entry, newsentence))
@@ -269,10 +274,48 @@ class Cleanup:
 
     clean_title = classmethod(clean_title)
 
+    def get_elements(cls, element):
+        if len(element) == 1: #only one thing
+            return element.upper()
+
+        element = element[0].upper() + element[1:].lower()
+        if element in cls.elements:
+            return [element]
+        
+        #try splitting it
+        final = map(lambda x: x.upper(), element)
+        return final
+        
+    get_elements = classmethod(get_elements)
+
     def get_molecular_formula(cls, word):
         regexp = re.compile("([\(]?)([A-Za-z]{1,2})([-]?)(\d{0,1}(?!\d))([+-]?\d*)([)]?)")
         elements = regexp.findall(word)
-        return elements
+        final = []
+        for open, element, dash, number, charge, close in elements:
+            element_list = cls.get_elements(element)
+            if len(element_list) == 1:
+                final.append([open, element, dash, number, charge, close])
+            elif len(element_list) == 2:
+                final.append([open, element_list[0], "", "", "", ""])
+                final.append(["", element_list[1], dash, number, charge, close])
+            else:
+                sys.exit("how?")
+
+        if not final:
+            return []
+
+        open = 0
+        element = 1
+        dash = 2
+        number = 3
+        charge = 4
+        close = 5
+        if final[-1][dash] and not final[-1][number] and not final[-1][charge]: #last dash is minus
+            final[-1][dash] = ""
+            final[-1][charge] = "-"
+
+        return final
     get_molecular_formula = classmethod(get_molecular_formula)
 
     def contains_number(cls, word):
@@ -281,7 +324,7 @@ class Cleanup:
     contains_number = classmethod(contains_number)
 
     def is_molecule(cls, word):
-        for delim in "=", ":":
+        for delim in "=", ":", "$", "_":
             if delim in word:
                 return False
 
@@ -465,5 +508,5 @@ class JournalCleanup:
 
 
 if __name__ == "__main__":
-    x = "Infrared Spectroscopy and Structures of Manganese Carbonyl Cations, Mn(co)(n)(+) (N=1-9)"
+    x = "What Is the Nature of Polyacetylene Neutral and Anionic Chains Hc2nh and Hc2nh- (n=6-12) That Have Recently Been Observed?"
     print Cleanup.clean_title(x)

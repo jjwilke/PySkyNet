@@ -10,15 +10,13 @@ from selenium import selenium
 
 class AIPQuery:
     
-    def __init__(self, volume, page, baseurl):
+    def __init__(self, volume, page, baseurl, selenium):
         self.volume = volume
         self.page = page
         self.baseurl = baseurl
+        self.selenium = selenium
 
     def run(self):
-        self.selenium = selenium("localhost", 4444, "*chrome", self.baseurl)
-        self.selenium.start()
-    
         sel = self.selenium
         sel.open("/")
         sel.type("vol", "%d" % self.volume)
@@ -27,8 +25,6 @@ class AIPQuery:
         sel.wait_for_page_to_load("30000")
         sel.wait_for_pop_up("_self", "30000")
         self.aiphtml = sel.get_html_source()
-
-        self.selenium.stop()
 
 if __name__ == "__main__":
     unittest.main()
@@ -109,15 +105,15 @@ class AIPJournal(Journal):
         parser.feed(response)
         return parser
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
 
         self.validate("baseurl", "volstart")
         
-        if volume >= self.volstart: #get the issue from the page number
-            issue = page.get_issue()
+        if self.volume >= self.volstart: #get the issue from the page number
+            self.issue = self.page.get_issue()
 
         if not issue:
-            query = AIPQuery(volume, page, self.baseurl)
+            query = AIPQuery(self.volume, self.page, self.baseurl, selenium)
             query.run()
             url_list = URLLister()
             url_list.feed(query.aiphtml)
@@ -126,15 +122,15 @@ class AIPJournal(Journal):
             for name in url_list:
                 match = regexp.search(name)
                 if match:
-                    issue = int(match.groups()[0])
-                    return pdfurl, issue
+                    self.issue = int(match.groups()[0])
+                    return pdfurl, self.issue
         else:
-            parser = self.get_articles(volume, issue)
+            parser = self.get_articles(self.volume, self.issue)
             for article in parser:
-                if article.start_page == page:
-                    return article.url, issue
+                if article.start_page == self.page:
+                    return article.url, self.issue
 
-        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
+        raise HTMLException("No match found for %s %d %s" % (self.name, self.volume, self.page))
             
 
 class JCP(AIPJournal):

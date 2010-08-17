@@ -1,39 +1,19 @@
-from skynet.utils.utils import traceback
-from skynet.pysock import Communicator
+from skynet.utils.utils import traceback, debugloc
+from skynet.socket.server import Server, ServerRequest, ServerAnswer
 from pylatex.pybib import Bibliography
 import threading
 import sys
 import os
 
-class CiteRequest:
+class CiteRequest(ServerRequest):
 
     def __init__(self):
-        pass
+        ServerRequest.__init__(self, CiteServer.REQUEST_PORT, CiteAnswer)
 
-    def run(self, label):
-        answer = CiteAnswer()
-        answer.start()
-        try:
-            comm = Communicator(CiteServer.REQUEST_PORT)
-            comm.open()
-            comm.sendObject(label)
-        except Exception, error:
-            sys.stderr.write("%s\n" % error)
-        comm.close()
-        answer.join()
-        return answer.response
-
-class CiteAnswer(threading.Thread):
+class CiteAnswer(ServerAnswer):
 
     def __init__(self):
-        threading.Thread.__init__(self)
-        self.response = None
-
-    def run(self):
-        comm = Communicator(CiteServer.ANSWER_PORT)
-        comm.bind()
-        self.response = comm.acceptObject()
-        comm.close()
+        ServerAnswer.__init__(self, CiteServer.ANSWER_PORT)
 
 class CiteBibBuild(threading.Thread):
     
@@ -58,7 +38,7 @@ class CiteBibBuild(threading.Thread):
             self.lock.release()
             time.sleep(3)
 
-class CiteServer:
+class CiteServer(Server):
 
     REQUEST_PORT = 22347
     ANSWER_PORT = 22348
@@ -66,9 +46,11 @@ class CiteServer:
     REBUILD = "rebuild"
 
     def __init__(self):
-        self.server = Communicator(self.REQUEST_PORT)
-        self.server.bind()
+        Server.__init__(self, self.REQUEST_PORT, self.ANSWER_PORT)
         self.bib = Bibliography()
+        self.lock = threading.RLock()
+        buildthread = CiteBibBuild(self.lock, self.bib)
+        buildthread.start()
 
     def get_record_from_label(self, label):
         try:
@@ -98,28 +80,17 @@ class CiteServer:
         except Exception:
             pass
 
-    def run(self):
-        self.lock = threading.RLock()
-        buildthread = CiteBibBuild(self.lock, self.bib)
-        buildthread.start()
-        while 1:
-            try:
-                obj = self.server.acceptObject()
-                self.lock.acquire()
-                record = ""
-                if obj == self.REBUILD:
-                    self.rebuild()
-                    record = "completed"
-                elif isinstance(obj, list):
-                    record = self.get_record_from_citation(obj)
-                elif isinstance(obj, str):
-                    record = self.get_record_from_label(obj)
-                self.release_lock()
-                comm = Communicator(self.ANSWER_PORT)
-                comm.sendObject(record)
-                comm.close()
-            except Exception, error:
-                self.release_lock()
-                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
+    def process(self, obj):
+        self.lock.acquire()
+        record = ""
+        if obj == self.REBUILD:
+            self.rebuild()
+            record = "completed"
+        elif isinstance(obj, list):
+            record = self.get_record_from_citation(obj)
+        elif isinstance(obj, str):
+            record = self.get_record_from_label(obj)
+        self.release_lock()
+        return record
             
 

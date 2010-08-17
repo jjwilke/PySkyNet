@@ -2,6 +2,7 @@ from webutils.htmlparser import HTMLParser, save_url
 from webutils.htmlexceptions import HTMLException
 from urllib2 import HTTPError
 from skynet.utils.utils import traceback, load, save
+from pdfserver import PDFRequest
 
 import sys
 import os.path
@@ -237,6 +238,11 @@ class Volume:
         return "\n".join(str_arr)
 
 class Journal:
+
+    def set_article(self, volume, issue, page):
+        self.volume = volume
+        self.issue = issue
+        self.page = page
     
     def pickle_path(self):
         import papers.pdfget
@@ -345,14 +351,13 @@ def download_pdf(journal, volume = 0, issue = 0, page = Page("0")):
 
         #we might have to fetch the issue
         url = None
-        try:
-            url, issue = jobj.url(volume, issue, page)
-        except HTMLException, error:
-            sys.stderr.write("%s\n" % error)
-            pass #for now
-
-        if not url: #nothing found
+        jobj.set_article(volume, issue, page)
+        req = PDFRequest()
+        ret = req.run(jobj)
+        if not ret:
             return None
+
+        url, issue = req.run(jobj)
 
         name = "%s %d %d %s" % (journal, volume, issue, page)
         filename = "%s.pdf" % name

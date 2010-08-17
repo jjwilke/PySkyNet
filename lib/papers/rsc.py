@@ -11,25 +11,22 @@ class RSCArticle(PDFArticle):
 
 class RSCQuery:
     
-    def __init__(self, journal, volume, page):
+    def __init__(self, journal, volume, page, selenium):
         self.volume = volume
         self.page = page
         self.journal = journal
         self.rschtml = None
+        self.selenium = selenium
 
     def run(self):
-        self.selenium = selenium("localhost", 4444, "*chrome", "http://www.rsc.org/")
-        self.selenium.start()
         sel = self.selenium
-        sel.open("/Publishing/Journals/articlefinder.asp")
+        sel.open("http://www.rsc.org/Publishing/Journals/articlefinder.asp")
         sel.select("journal_code", "label=%s" % self.journal)
         sel.type("year_volume", "%d" % self.volume)
         sel.type("fpage", "%s" % self.page)
         sel.click("//div[@id='content']/div[2]/div/div[2]/form/div[5]/input[2]")
         sel.wait_for_page_to_load("30000")
         self.rschtml = sel.get_html_source()
-    
-        self.selenium.stop()
     
 class RSCParser(ArticleParser):
 
@@ -83,13 +80,17 @@ class RSCJournal(Journal):
         parser.feed(response)
         return parser
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
+        volume = self.volume
+        page = self.page
+        issue = self.issue
+
         from webutils.htmlparser import fetch_url
 
         self.validate("template", "year1")
         response = None
         if not issue:
-            query = RSCQuery(self.name, volume, page)
+            query = RSCQuery(self.name, volume, page, selenium)
             query.run()
             response = query.rschtml
         else:

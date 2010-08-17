@@ -19,12 +19,14 @@ optionList = OptionList(commandName="cite",
 options_given = readOptions(optionList, optionSet=options)
 
 value = []
-if   hasattr(options, "label"):
+if options.label:
     value = options.label
-elif hasattr(options, "citation"):
+elif options.citation:
     value = options.citation
 else:
     sys.exit("I need a citation or a label")
+
+print value
 
 from pylatex.pybib import Record
 Record.setFormat(options.format)

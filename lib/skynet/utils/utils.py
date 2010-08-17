@@ -8,6 +8,12 @@ import pickle
 import thread
 from globalvals import *
 
+def debugloc(fileobj = sys.stdout):
+    import inspect
+    frame = inspect.currentframe().f_back
+    info = inspect.getframeinfo(frame)
+    fileobj.write("%s\n" % str(info))
+
 def capitalize_word(word):
     if not word:
         return "" 

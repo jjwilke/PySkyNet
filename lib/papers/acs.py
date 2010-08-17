@@ -72,24 +72,20 @@ def parse_reference(text):
 
 class ACSQuery:
     
-    def __init__(self, id, volume, page):
+    def __init__(self, id, volume, page, selenium):
         self.id = id
         self.volume = volume
         self.page = page
+        self.selenium = selenium
 
     def run(self):
-        self.selenium = selenium("localhost", 4444, "*chrome", "http://pubs.acs.org")
-        self.selenium.start()
-        self.selenium.open("/loi/%s" % self.id);
+        self.selenium.open("http://pubs.acs.org/loi/%s" % self.id);
         self.selenium.click("qsTabCitation");
         self.selenium.type("qsCitVol", "%d" % self.volume);
         self.selenium.type("qsCitPage", "%s" % self.page);
         self.selenium.click("qsCitSubmit");
         self.selenium.wait_for_page_to_load("30000");
         self.html = self.selenium.get_html_source()
-        import time
-        time.sleep(25)
-        self.selenium.stop()
 
 class ACSArticle(PDFArticle):
     pass    
@@ -182,12 +178,12 @@ class ACSJournal(Journal):
 
         return 0
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
 
         self.validate("id")
 
-        if not issue:
-            query = ACSQuery(self.id, volume, page)
+        if not self.issue:
+            query = ACSQuery(self.id, self.volume, self.page, selenium)
             query.run()
             url_list = URLLister("Abstract","Tools")
             url_list.feed(query.html)
@@ -203,20 +199,20 @@ class ACSJournal(Journal):
                 
 
             tocurl = url_list["Table of Contents"]
-            issue = int(os.path.split(tocurl)[-1])
-            return pdfurl, issue
+            self.issue = int(os.path.split(tocurl)[-1])
+            return pdfurl, self.issue
 
         else:
-            mainurl = "http://pubs.acs.org/toc/%s/%d/%d" % (self.id, volume, issue)
+            mainurl = "http://pubs.acs.org/toc/%s/%d/%d" % (self.id, self.volume, self.issue)
 
             response = fetch_url(mainurl)
             parser = ACSParser()
             parser.feed(response)
             for article in parser:
                 if article.start_page == page:
-                    return article.url, issue
+                    return article.url, self.issue
 
-        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
+        raise HTMLException("No match found for %s %d %s" % (self.name, self.volume, self.page))
 
 class JACS(ACSJournal):
     name = "Journal of the American Chemical Society"

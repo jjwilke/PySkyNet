@@ -1,5 +1,5 @@
 from pylatex.pybib import Bibliography
-from skynet.pysock import Communicator
+from skynet.socket.pysock import Communicator
 import os.path
 import os
 

@@ -84,7 +84,10 @@ class IOPParser(ArticleParser):
 
 class IOPJournal(Journal):
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
+        volume = self.volume
+        page = self.page
+        issue = self.issue
 
         self.validate("baseurl")
         toc = fetch_url("%s/%d" % (self.baseurl, volume))

@@ -10,10 +10,7 @@ import re
 
 class JstorQuery:
 
-    def run(self, name, volume, page):
-        self.selenium = selenium("localhost", 4444, "*chrome", "http://www.jstor.org/")
-        self.selenium.start()
-
+    def run(self, name, volume, page, sel):
         sel = self.selenium
         sel.open("/action/showArticleLocator")
         sel.remove_selection("journalTitle", "label=All Titles")
@@ -24,19 +21,15 @@ class JstorQuery:
         sel.wait_for_page_to_load("30000")
         self.html = sel.get_html_source()
 
-        #sel.open("/archive/")
-        #sel.type("vol_num", "%d" % volume)
-        #sel.type("page_num", "%s" % page)
-        #sel.click("journal_search_volume_go")
-        #sel.wait_for_page_to_load("30000")
-
-        self.selenium.stop()
-
 class JstorJournal(Journal):
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
+        volume = self.volume
+        page = self.page
+        issue = self.issue
+
         query = JstorQuery()
-        query.run(self.name, volume, page)
+        query.run(self.name, volume, page, selenium)
         url_list = URLLister()
         url_list.feed(query.html)
         url = url_list["PDF"]

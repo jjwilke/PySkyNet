@@ -149,25 +149,25 @@ class APSJournal(Journal):
 
         return parser
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
 
         self.validate("baseurl", "abbrev", "volstart", "doi")
 
-        if volume >= self.volstart: #get the issue from the page number
-            issue = page.get_issue()
+        if self.volume >= self.volstart: #get the issue from the page number
+            self.issue = page.get_issue()
         else:
-            url = "%s.%d.%s" % (self.doi, volume, page)
+            url = "%s.%d.%s" % (self.doi, self.volume, self.page)
             text = fetch_url(url)
-            regexp = "/toc/%s/v%d/i(\d+)" % (self.abbrev, volume)
-            issue = int(re.compile(regexp).search(text).groups()[0])
+            regexp = "/toc/%s/v%d/i(\d+)" % (self.abbrev, self.volume)
+            self.issue = int(re.compile(regexp).search(text).groups()[0])
 
-        parser = self.get_articles(volume, issue) 
+        parser = self.get_articles(self.volume, self.issue) 
         for article in parser:
             if article.start_page == page:
                 url = self.baseurl + article.url
-                return url, issue
+                return url, self.issue
 
-        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
+        raise HTMLException("No match found for %s %d %s" % (self.name, self.volume, self.page))
 
 class PRL(APSJournal):
     

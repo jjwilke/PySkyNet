@@ -11,6 +11,8 @@ from papers.utils import JournalCleanup
 from xml.parsers.expat import ExpatError
 from skynet.utils.utils import clean_line, capitalize_word
 
+from skynet.socket.server import ServerRequest, ServerAnswer, Server
+
 class Article:
 
     journaltag = "secondary-title"
@@ -417,4 +419,31 @@ class MasterArchive(Archive):
     def __init__(self):
         Archive.__init__(self, self.masterfile)
 
+
+class ArchiveRequest(ServerRequest):
+    
+    def __init__(self, article):
+        ServerRequest.__init__(self, ArchiveServer.REQUEST_PORT, ArchiveAnswer)
+
+    def run(self):
+        response = ServerRequest.run(self, self.article)
+        return response
+
+
+class ArchiveAnswer(ServerAnswer):
+
+    def __init__(self):
+        ServerAnswer.__init__(self, ArchiveServer.ANSWER_PORT)
+
+class ArchiveServer(Server):
+    
+    REQUEST_PORT = 22351
+    ANSWER_PORT = 22352
+
+    def __init__(self):
+        Server.__init__(self, self.REQUEST_PORT, self.ANSWER_PORT)
+        self.archive = MasterArchive()
+
+    def process(self, obj):
+        return self.archive.has(obj)
 
