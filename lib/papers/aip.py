@@ -18,7 +18,7 @@ class AIPQuery:
 
     def run(self):
         sel = self.selenium
-        sel.open("/")
+        sel.open(self.baseurl)
         sel.type("vol", "%d" % self.volume)
         sel.type("pg", "%s" % self.page)
         sel.click("//input[@value='' and @type='submit']")

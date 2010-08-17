@@ -96,7 +96,10 @@ class SDJournal(Journal):
     #the base url
     baseurl = None
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
+        volume = self.volume
+        page = self.page
+        issue = self.issue
         
         self.validate("baseurl")
 

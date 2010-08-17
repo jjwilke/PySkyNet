@@ -13,10 +13,11 @@ class SpringerStopException(Exception):
 
 class SpringerQuery:
 
-    def __init__(self, volume, maxvolume):
+    def __init__(self, volume, maxvolume, selenium):
         idx = (volume - 1) / 5 
         start = idx + 1
         end = idx + 5
+        self.selenium = selenium
 
         if maxvolume <= end:
             self.tag = "Current-%d" % start
@@ -24,18 +25,12 @@ class SpringerQuery:
             self.tag = "%d-%d" % (end, start)
 
     def run(self):
-        self.selenium = selenium("localhost", 4444, "*chrome", "http://www.springerlink.com/")
-        self.selenium.start()
-
         sel = self.selenium
-        sel.open("/content/1432-881X")
+        sel.open("http://www.springerlink.com/content/1432-881X")
         sel.select("ctl00_MainPageContent_ctl02_ctl01_SubpaginationControl_ctl00_List", "label=%s" % self.tag)
         sel.click("//option[@value='2']")
         sel.wait_for_page_to_load("30000")
-
         self.html = sel.get_html_source()
-
-        self.selenium.stop()
 
 class IssueParser(ArticleParser):
 
@@ -168,14 +163,17 @@ class SpringerParser(ArticleParser):
 
 class SpringerJournal(Journal):
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
+        volume = self.volume
+        page = self.page
+        issue = self.issue
 
         self.validate("baseurl", "maxvolume")
 
         from webutils.htmlparser import URLLister, fetch_url
         import re
 
-        query = SpringerQuery(volume, self.maxvolume)
+        query = SpringerQuery(volume, self.maxvolume, selenium)
         query.run()
         url_list = URLLister()
         url_list.feed(query.html)

@@ -91,7 +91,10 @@ class WileyPDFFetcher(ArticleParser):
 
 class WileyJournal(Journal):
 
-    def url(self, volume, issue, page):
+    def url(self, selenium):
+        volume = self.volume
+        page = self.page
+        issue = self.issue
         
         self.validate("baseurl")
 

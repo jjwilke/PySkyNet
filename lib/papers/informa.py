@@ -18,7 +18,7 @@ class InformaQuery:
 
     def run(self):
         sel = self.selenium
-        sel.open("/smpp/search~db=all~searchmode=citation?newsearch=true")
+        sel.open("http://www.informaworld.com/smpp/search~db=all~searchmode=citation?newsearch=true")
         sel.click("//input[@name='sourcematch' and @value='exact']")
         sel.type("source", self.journal.lower())
         sel.type("volume", "%d" % self.volume)
