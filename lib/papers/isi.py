@@ -65,7 +65,7 @@ def get_authors(x, inter_delim = ",", intra_delim = " "):
             entries  = map(lambda y: y.strip().split(intra_delim), x.split(inter_delim))
         return process_authors(entries)
     except ValueError, error:
-        sys.stderr.write("%s\n%s not properly split by intra='%s' inter='%s'\n" % (error, x, intra_delim, inter_delim))
+        sys.stderr.write("ERROR: %s\n%s not properly split by intra='%s' inter='%s'\n" % (error, x, intra_delim, inter_delim))
         sys.stderr.write(traceback(error) + "\n")
         raise ISIError("Author list not formatted properly")
 
@@ -193,7 +193,7 @@ class WOKArticle(WOKObject):
         self.set_value("Author.*?[:](.*?)Source", "authors", method=lambda x: get_authors(x.replace(".", " "), ",", " "))
         self.set_value("Record from Web of Science.*?\s(.*?)more\soptions", "title", method=Cleanup.clean_title)
         self.set_value("Abstract[:](.*?)Addresses", "abstract", method=clean_entry, require=False)
-        self.set_value("Published[:].*?\s(\d{4})", "year", method=int)
+        self.set_value("Published[:].*?\s*(\d{4})", "year", method=int)
         self.set_value("DOI[:]\s+(.*?)[\n\s]", "doi", require=False)
 
     def add_notes(self, notes):
@@ -210,15 +210,22 @@ class WOKArticle(WOKObject):
         name = "%s %d %s (%d)" % (self.article.get_abbrev(), volume, page, year)
 
         local_match = self.archive.find_match(self.article)
-        artreq = ArchiveRequest(self.article)
         if local_match:
-            sys.stdout.write("Already have article %s in local archive\n" % name)
+            download = download and not local_match.has_pdf() #set to download if we don't have pdf
             self.article = local_match
-            return
-        elif artreq.run(): #query master
-            sys.stdout.write("Already have article %s in master archive\n" % name)
-            return
-        else:
+            sys.stdout.write("Already have article %s in local archive\n" % name)
+
+        
+        master_match = None
+        if not local_match:
+            artreq = ArchiveRequest(self.article)
+            master_match = artreq.run() #query master
+            if master_match:
+                sys.stdout.write("Already have article %s in master archive\n" % name)
+                download = download and not master_match.has_pdf() #set to download if we don't have pdf
+                self.article = master_match
+        
+        if not local_match and not master_match:
             self.archive.add(self.article)
 
         if download:
@@ -267,17 +274,10 @@ class ISIServer(Server):
         #start selenium running
         import os
         import time
-        self.pid = os.fork()
-        if self.pid:
-            time.sleep(5)
-            self.selenium = None
-            self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
-            self.selenium.start()
-            self.go_home()
-            self.run()
-        else:
-            sys.exit()
-            #os.system("selenium") #start selenium running
+        self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
+        self.selenium.start()
+        self.go_home()
+        self.run()
 
     def go_home(self):
         self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
@@ -296,7 +296,7 @@ class ISIServer(Server):
             else:
                 ret = method()
         except Exception, error:
-            sys.stderr.write("%s\n%s\n" % (traceback(error), error))
+            sys.stderr.write("ERROR: %s\n%s\n" % (traceback(error), error))
 
         return ret
 
@@ -323,7 +323,7 @@ class ISIServer(Server):
         self.selenium.wait_for_page_to_load("30000")
 
         self.selenium.select("pageSize", "label=Show 50 per page")
-        #self.selenium.wait_for_page_to_load("30000")
+        self.selenium.wait_for_page_to_load("1000")
 
     def get_articles(self):
         #figure out the title
@@ -350,15 +350,26 @@ class ISIServer(Server):
 
         articles = []
         for title, entry in matches:
-            volume = get_value(entry, "volume", "Volume[:]\s*(\d+)", int)
-            page = get_value(entry, "page", "Pages[:]\s*(\d+)", Page, require=False)
-            if not page:
-                page = get_value(entry, "page", "Article\sNumber[:]\s*(\d+)", Page, require=True)
-            issue = get_value(entry, "issue", "Issue[:]\s*(\d+)", int)
-            year = get_value(entry, "year", "Published[:]\s*(\d+)", int)
-            source = get_value(entry, "source", "Source[:]\s*(.*?)Vol", lambda x: x.strip())
-            article = WOKArticleSearch(title=title, volume=volume, issue=issue, year=year, source=source, page=page)
-            articles.append(article)
+            try:
+                volume = get_value(entry, "volume", "Volume[:]\s*(\d+)", int, require=False)
+                issue = get_value(entry, "issue", "Issue[:]\s*(\d+)", int)
+                if not volume:
+                    volume = issue
+                    issue = 0
+
+                page = get_value(entry, "page", "Pages[:]\s*(\d+)", Page, require=False)
+                if not page:
+                    page = get_value(entry, "page", "Article\sNumber[:]\s*(\d+)", Page, require=True)
+                year = get_value(entry, "year", "Published[:].*?\s*(\d{4})", int)
+
+                source = get_value(entry, "source", "Source[:]\s*(.*?)Vol", lambda x: x.strip(), require=False)
+                if not source:
+                    source = get_value(entry, "source", "Source[:]\s*(.*?)Iss", lambda x: x.strip())
+
+                article = WOKArticleSearch(title=title, volume=volume, issue=issue, year=year, source=source, page=page)
+                articles.append(article)
+            except ISIError, error:
+                sys.stderr.write("ERROR: %s\n" % error)
         return articles
 
     def open_article(self, title):
@@ -369,7 +380,7 @@ class ISIServer(Server):
             self.selenium.click(link)
             self.selenium.wait_for_page_to_load("30000")
         except Exception, error:
-            sys.stderr.write("Error on title %s:\n%s\n" % (readable(title), readable(self.selenium.get_body_text())))
+            sys.stderr.write("ERROR: Error on title %s:\n%s\n" % (readable(title), readable(self.selenium.get_body_text())))
             raise ISIError("%s\nCould not find title" % traceback(error))
 
     def open_references(self):
@@ -424,7 +435,7 @@ class Journal(WOKField):
 
     def __init__(self, value):
         from papers.pdfglobals import PDFGetGlobals as globals
-        self.value = globals.get_journal(journal)
+        self.value = globals.get_journal(value)
 
 class Year(WOKField):
     name = "Year Published"
@@ -484,7 +495,7 @@ class WOKParser(WOKObject, ServerRequest):
                     continue
 
                 match = getattr(article, key)
-                if str(value) != str(match):
+                if str(value).lower() != str(match).lower():
                     foundmatch = False
                     break;
             
@@ -531,13 +542,17 @@ class WOKParser(WOKObject, ServerRequest):
         except KeyboardInterrupt, error:
             raise error
         except ISIError, error:
-            sys.stderr.write("%s\nFailed on block:\n%s\n" % (error, error.block))
+            sys.stderr.write("ERROR: %s\nFailed on block:\n%s\n" % (error, error.block))
             raise error
 
     def run_getref(self):
         try:
             void = self.run("isi_search", self.search)
             articles = self.run("get_articles")
+
+            if not articles:
+                raise ISIError("Could not find article with given specifications");
+
 
             title = ""
             article = self.pick_article(articles)
@@ -554,7 +569,7 @@ class WOKParser(WOKObject, ServerRequest):
             raise error
         except ISIError, error:
             self.archive.commit()
-            sys.stderr.write("%s\nFailed on block:\n%s\n" % (error, error.block))
+            sys.stderr.write("ERROR: %s\nFailed on block:\n%s\n" % (error, error.block))
             raise error
 
     def run_allrefs(self):
@@ -570,13 +585,13 @@ class WOKParser(WOKObject, ServerRequest):
                     if not article:
                         continue
                 except ISIError, error: #don't stop because of one error
-                    sys.stderr.write("%s\nFailed on block:\n%s\n" % (error, error.block))
+                    sys.stderr.write("ERROR: %s\nFailed on block:\n%s\n" % (error, error.block))
                 except Exception, error:
                     sys.stderr.write("Unknown error:\n%s\n%s\n" % (traceback(error), error))
                 self.run("go_back")
         except Exception, error:
             self.archive.commit()
-            sys.stderr.write("%s\n%s\n" % (traceback(error), error))
+            sys.stderr.write("ERROR: %s\n%s\n" % (traceback(error), error))
             raise error
 
     def walk_references(self):
@@ -596,9 +611,9 @@ class WOKParser(WOKObject, ServerRequest):
         try:
             article = self.store_article()
         except ISIError, error:
-            sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
+            sys.stderr.write("ERROR: %s\n%s\n" % (error, traceback(error)))
         except Exception, error:
-            sys.stderr.write("%s\n%s\n" % (error, traceback(error)))
+            sys.stderr.write("ERROR: %s\n%s\n" % (error, traceback(error)))
 
         self.run("go_back")
 
@@ -650,7 +665,7 @@ class SavedRecordParser:
             return
 
         if require:
-            sys.stderr.write("%s\n" % self.block)
+            sys.stderr.write("ERROR: %s\n" % self.block)
             msg = "no %s for tags\n" % attr
             msg += "\n".join(str_arr)
             raise ISIError(msg)
@@ -695,7 +710,7 @@ class SavedRecordParser:
                     sys.stdout.write("%s exists in archive\n" % name)
                     continue
             except Exception, error:
-                sys.stderr.write("%s\n%s\n" % (error, block))
+                sys.stderr.write("ERROR: %s\n%s\n" % (error, block))
 
 def walkISI(files, archive, notes):
     from papers.pdfget import download_pdf
@@ -808,7 +823,6 @@ Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My S
 
     """
     article = WOKArticle(archive, readable(block))
-    print article
     article.store()
     article = WOKArticle(archive, readable(block))
     article.store()

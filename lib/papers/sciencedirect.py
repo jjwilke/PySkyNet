@@ -235,6 +235,10 @@ class JMB(SDJournal):
     name = "Journal of Molecular Biology"
     baseurl = "http://www.sciencedirect.com/science/journal/00222836"
 
+class CCR(SDJournal):
+    name = "Coordination Chemistry Reviews"
+    baseurl = "http://www.sciencedirect.com/science/journal/00108545"
+
 if __name__ == "__main__":
     pass
 

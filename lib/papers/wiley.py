@@ -4,9 +4,52 @@ from webutils.htmlparser import fetch_url
 
 import sys
 import re
+import time
 
 class WileyArticle(PDFArticle):
     pass
+
+
+class WileyQuery:
+
+    def __init__(self, baseurl, volume, page, selenium):
+        self.volume = volume
+        self.page = page
+        self.selenium = selenium
+        self.baseurl = baseurl
+
+    def run(self):
+        sel = self.selenium
+        sel.open(self.baseurl)
+        sel.click("link=*ll Issue*")
+        sel.wait_for_page_to_load(30000)
+        loc=sel.get_location()
+        text =  sel.get_body_text()
+        year = re.compile("(\d+)\s*[-]\s*Volume\s%s\s" % self.volume).search(text).groups()[0]
+        url = "%s?activeYear=%s" % (loc, year)
+        text = fetch_url(url)
+        regexp = "Volume\s*%d.*?Issue[s]?\s*(\d+)[-]?\d*.*?Pages\s*(\d+)[-](\d+)" % self.volume
+        matches = re.compile(regexp, re.DOTALL).findall(text)
+        issue = 0
+        for iss, start, end in matches:
+            iss, start, end = map(int, (iss, start, end))
+            if start <= self.page and end >= self.page:
+                issue = iss
+                break
+        if not issue:
+            raise HTMLException("Could not find issue number")
+
+        sel.click("link=*Volume %d*" % self.volume)
+        time.sleep(0.5)
+        sel.click("link=*Issue*%d*" % issue)
+        sel.wait_for_page_to_load(30000)
+        sel.click("link=*page*%s*" % self.page)
+        sel.wait_for_page_to_load(30000)
+        location = sel.get_location()
+        base = location.split("/")[:-1]
+        base.append("pdf")
+        pdfurl = "/".join(base)
+        return pdfurl, issue
     
 class WileyParser(ArticleParser):
 
@@ -96,54 +139,35 @@ class WileyJournal(Journal):
         page = self.page
         issue = self.issue
         
-        self.validate("baseurl")
-
-        cgi = "&volume=%d&issue=&pages=%s" % (volume, page)
-        mainurl = self.baseurl + cgi
-
-        response = fetch_url(mainurl)
-
-        parser = WileyParser()
-        parser.feed(response)
-        for article in parser:
-            if not article: #failed url
-                continue
-
-            if article.start_page == page:
-                #we don't quite have the article url yet
-                response = fetch_url(article.url)
-                pdfget = WileyPDFFetcher()
-                pdfget.feed(response)
-                if not pdfget.url:
-                    raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
-
-                url = pdfget.url.split("&PLAC")[0]
-                return url, issue
-
-        raise HTMLException("No match found for %s %d %s" % (self.name, volume, page))
+        query = WileyQuery(self.baseurl, volume, page, selenium)
+        url, issue = query.run()
+        text = fetch_url(url)
+        regexp = 'pdfDocument.*?(http.*?)["]'
+        pdfurl = re.compile(regexp, re.DOTALL).search(text).groups()[0]
+        return pdfurl, issue
 
 class AngeChem(WileyJournal):
 
     name = "Angewandte Chemie"
-    baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=%281521-3773%2C1521-3773%29"
+    baseurl = "http://www3.interscience.wiley.com/journal/26737/home"
 
 class IJQC(WileyJournal):
 
     name = "International Journal Of Quantum Chemistry"
-    baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1097-461X"
+    baseurl = "www3.interscience.wiley.com/journal/29830"
 
 class JPOC(WileyJournal):
 
     name = "Journal of Physical Organic Chemistry"
-    baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1099-1395"
+    baseurl = "www3.interscience.wiley.com/journal/4569/home"
 
 class JCC(WileyJournal):
 
     name = "Journal of Computational Chemistry"
-    baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1096-987X"
+    baseurl = "www3.interscience.wiley.com/journal/112750178/home"
 
 class ChemPhysChem(WileyJournal):
     
     name = "ChemPhysChem"
-    baseurl = "http://www3.interscience.wiley.com/search/allsearch?mode=citation&contextLink=blah&issn=1439-7641"
+    baseurl = "www3.interscience.wiley.com/journal/72514732/home"
 

@@ -1,10 +1,14 @@
 #! /usr/bin/env python
 import sys
+import re
+import os
+import codecs
 
 from papers.archive import Archive
 from skynet.utils.getoptions import InputOption, OptionList, readOptions, OptionSet 
 from skynet.utils.utils import acquire, traceback
 from papers.isi import ISIError
+from papers.pdfglobals import PDFGetGlobals as pdfglobals
 
 def execute_search(wok, archive, journal, author, year, volume, page, notes):
     name = "%s %s %d %s (%d)" % (author, journal, volume, page, year)
@@ -18,6 +22,20 @@ def execute_search(wok, archive, journal, author, year, volume, page, notes):
     except ISIError, error:
         print "Could not parse %s" % name
         print error
+
+def nsf(citation, options):
+    print citation
+    match = re.compile('["].*?["](.*?)(\d+).*?(\d+).*?(\d+)',re.DOTALL).search(citation)
+    journal, year, volume, page = match.groups()
+    options.journal = pdfglobals.get_journal(journal).name
+    options.volume = volume
+    options.year = year
+    options.page = page
+    author = re.compile('(.*?)[;"]').search(citation).groups()[0]
+    lastname, initials = author.split(",")[:2]
+    initials = initials.replace(" ","").replace(".","")
+    options.author = lastname + "," + initials
+    
         
 
 #set the allowed command line options and user messages
@@ -34,10 +52,12 @@ if __name__ == "__main__":
         InputOption(shortOption='k', longOption='keywords', optionType='string', listOfValues=True, bind=True, default=""),
         InputOption(shortOption='f', longOption='format', optionType='string', bind=True),
         InputOption(longOption='download', setbool=True),
-        InputOption(shortOption='c', longOption='cited'),
+        InputOption(shortOption='c', longOption='citation', setbool=True),
+        InputOption(shortOption='b', longOption='bib'),
         InputOption(shortOption='l', longOption='list'),
         InputOption(shortOption='g', longOption='grab'),
         InputOption(shortOption='r', longOption='ref'),
+        InputOption(shortOption='h', longOption='html'),
         ]
 
 
@@ -50,10 +70,14 @@ if __name__ == "__main__":
 
     from papers.isi import WOKParser, WOKSearch
 
-    print options.__dict__
+    if options.citation:
+        os.system("osascript -e 'the clipboard as unicode text' | tr '\r' '\n' > .stdout")
+        citation = codecs.open(".stdout", "r", "utf-8").read()
+        nsf(citation, options)
+
 
     for option in options_given:
-        if option in ('c', 'cited'):
+        if option in ('b', 'bib'):
             parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year,
                                volume=options.volume, page=options.page, notes=options.notes, download=options.download,
                                keywords=options.keywords)
@@ -143,17 +167,10 @@ if __name__ == "__main__":
 
             wok.stop()
             archive.commit()
-
-        elif option in ('d', 'download'):
-            page = options.page
-            notes = options.notes
-            archive = Archive(options.archive)
-            wok = WOKSearch()
-            wok.start()
-            execute_search(wok, archive, options.journal, options.author, options.year, options.volume, page, notes)
-            wok.stop()
-            archive.commit()
-
+        elif option in ('h', 'html'):
+            parser = WOKParser(options.archive, notes=options.notes, keywords=options.keywords, download=options.download)
+            parser.store_article()
+            parser.archive.commit()
         elif option in ('r', 'ref'): #single reference
             parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year,
                                volume=options.volume, page=options.page, notes=options.notes, download=options.download,

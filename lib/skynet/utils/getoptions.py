@@ -1,5 +1,6 @@
 from utils import *
 from skynet.errors import *
+from skynet.utils.utils import traceback
 
 SCREEN_WIDTH = 80
 
@@ -479,6 +480,7 @@ def readOptions(optionList, optionsInput=sys.argv[1:], optionSet=None):
         return opts
 
     except InvalidOptionError, error:
+        print traceback(error)
         print error
         #here, the usage should be printed so the person knows what are valid options
         print optionList.usage()

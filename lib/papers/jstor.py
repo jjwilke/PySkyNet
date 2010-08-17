@@ -11,7 +11,6 @@ import re
 class JstorQuery:
 
     def run(self, name, volume, page, sel):
-        sel = self.selenium
         sel.open("http://www.jstor.org/action/showArticleLocator")
         sel.remove_selection("journalTitle", "label=All Titles")
         sel.add_selection("journalTitle", "label=%s"  % name)

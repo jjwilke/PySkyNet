@@ -4,7 +4,7 @@ class PDFGetGlobals:
     
     from papers.acs import JACS, JOC, InorgChem, JPCA, JPCB, JCTC, JPC, OrgLett, ChemRev, ACR, JPCL
     from papers.aip import JCP, JMP
-    from papers.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS, CPC, JMB
+    from papers.sciencedirect import CPL, PhysRep, ChemPhys, THEOCHEM, CompChem, JMS, JCompPhys, CMS, CPC, JMB, CCR
     from papers.aps import PRL, PRA, PRB, PROLA, RMP
     from papers.wiley import AngeChem, IJQC, JPOC, JCC, ChemPhysChem
     from papers.rsc import PCCP, CSR
@@ -60,6 +60,7 @@ class PDFGetGlobals:
     }
 
     abbrevs = {
+        "angew chem int ed" : "ange",
         "accounts chem res" : "acr",
         "chem phys" : "chemphys",
         "chem phys lett" : "cpl",
@@ -127,6 +128,12 @@ class PDFGetGlobals:
     get_object = classmethod(get_object)
 
     def get_journal(cls, name):
+        from papers.pdfget import Journal
+        if isinstance(name, Journal):
+            return name #already a journal
+
+        name = name.replace("\n"," ")
+
         from papers.utils import JournalCleanup
 
         #lower case, strip periods

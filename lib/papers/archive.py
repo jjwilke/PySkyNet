@@ -424,6 +424,7 @@ class ArchiveRequest(ServerRequest):
     
     def __init__(self, article):
         ServerRequest.__init__(self, ArchiveServer.REQUEST_PORT, ArchiveAnswer)
+        self.article = article
 
     def run(self):
         response = ServerRequest.run(self, self.article)

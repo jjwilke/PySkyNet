@@ -239,6 +239,9 @@ class Volume:
 
 class Journal:
 
+    def __str__(self):
+        return self.name
+
     def set_article(self, volume, issue, page):
         self.volume = volume
         self.issue = issue
@@ -357,7 +360,7 @@ def download_pdf(journal, volume = 0, issue = 0, page = Page("0")):
         if not ret:
             return None
 
-        url, issue = req.run(jobj)
+        url, issue = ret
 
         name = "%s %d %d %s" % (journal, volume, issue, page)
         filename = "%s.pdf" % name
