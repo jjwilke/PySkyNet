@@ -179,6 +179,9 @@ class ACSJournal(Journal):
         return 0
 
     def url(self, selenium):
+        volume = self.volume
+        page = self.page
+        issue = self.issue
 
         self.validate("id")
 

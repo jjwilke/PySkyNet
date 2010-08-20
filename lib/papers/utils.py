@@ -381,6 +381,7 @@ class JournalCleanup:
         "of",
         "the",
         "&",
+        "in",
     ]
 
     keep = [
@@ -401,9 +402,11 @@ class JournalCleanup:
     repl = {
         'ser-a' : 'Ser A',
         '&' : '',
+        'of america' : 'a',
     }
 
     abbrev_map = {
+        "acad" : "acad",
         "account" : "acc",
         "advance" : "adv",
         "americ" : "am",
@@ -431,6 +434,7 @@ class JournalCleanup:
         "math" : "math",
         "matter" : "matt",
         "molec" : "mol",
+        "national" : "natl",
         "organic" : "org",
         "organomet" : "organomet",
         "phys" : "phys",
@@ -441,9 +445,11 @@ class JournalCleanup:
         "sci" : "sci",
         "society" : "soc",
         "spectros" : "spectrosc",
+        "states" : "s",
         "struct" : "struct",
         "theor" : "theor",
         "topic" : "top",
+        "united" : "u",
         "zeitsch" : "zeit",
     }
 

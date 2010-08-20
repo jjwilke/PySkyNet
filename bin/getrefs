@@ -23,9 +23,33 @@ def execute_search(wok, archive, journal, author, year, volume, page, notes):
         print "Could not parse %s" % name
         print error
 
+def acs(citation, options):
+    citation = citation.replace("\n", " ")
+    match = re.compile("(.*?)(\d{4})[,]\s*(\d+)[,]\s*(\d+)").search(citation)
+    if not match:
+        return None
+
+    journal, year, volume, page = match.groups()
+    jobj = pdfglobals.get_journal(journal)
+    if not jobj:
+        sys.stderr.write("%s is not a valid journal\n" % journal)
+        return None
+
+    options.journal = jobj.name
+    options.volume = volume
+    options.year = year
+    options.page = page
+    author = re.compile('(.*?)[;"]').search(citation).groups()[0]
+    lastname, initials = author.split(",")[:2]
+    initials = initials.replace(" ","").replace(".","")
+    options.author = lastname + "," + initials
+    return journal
+
 def nsf(citation, options):
-    print citation
     match = re.compile('["].*?["](.*?)(\d+).*?(\d+).*?(\d+)',re.DOTALL).search(citation)
+    if not match:
+        return None
+
     journal, year, volume, page = match.groups()
     options.journal = pdfglobals.get_journal(journal).name
     options.volume = volume
@@ -35,6 +59,7 @@ def nsf(citation, options):
     lastname, initials = author.split(",")[:2]
     initials = initials.replace(" ","").replace(".","")
     options.author = lastname + "," + initials
+    return journal
     
         
 
@@ -51,12 +76,13 @@ if __name__ == "__main__":
         InputOption(shortOption='n', longOption='notes', optionType='string', bind=True, default=""),
         InputOption(shortOption='k', longOption='keywords', optionType='string', listOfValues=True, bind=True, default=""),
         InputOption(shortOption='f', longOption='format', optionType='string', bind=True),
-        InputOption(longOption='download', setbool=True),
+        InputOption(shortOption='d',longOption='download', setbool=True),
         InputOption(shortOption='c', longOption='citation', setbool=True),
         InputOption(shortOption='b', longOption='bib'),
         InputOption(shortOption='l', longOption='list'),
         InputOption(shortOption='g', longOption='grab'),
         InputOption(shortOption='r', longOption='ref'),
+        InputOption(longOption='refs'),
         InputOption(shortOption='h', longOption='html'),
         ]
 
@@ -68,12 +94,21 @@ if __name__ == "__main__":
                             optionsList=opts)
     options_given = readOptions(optionList, optionSet=options)
 
+
     from papers.isi import WOKParser, WOKSearch
 
     if options.citation:
         os.system("osascript -e 'the clipboard as unicode text' | tr '\r' '\n' > .stdout")
         citation = codecs.open(".stdout", "r", "utf-8").read()
-        nsf(citation, options)
+        journal = nsf(citation, options)
+
+        if not journal:
+            journal = acs(citation, options)
+
+        
+    print options.__dict__
+    sys.exit()
+
 
 
     for option in options_given:
@@ -177,6 +212,18 @@ if __name__ == "__main__":
                                keywords=options.keywords)
             try:
                 parser.run_getref()
+            except Exception, error:
+                print traceback(error)
+                print error
+            except KeyboardInterrupt, error:
+                print traceback(error)
+            parser.archive.commit()
+        elif option in ('', 'refs'): #single reference
+            parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year,
+                               volume=options.volume, page=options.page, notes=options.notes, download=options.download,
+                               keywords=options.keywords)
+            try:
+                parser.run_getrefs()
             except Exception, error:
                 print traceback(error)
                 print error

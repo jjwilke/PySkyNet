@@ -202,7 +202,7 @@ class WOKArticle(WOKObject):
     def add_keywords(self, keywords):
         self.article.set_keywords(keywords)
 
-    def store(self, download = False):
+    def store(self, download = False, notes = [], keywords = []):
         journal = self.article.get_journal()
         volume = self.article.get_volume()
         page = self.article.get_page()
@@ -215,7 +215,6 @@ class WOKArticle(WOKObject):
             self.article = local_match
             sys.stdout.write("Already have article %s in local archive\n" % name)
 
-        
         master_match = None
         if not local_match:
             artreq = ArchiveRequest(self.article)
@@ -223,7 +222,7 @@ class WOKArticle(WOKObject):
             if master_match:
                 sys.stdout.write("Already have article %s in master archive\n" % name)
                 download = download and not master_match.has_pdf() #set to download if we don't have pdf
-                self.article = master_match
+                #self.article = master_match
         
         if not local_match and not master_match:
             self.archive.add(self.article)
@@ -233,6 +232,11 @@ class WOKArticle(WOKObject):
             if path:
                 sys.stdout.write(" -> downloaded %s\n" % path)
                 self.article.set_pdf(path)
+
+        if keywords:
+            self.add_keywords(keywords)
+        if notes:
+            self.add_notes(notes)
 
         sys.stdout.write("Completed storage of %s\n" % name)
 
@@ -506,9 +510,7 @@ class WOKParser(WOKObject, ServerRequest):
         block = self.run("get_text")
         article = WOKArticle(self.archive, block) 
         if article:
-            article.add_notes(self.notes)
-            article.add_keywords(self.keywords)
-            article.store(self.download)
+            article.store(self.download, self.notes, self.keywords)
         return article
                 
     def run_citedrefs(self):
@@ -572,9 +574,8 @@ class WOKParser(WOKObject, ServerRequest):
             sys.stderr.write("ERROR: %s\nFailed on block:\n%s\n" % (error, error.block))
             raise error
 
-    def run_allrefs(self):
+    def run_getrefs(self):
         try:
-            void = self.run("isi_search", self.search)
             articles = self.run("get_articles")
             if not articles:
                 raise ISIError("no articles found")
@@ -589,6 +590,15 @@ class WOKParser(WOKObject, ServerRequest):
                 except Exception, error:
                     sys.stderr.write("Unknown error:\n%s\n%s\n" % (traceback(error), error))
                 self.run("go_back")
+        except Exception, error:
+            self.archive.commit()
+            sys.stderr.write("ERROR: %s\n%s\n" % (traceback(error), error))
+            raise error
+
+    def run_allrefs(self):
+        try:
+            void = self.run("isi_search", self.search)
+            self.run_getrefs()
         except Exception, error:
             self.archive.commit()
             sys.stderr.write("ERROR: %s\n%s\n" % (traceback(error), error))

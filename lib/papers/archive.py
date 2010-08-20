@@ -253,8 +253,10 @@ class Article:
         self._set_item(notes, self.notestag)
 
     def set_keywords(self, keywords):
-        text = ",".join(keywords)
-        self._set_item(text, self.keywordstag)
+        node = self._fetch_node("keywords")
+        for keyword in keywords:
+            text = self._append_text_node("keyword", node)
+            text.nodeValue = keyword
 
     def set_pages(self, pages):
         self._set_item(pages, self.pagestag)
@@ -446,5 +448,6 @@ class ArchiveServer(Server):
         self.archive = MasterArchive()
 
     def process(self, obj):
-        return self.archive.has(obj)
+        match = self.archive.find_match(obj)
+        return bool(match)
 
