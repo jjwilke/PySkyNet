@@ -1,4 +1,5 @@
 import os
+import sys
 import codecs
 
 PYTEMP = os.environ["PYTEMP"]
@@ -7,7 +8,7 @@ PYTEMP = os.environ["PYTEMP"]
 def get_clipboard():
     cwd = os.getcwd()
     os.chdir(PYTEMP)
-    os.system("osascript -e 'the clipboard as unicode text' >& .stdout")
+    os.system("osascript -e 'the clipboard as unicode text' | tr '\r' '\n' > .stdout")
     text = codecs.open(".stdout", "r", "utf-8").read()
     os.remove(".stdout")
     os.chdir(cwd)
@@ -37,7 +38,6 @@ def monitor_clipboard(delay=1):
         if delay:
             time.sleep(delay)
         cliptext = get_clipboard()
-
     return cliptext
 
 

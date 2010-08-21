@@ -14,7 +14,7 @@ class InformaQuery:
         self.journal = journal
         self.volume = volume
         self.page = page
-        self.selenim = selenium
+        self.selenium = selenium
 
     def run(self):
         sel = self.selenium

@@ -6,6 +6,7 @@ import codecs
 
 from papers.archive import Archive
 from skynet.utils.getoptions import InputOption, OptionList, readOptions, OptionSet 
+from skynet.utils.clipboard import monitor_clipboard
 from skynet.utils.utils import acquire, traceback
 from papers.isi import ISIError
 from papers.pdfglobals import PDFGetGlobals as pdfglobals
@@ -23,45 +24,45 @@ def execute_search(wok, archive, journal, author, year, volume, page, notes):
         print "Could not parse %s" % name
         print error
 
-def acs(citation, options):
-    citation = citation.replace("\n", " ")
-    match = re.compile("(.*?)(\d{4})[,]\s*(\d+)[,]\s*(\d+)").search(citation)
-    if not match:
-        return None
+def parse_citation(options, author_fxn, citation_regexp, journal = 0, year = 1, volume = 2, page = 3):
+    author = None
+    match = None
+    while not author or not match:
+        text = monitor_clipboard().replace("\n"," ")
+        print text
+        check = re.compile(citation_regexp).search(text)
+        if author and not check: #epic fail
+            return None
 
-    journal, year, volume, page = match.groups()
-    jobj = pdfglobals.get_journal(journal)
+        if not check:
+            author = text.replace(".","").replace(";","")
+            continue
+
+        match = check
+
+    lastname, initials = author_fxn(author)
+    options.author = lastname + "," + initials
+    match = match.groups()
+    jobj = pdfglobals.get_journal(match[journal])
     if not jobj:
-        sys.stderr.write("%s is not a valid journal\n" % journal)
+        sys.stderr.write("%s is not a valid journal\n" % match[journal])
         return None
 
     options.journal = jobj.name
-    options.volume = volume
-    options.year = year
-    options.page = page
-    author = re.compile('(.*?)[;"]').search(citation).groups()[0]
+    options.volume = match[volume].strip()
+    options.year = match[year].strip()
+    options.page = match[page].strip()
+
+    return options.journal
+
+def acs_author_fxn(author):
     lastname, initials = author.split(",")[:2]
     initials = initials.replace(" ","").replace(".","")
-    options.author = lastname + "," + initials
-    return journal
+    return lastname, initials
 
-def nsf(citation, options):
-    match = re.compile('["].*?["](.*?)(\d+).*?(\d+).*?(\d+)',re.DOTALL).search(citation)
-    if not match:
-        return None
-
-    journal, year, volume, page = match.groups()
-    options.journal = pdfglobals.get_journal(journal).name
-    options.volume = volume
-    options.year = year
-    options.page = page
-    author = re.compile('(.*?)[;"]').search(citation).groups()[0]
-    lastname, initials = author.split(",")[:2]
-    initials = initials.replace(" ","").replace(".","")
-    options.author = lastname + "," + initials
-    return journal
-    
-        
+def acs(options):
+    citation_regexp = '(.*?)(\d+).*?(\d+).*?(\d+)'
+    return parse_citation(options, acs_author_fxn, citation_regexp) 
 
 #set the allowed command line options and user messages
 if __name__ == "__main__":
@@ -100,16 +101,7 @@ if __name__ == "__main__":
     if options.citation:
         os.system("osascript -e 'the clipboard as unicode text' | tr '\r' '\n' > .stdout")
         citation = codecs.open(".stdout", "r", "utf-8").read()
-        journal = nsf(citation, options)
-
-        if not journal:
-            journal = acs(citation, options)
-
-        
-    print options.__dict__
-    sys.exit()
-
-
+        journal = acs(options)
 
     for option in options_given:
         if option in ('b', 'bib'):
@@ -206,10 +198,13 @@ if __name__ == "__main__":
             parser = WOKParser(options.archive, notes=options.notes, keywords=options.keywords, download=options.download)
             parser.store_article()
             parser.archive.commit()
+
         elif option in ('r', 'ref'): #single reference
+            print "here"
             parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year,
                                volume=options.volume, page=options.page, notes=options.notes, download=options.download,
                                keywords=options.keywords)
+
             try:
                 parser.run_getref()
             except Exception, error:
