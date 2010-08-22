@@ -11,6 +11,10 @@ from skynet.utils.utils import acquire, traceback
 from papers.isi import ISIError
 from papers.pdfglobals import PDFGetGlobals as pdfglobals
 
+
+from pygui.utils import gtkIO
+gtkIO.redirect_io()
+
 def execute_search(wok, archive, journal, author, year, volume, page, notes):
     name = "%s %s %d %s (%d)" % (author, journal, volume, page, year)
     print "Parsing %s" % name
@@ -27,12 +31,16 @@ def execute_search(wok, archive, journal, author, year, volume, page, notes):
 def parse_citation(options, author_fxn, citation_regexp, journal = 0, year = 1, volume = 2, page = 3):
     author = None
     match = None
+    num = 1
     while not author or not match:
+        print "Waiting for input %d" % num
         text = monitor_clipboard().replace("\n"," ")
         print text
         check = re.compile(citation_regexp).search(text)
         if author and not check: #epic fail
             return None
+
+        num += 1
 
         if not check:
             author = text.replace(".","").replace(";","")
@@ -200,7 +208,6 @@ if __name__ == "__main__":
             parser.archive.commit()
 
         elif option in ('r', 'ref'): #single reference
-            print "here"
             parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year,
                                volume=options.volume, page=options.page, notes=options.notes, download=options.download,
                                keywords=options.keywords)

@@ -238,7 +238,7 @@ class WOKArticle(WOKObject):
         if notes:
             self.add_notes(notes)
 
-        sys.stdout.write("Completed storage of %s\n" % name)
+        sys.stdout.write("Completed storage of %s\n%s\n%s\n" % (name, keywords, notes))
 
 class WOKArticleSearch:
 
@@ -273,15 +273,10 @@ class ISIServer(Server):
     
     def __init__(self):
         Server.__init__(self, self.REQUEST_PORT, self.ANSWER_PORT)
-        devnull = open("/dev/null", "w")
-        sys.stdout = devnull
         #start selenium running
         import os
         import time
         self.selenium = selenium("localhost", 4444, "*chrome", "http://apps.isiknowledge.com/")
-        self.selenium.start()
-        self.go_home()
-        self.run()
 
     def go_home(self):
         self.selenium.open("/UA_GeneralSearch_input.do?product=UA&search_mode=GeneralSearch&SID=1CfoiNKJeadJefDa2M8&preferencesSaved=")
@@ -289,6 +284,14 @@ class ISIServer(Server):
         if "establish a new session" in text:
             self.selenium.click("link=establish a new session")
             self.selenium.wait_for_page_to_load("30000")
+
+    def run(self):
+        self.selenium.start()
+        self.go_home()
+        Server.run(self)
+
+    def stop(self):
+        self.selenium.stop()
 
     def process(self, obj):
         ret = ISIVoid() #default nothing
@@ -312,15 +315,21 @@ class ISIServer(Server):
         self.go_home()
         text = self.selenium.get_body_text()
         nfields = text.count("Example:")
+
         #count the number of occurrences of Example in text
         #we currently have 3 fields
         for i in range(nfields, len(fields) + 1): #add another field
             self.add_field()
 
+        self.isi_clear(len(fields))
+
         i = 1
         for field in fields:
             self.selenium.select("select%d" % i, "label=%s" % field.name)
-            self.selenium.type("value(input%d)" % i, "%s" % field.value)
+            text = ""
+            if field.value:
+                text = str(field.value)
+            self.selenium.type("value(input%d)" % i, text)
             i += 1
             
         self.selenium.click("//input[@name='' and @type='image']")
@@ -328,6 +337,11 @@ class ISIServer(Server):
 
         self.selenium.select("pageSize", "label=Show 50 per page")
         self.selenium.wait_for_page_to_load("1000")
+
+    def isi_clear(self, nfields):
+        for i in range(1, nfields + 1):
+            self.selenium.select("select%d" % i, "label=Author")
+            self.selenium.type("value(input%d)" % i, "")
 
     def get_articles(self):
         #figure out the title
@@ -356,10 +370,11 @@ class ISIServer(Server):
         for title, entry in matches:
             try:
                 volume = get_value(entry, "volume", "Volume[:]\s*(\d+)", int, require=False)
-                issue = get_value(entry, "issue", "Issue[:]\s*(\d+)", int)
                 if not volume:
-                    volume = issue
+                    volume = get_value(entry, "issue", "Issue[:]\s*(\d+)", int)
                     issue = 0
+                else:
+                    issue = get_value(entry, "issue", "Issue[:]\s*(\d+)", int, require=False)
 
                 page = get_value(entry, "page", "Pages[:]\s*(\d+)", Page, require=False)
                 if not page:
@@ -440,6 +455,7 @@ class Journal(WOKField):
     def __init__(self, value):
         from papers.pdfglobals import PDFGetGlobals as globals
         self.value = globals.get_journal(value)
+        print self.value.__class__
 
 class Year(WOKField):
     name = "Year Published"
@@ -767,7 +783,6 @@ Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My S
                                          ALL DATABASES
                                             << Back to results list     
                                                      Record 1  of  2        
-                                                     Record from Web of Science®
                                                         Unique homonuclear multiple bonding in main group compounds
                                                                     more options
                                                                     Author(s): Wang YZ (Wang, Yuzhong)1, Robinson GH (Robinson, Gregory H.)1
@@ -817,9 +832,6 @@ Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My S
 
                                                                             << Back to results list     
                                                                                      Record 1  of  2        
-                                                                                     Record from Web of Science®
-
-
                                                                                      Output Record
                                                                                         
                                                                                         Step 1:

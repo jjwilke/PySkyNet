@@ -11,17 +11,29 @@ class ServerRequest:
         self.request_port = request_port
         self.answer_t = answer_t
 
+    def close_answer(self, answer):
+        try:
+            comm = Communicator(answer.port)
+            comm.open()
+            comm.sendObject("die!")
+            comm.close()
+        except Exception, error:
+            sys.stderr.write("%d\n%s\n%s\n" % (self.request_port, traceback(error), error))
+
     def run(self, obj):
         answer = self.answer_t()
-        answer.start()
         comm = Communicator(self.request_port)
         try:
             comm.open()
+            answer.start()
             comm.sendObject(obj)
         except SocketOpenError, error:
             sys.stderr.write("%d\n%s\n%s\n" % (self.request_port, traceback(error), error))
+            self.close_answer(answer)
+            return #thread is already dead
         except Exception, error:
             sys.stderr.write("%d\n%s\n%s\n" % (self.request_port, traceback(error), error))
+            self.close_answer(answer)
         comm.close()
         answer.join()
         return answer.response
@@ -35,6 +47,7 @@ class ServerAnswer(threading.Thread):
 
     def run(self):
         comm = Communicator(self.port)
+        #comm.setTimeout(5)
         try:
             comm.bind()
             self.response = comm.acceptObject()
@@ -44,30 +57,82 @@ class ServerAnswer(threading.Thread):
             sys.stderr.write("%d\n%s\n%s\n" % (self.port, traceback(error), error))
         comm.close()
 
+class ServerStop:
+    pass
+
 class Server:
 
-    def __init__(self, request_port, answer_port):
+    def __init__(self, request_port, answer_port = None):
         self.answer_port = answer_port
         self.request_port = request_port
         self.server = Communicator(self.request_port)
         self.server.bind()
         self.bib = Bibliography()
 
+    def report(self):
+        from pygui.gtkserver import report 
+        report()
+
     def run(self):
         while 1:
             ret = ""
             try:
+                self.report()
                 obj = self.server.acceptObject()
+                self.report()
+                if isinstance(obj, ServerStop): #end
+                    self.stop()
+                    return
+
+                self.report()
                 ret = self.process(obj)
+                self.report()
             except Exception, error:
                 sys.stderr.write("%s\n%s\n" % (traceback(error), error))
 
+            self.report()
             try:
-                comm = Communicator(self.answer_port)
-                comm.sendObject(ret)
-                comm.close()
+                if self.answer_port:
+                    comm = Communicator(self.answer_port)
+                    comm.sendObject(ret)
+                    comm.close()
             except SocketOpenError, error:
                 sys.stderr.write("%d\n%s\n%s\n" % (self.answer_port, traceback(error), error))
             except Exception, error:
                 sys.stderr.write("%s\n%s\n" % (traceback(error), error))
+            self.report()
+
+from threading import Thread
+
+class ServerThread(Thread):
+
+    def __init__(self, server):
+        Thread.__init__(self)
+        self.server = server
+
+    def run(self):
+        self.server.run()
+
+class ServerManager:
+    
+    def __init__(self, server):
+        self.thr = ServerThread(server)
+        self.server = server
+
+    def run(self):
+        self.thr.start()
+
+    def stop(self):
+        print "stopping", self.server.__class__
+        comm = Communicator(self.server.request_port)
+        comm.open()
+        comm.sendObject(ServerStop())
+        comm.close()
+        print "closed", self.server.__class__
+        self.thr.join()
+
+
+
+
+
 

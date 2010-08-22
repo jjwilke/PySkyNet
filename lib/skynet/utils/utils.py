@@ -8,6 +8,12 @@ import pickle
 import thread
 from globalvals import *
 
+def framestr():
+    import inspect
+    frame = inspect.currentframe().f_back
+    info = inspect.getframeinfo(frame)
+    return "%s" % str(info)
+
 def debugloc(fileobj = sys.stdout):
     import inspect
     frame = inspect.currentframe().f_back

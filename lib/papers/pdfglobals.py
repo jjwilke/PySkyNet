@@ -12,6 +12,7 @@ class PDFGetGlobals:
     from papers.informa import MolPhys, IRPC
     from papers.jstor import Science
     from papers.springer import TCA, TCActa
+    from papers.default import *
 
     journals = {
         "jacs" : JACS,
@@ -119,6 +120,7 @@ class PDFGetGlobals:
 
         #attempt to build the journal object as a name
         abbrev = abbrev.upper()
+
         if hasattr(cls, abbrev):
             obj = getattr(cls, abbrev)
             return obj()
@@ -176,13 +178,7 @@ class PDFGetGlobals:
         return journals
     get_valid_journals = classmethod(get_valid_journals)
 
-def run_testsuite():
-    from papers.pdfget import download_pdf, Page
-    #run the testsuite
-    download_pdf("jpb", volume=32,issue=13,page=Page("R103"))
-    download_pdf("jacs", volume=119,issue=38,page=Page("8925"))
-    download_pdf("jcp", volume=126,issue=16,page=Page("164102"))
-    download_pdf("prl", volume=76,issue=11,page=Page("1780"))
-    download_pdf("pccp", volume=10,issue=23,page=Page("3410"))
-    download_pdf("cpl", volume=208,issue=5,page=Page("359"))
-    download_pdf("jcc", volume=18,issue=1,page=Page("20"))
+if __name__ == "__main__":
+    name = "Proceedings of the National Academy of Sciences of the United States of America"
+    jobj = PDFGetGlobals.get_journal(name)
+    print jobj.__class__

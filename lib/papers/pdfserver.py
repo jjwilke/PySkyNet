@@ -30,9 +30,8 @@ class PDFServer(Server):
         return obj.url(self.selenium)
 
     def run(self):
-        try:
-            Server.run(self)
-        except KeyboardInterrupt:
-            self.selenium.stop()
-            sys.exit()
+        Server.run(self)
+
+    def stop(self):
+        self.selenium.stop()
 

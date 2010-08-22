@@ -1,6 +1,5 @@
 from webutils.htmlparser import HTMLParser, save_url
 from webutils.htmlexceptions import HTMLException
-from urllib2 import HTTPError
 from skynet.utils.utils import traceback, load, save
 from pdfserver import PDFRequest
 
@@ -264,6 +263,9 @@ class Journal:
 
         return len(articles)
 
+    def url(self, selenium):
+        return None, 0
+
     def profile_volume(self, volume):
         num = 1
 
@@ -374,10 +376,10 @@ def download_pdf(journal, volume = 0, issue = 0, page = Page("0")):
 
         return filename #return success
 
-    except HTTPError, error:
-        sys.stderr.write("FAILURE: %s\tURL not found\n" % name)
     except URLNotPDFError, error:
         sys.stderr.write("FAILURE: %s\tURL is not a PDF file\n" % name)
+    except Exception, error:
+        sys.stderr.write("FAILURE: %s\tURL not found\n" % name)
 
     return None
 

@@ -1,6 +1,8 @@
 class SocketOpenError(Exception): pass
 class SocketConfirmError(Exception): pass
 
+import sys
+
 class Communicator(object):
     import os
     import os.path
@@ -74,6 +76,9 @@ class Communicator(object):
         obj = pickle.loads(msg)
         return obj
 
+    def setTimeout(self, to):
+        self.socketObj.settimeout(to)
+
     def bind(self):
         if self.socketPort == 50000:
             print traceback()
@@ -133,6 +138,7 @@ class Communicator(object):
             #print "opening socket on", self.hostName, self.socketPort
             self.socketObj.connect((self.hostName, self.socketPort))
             self.socketOpen = True
-        except:
+        except Exception, error:
+            sys.stderr.write("%s\n" % error)
             raise SocketOpenError
 

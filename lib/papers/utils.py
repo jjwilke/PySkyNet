@@ -512,6 +512,32 @@ class JournalCleanup:
         return " ".join(str_arr)
     abbreviate = classmethod(abbreviate)
 
+def get_keywords():
+    import os
+    import os.path
+    from pygui.utils import input
+
+    pytemp = os.environ["PYTEMP"]
+
+    text = input("keywords?")
+    path = os.path.join(pytemp, ".keywords")
+
+    text = text.strip()
+    if text == "-":
+        text = open(path).read()
+    else:
+        fileobj = open(path, "w")
+        fileobj.write(text)
+        fileobj.close()
+
+    lines = text.splitlines()
+    if not lines:
+        return [], ""
+
+    keywords = map(lambda x: x.strip(), lines[0].strip().split(","))
+    notes = "\n".join(lines[1:]).strip()
+    return keywords, notes
+
 
 if __name__ == "__main__":
     x = "What Is the Nature of Polyacetylene Neutral and Anionic Chains Hc2nh and Hc2nh- (n=6-12) That Have Recently Been Observed?"

@@ -9,6 +9,9 @@ def get_clipboard():
     cwd = os.getcwd()
     os.chdir(PYTEMP)
     os.system("osascript -e 'the clipboard as unicode text' | tr '\r' '\n' > .stdout")
+    if not os.path.isfile(".stdout"):
+        return ""
+
     text = codecs.open(".stdout", "r", "utf-8").read()
     os.remove(".stdout")
     os.chdir(cwd)
