@@ -314,6 +314,9 @@ class Article:
 class Archive:
     
     def __init__(self, file):
+        import os
+        print os.getcwd()
+        print "opening archive", file
         self.articles = []
 
         topdir = os.getcwd()
@@ -329,16 +332,13 @@ class Archive:
             os.mkdir("Resources")
 
         if os.path.isfile("Info.xml"):
-            try: 
-                self.parser = parse("Info.xml")
-                self.records = self.parser.getElementsByTagName("records")[0]
-                nodes = self.parser.getElementsByTagName("record")
-                for node in nodes:
-                    article = Article(node, self)
-                    self.articles.append(article)
-            except ExpatError:
-                self._reset()
-                
+            shutil.copy('Info.xml', '.info.xml') #keep integrity of archive
+            self.parser = parse("Info.xml")
+            self.records = self.parser.getElementsByTagName("records")[0]
+            nodes = self.parser.getElementsByTagName("record")
+            for node in nodes:
+                article = Article(node, self)
+                self.articles.append(article)
         else:
             self._reset()
 

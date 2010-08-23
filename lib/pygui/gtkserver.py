@@ -22,10 +22,13 @@ class gtkout(StringIO):
         StringIO.__init__(self)
 
     def write(self, text):
-        comm = Communicator(gtkserver.REQUEST_PORT)
-        comm.open()
-        comm.sendObject(text)
-        comm.close()
+        try:
+            comm = Communicator(gtkserver.REQUEST_PORT)
+            comm.open()
+            comm.sendObject(text)
+            comm.close()
+        except:
+            pass
 
 class gtkstatuswindow(Server):
 
@@ -115,5 +118,6 @@ class gtkserver(Server):
 
 
 def report():
+    return
     gtkstatuswindow.display_report()
 

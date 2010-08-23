@@ -32,7 +32,7 @@ def set_clipboard(text):
     os.system("./%s" % scriptname)
     os.remove(scriptname)
 
-def monitor_clipboard(delay=1):
+def monitor_clipboard(delay=0):
     import time
     set_clipboard("-")
     ref = "-"

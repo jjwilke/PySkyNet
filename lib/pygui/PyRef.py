@@ -2,6 +2,8 @@ import pygtk
 import gtk
 import sys
 
+from skynet.utils.utils import framestr
+
 from pylatex.pybib import *
 
 def eighty_ify(text):
@@ -22,7 +24,6 @@ def eighty_ify(text):
 class PyGtkTableEntry:
 
     def __init__(self, data):
-        
         self.visible = False
         self.data = data
 
@@ -72,7 +73,12 @@ class PyGtkTable:
         for col in self.cols:
             cell = gtk.CellRendererText()
             tvcolumn = gtk.TreeViewColumn(col, cell)
-            tvcolumn.pack_start(cell, False)
+            try:
+                tvcolumn.pack_start(cell, False)
+            except Exception, error:
+                fileobj = open("/Users/jjwilke/vimerror", "w")
+                fileobj.write(str(error))
+                fileobj.close()
             tvcolumn.set_cell_data_func(cell, self.set_cell)
             tvcolumn.set_sort_column_id(id)
             self.listmodel.set_sort_func(id, self.sort_value, tvcolumn)
@@ -216,7 +222,7 @@ class PyRefTable:
                 self.bib.addCitation(entry)
                 
             gtkentry = PyGtkTableEntry(entry)
-            self.entrymap[entry] = gtkentry
+            self.entrymap[label] = gtkentry
             entrylist.append(gtkentry)
             self.entries.append(label)
 

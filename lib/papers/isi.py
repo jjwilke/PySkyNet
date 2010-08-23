@@ -153,9 +153,12 @@ class WOKObject: pass
 class WOKArticle(WOKObject):
     
     def __init__(self, archive, block):
+        print "init"
         self.archive = archive
         self.block = block
+        print "create article"
         self.article = self.archive.create_article()
+        print "build values"
         self.build_values()
 
     def get_papers_article(self):
@@ -336,9 +339,13 @@ class ISIServer(Server):
         self.selenium.wait_for_page_to_load("30000")
 
         self.selenium.select("pageSize", "label=Show 50 per page")
-        self.selenium.wait_for_page_to_load("1000")
+        import time
+        time.sleep(1)
+        #self.selenium.wait_for_page_to_load("1000")
 
     def isi_clear(self, nfields):
+        text = self.selenium.get_body_text()
+        nfields = text.count("Example:")
         for i in range(1, nfields + 1):
             self.selenium.select("select%d" % i, "label=Author")
             self.selenium.type("value(input%d)" % i, "")
@@ -441,6 +448,12 @@ class WOKField:
     def __str__(self):
         return str(self.value)
 
+    def __req__(self, other):
+        return str(other) == str(self.value)
+
+    def __eq__(self, other):
+        return str(other) == str(self.value)
+
     def get(cls, key, value):
         key = key.lower()
         if not key in cls.fields:
@@ -454,8 +467,20 @@ class Journal(WOKField):
 
     def __init__(self, value):
         from papers.pdfglobals import PDFGetGlobals as globals
-        self.value = globals.get_journal(value)
-        print self.value.__class__
+        jobj = globals.get_journal(value)
+        WOKField.__init__(self, "%s*" % jobj.name)
+
+    def _eq(self, other):
+        cmp1 = self.value[:-1].lower()
+        length = len(cmp1)
+        cmp2 = other[:length].lower()
+        return cmp1 == cmp2
+
+    def __req__(self, other):
+        return self._eq(other)
+
+    def __eq__(self, other):
+        return self._eq(other)
 
 class Year(WOKField):
     name = "Year Published"
@@ -514,8 +539,15 @@ class WOKParser(WOKObject, ServerRequest):
                 if not hasattr(article, key): #don't use this for matching
                     continue
 
-                match = getattr(article, key)
-                if str(value).lower() != str(match).lower():
+                match = str(getattr(article, key))
+                field = WOKField.get(key, value)
+                if not field:
+                    field = str(value)
+
+                if not field == match:
+                    print "Failure!"
+                    print field, field.__class__
+                    print match, match.__class__
                     foundmatch = False
                     break;
             
@@ -523,7 +555,9 @@ class WOKParser(WOKObject, ServerRequest):
                 return article
 
     def store_article(self):
+        print "storing article"
         block = self.run("get_text")
+        print "creating article"
         article = WOKArticle(self.archive, block) 
         if article:
             article.store(self.download, self.notes, self.keywords)

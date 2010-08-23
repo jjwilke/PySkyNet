@@ -33,9 +33,7 @@ def parse_citation(options, author_fxn, citation_regexp, journal = 0, year = 1, 
     match = None
     num = 1
     while not author or not match:
-        print "Waiting for input %d" % num
         text = monitor_clipboard().replace("\n"," ")
-        print text
         check = re.compile(citation_regexp).search(text)
         if author and not check: #epic fail
             return None
@@ -72,6 +70,7 @@ def acs(options):
     citation_regexp = '(.*?)(\d+).*?(\d+).*?(\d+)'
     return parse_citation(options, acs_author_fxn, citation_regexp) 
 
+
 #set the allowed command line options and user messages
 if __name__ == "__main__":
     opts = [
@@ -107,9 +106,12 @@ if __name__ == "__main__":
     from papers.isi import WOKParser, WOKSearch
 
     if options.citation:
-        os.system("osascript -e 'the clipboard as unicode text' | tr '\r' '\n' > .stdout")
-        citation = codecs.open(".stdout", "r", "utf-8").read()
         journal = acs(options)
+
+    print options.__dict__
+    import os
+    pytemp = os.environ["PYTEMP"]
+    os.chdir(pytemp)
 
     for option in options_given:
         if option in ('b', 'bib'):

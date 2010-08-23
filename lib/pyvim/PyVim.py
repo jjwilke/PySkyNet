@@ -73,12 +73,21 @@ def display(msg):
     gtk.main()
 
 def openReference():
+    import os
+    os.system("echo vim > ~/vim")
     from pylatex.pytex import loadCitation
+    from pygui.utils import gtkIO
+    os.system("echo vim >> ~/vim")
+    #gtkIO.redirect_io()
+    os.system("echo vim >> ~/vim")
     #disconnect stderr and out
     #disconnectErr()
     #disconnectOut()
+    os.system("echo vim >> ~/vim")
     cword = getCurrentWord()
+    os.system("echo vim >> ~/vim")
     loadCitation(cword)
+    os.system("echo vim >> ~/vim")
     #reconnectErr()
     #reconnectOut()
     

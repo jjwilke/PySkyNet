@@ -1,5 +1,6 @@
 from pylatex.pybib import Bibliography
 from skynet.socket.pysock import Communicator
+from skynet.utils.utils import framestr
 import os.path
 import os
 
@@ -25,9 +26,8 @@ class CiteManager:
     def __init__(self):
         import pygtk
         import gtk
-        import pybib
         import pygui
-        from pybib import Bibliography
+        from pylatex.pybib import Bibliography
         from pygui.pyref import PyRefTable
 
         self.bib = Bibliography()
@@ -39,7 +39,7 @@ class CiteManager:
         hbox = gtk.HBox(False)
 
         #file buttons
-        load_button = gtk.Button("Load Bibliography")
+        load_button = gtk.Button("Reload")
         load_button.connect("clicked", self.load)
         hbox.pack_start(load_button, False)
         upd_button = gtk.Button("Update Bibliography")
@@ -137,9 +137,8 @@ class CiteManager:
         filesel = FileSelect(home, self.updateBib)
 
     def load(self, widget, data=None):
-        from pygui.pygui import FileSelect
-        home = os.environ["HOME"]
-        filesel = PyGui.FileSelect(home, self.loadBib)
+        from pylatex.pybib import Bibliography
+        self.updateBib(Bibliography.ENDNOTE_XML_LIB)
 
     def close(self, widget, data=None):
         import gtk
@@ -154,7 +153,7 @@ class CiteManager:
             comm.sendObject(refs)
             comm.close()
             sent = True
-        except PySock.SocketOpenError:
+        except Exception, error:
             print 'failed'
 
 def walkForBibs(path, check=False, fields=[]):
@@ -251,7 +250,6 @@ class CiteThread(threading.Thread):
                 objlist = self.server.acceptObject()
                 if objlist: #if we got a list of objects
                     self.citation.addReferences(objlist)
-                    
             except Exception, exc:
                 #print exc
                 pass
@@ -337,11 +335,18 @@ def init(flags):
         processInitFlag(flag)
 
 def loadCitation(cword):
+    import os
+
     import pyvim.pyvim as vim
     import re
     import pygtk
     import gtk
     import os.path
+
+    from pylatex.pybib import Record
+    Record.unsetFormat()
+    Record.setDefaults()
+
     entries = []
     if "~" in cword:
         cword = "~" + cword.split("~")[-1]
@@ -363,10 +368,14 @@ def loadCitation(cword):
         #import PyGui
         #filesel = PyGui.FileSelect(os.path.join(os.path.expanduser("~"), "Documents"), setBibliography, main=True)
         #gtk.main()
-        setBibliography(os.path.join(os.path.expanduser("~"), "Documents", "Manuscripts", "Grants"))
+        from pylatex.pybib import Bibliography
+        empty = Bibliography()
+        empty.buildRecords(Bibliography.ENDNOTE_XML_LIB)
+        setattr(PyTexGlobals, "bib", empty)
         
     bib = getattr(PyTexGlobals, "bib")
     title = "Reference at line %d" % vim.PyVimGlobals.line
+    #title = "test"
     citeobj = Citation(title, bib, entries)
 
     gtk.gdk.threads_init()
@@ -417,5 +426,6 @@ def insertEquation():
     insertLine(r"\begin{equation}")
 
 if __name__ == "__main__":
-    startLatex(os.getcwd())
+    from pylatex.pybib import Bibliography
+    startLatex(Bibliography.ENDNOTE_XML_LIB)
     #loadCitation("\cite{Knizia:hw2008}")

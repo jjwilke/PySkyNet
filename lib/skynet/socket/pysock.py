@@ -46,10 +46,12 @@ class Communicator(object):
             return False
 
     def send(self, message):
+        print "sending on", self.socketPort
         if not self.socketOpen:
             self.open()
        
         try:
+            """
             stride = Communicator.STRIDE
             num_messages = len(message) / stride + 1
             for i in xrange(num_messages):
@@ -61,6 +63,13 @@ class Communicator(object):
                     pass
                 else:
                     raise SocketConfirmError
+            """
+            self.socketObj.send(message)
+            msg = self.receive()
+            if msg: #okay, we heard back
+                pass
+            else:
+                raise SocketConfirmError
         except (Exception, KeyboardInterrupt), error: #always cloes the connection
             self.close()
             raise error
@@ -87,18 +96,14 @@ class Communicator(object):
         self.socketObj.listen(self.numRequests) #only listen for one request at a time
 
     def accept(self):
+        print "accepting on", self.socketPort
         connection, address = self.socketObj.accept()
         try:
-            message = ""
-            while True:
-                data = connection.recv(self.ONE_KB)
-                if not data:
-                    break
-                message += data
-                connection.send(self.RECEIVED)
+            message = connection.recv(1000000)
+            connection.send(self.RECEIVED)
             connection.close()
+            print "received on", self.socketPort
             return message
-
         except (Exception, KeyboardInterrupt), error: #always close the connection
             print "Cleaning up connection"
             connection.close()
@@ -127,7 +132,7 @@ class Communicator(object):
             raise error
 
     def close(self):
-        #print "closing socket on", self.hostName, self.socketPort
+        print "closing on", self.socketPort
         self.socketObj.close()
         self.socketOpen = False
 

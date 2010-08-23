@@ -47,7 +47,6 @@ class ServerAnswer(threading.Thread):
 
     def run(self):
         comm = Communicator(self.port)
-        #comm.setTimeout(5)
         try:
             comm.bind()
             self.response = comm.acceptObject()
@@ -77,30 +76,27 @@ class Server:
         while 1:
             ret = ""
             try:
-                self.report()
                 obj = self.server.acceptObject()
-                self.report()
                 if isinstance(obj, ServerStop): #end
                     self.stop()
                     return
 
-                self.report()
                 ret = self.process(obj)
-                self.report()
             except Exception, error:
                 sys.stderr.write("%s\n%s\n" % (traceback(error), error))
 
-            self.report()
+
             try:
                 if self.answer_port:
                     comm = Communicator(self.answer_port)
+                    comm.open()
                     comm.sendObject(ret)
                     comm.close()
             except SocketOpenError, error:
                 sys.stderr.write("%d\n%s\n%s\n" % (self.answer_port, traceback(error), error))
             except Exception, error:
                 sys.stderr.write("%s\n%s\n" % (traceback(error), error))
-            self.report()
+
 
 from threading import Thread
 
@@ -123,12 +119,10 @@ class ServerManager:
         self.thr.start()
 
     def stop(self):
-        print "stopping", self.server.__class__
         comm = Communicator(self.server.request_port)
         comm.open()
         comm.sendObject(ServerStop())
         comm.close()
-        print "closed", self.server.__class__
         self.thr.join()
 
 

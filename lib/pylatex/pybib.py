@@ -4,6 +4,7 @@ import sys
 import os.path
 import os
 import re
+from skynet.utils.utils import framestr
 
 def lower_case_xml_node(node, newnode, depth):
     for child in node.childNodes:
@@ -1024,6 +1025,13 @@ class Record(object):
         cls.formatted = True
     setFormat = classmethod(setFormat)
 
+    
+    def unsetFormat(cls):
+        cls.formatted = False
+        JournalArticle.bibitem = None
+        Book.bibitem = None
+    unsetFormat = classmethod(unsetFormat)
+
     def setDefaults(cls):
         if cls.formatted:
             return #format already done
@@ -1066,6 +1074,8 @@ class Record(object):
             set('publisher',   Book) #defaults are fine
             set('city',   Book) #defaults are fine
             Book.bibitem = book_bibitem
+
+        cls.formatted = True
 
     setDefaults = classmethod(setDefaults)
 
