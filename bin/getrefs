@@ -12,7 +12,7 @@ from papers.isi import ISIError
 from papers.pdfglobals import PDFGetGlobals as pdfglobals
 
 
-from pygui.utils import gtkIO
+from pygui.utils import gtkIO, gtkprint
 gtkIO.redirect_io()
 
 def execute_search(wok, archive, journal, author, year, volume, page, notes):
@@ -29,46 +29,62 @@ def execute_search(wok, archive, journal, author, year, volume, page, notes):
         print error
 
 def parse_citation(options, author_fxn, citation_regexp, journal = 0, year = 1, volume = 2, page = 3):
-    author = None
-    match = None
-    num = 1
-    while not author or not match:
-        text = monitor_clipboard().replace("\n"," ")
-        check = re.compile(citation_regexp).search(text)
-        if author and not check: #epic fail
+    try:
+        author = None
+        match = None
+        num = 1
+        while not author or not match:
+            print author, match
+            text = monitor_clipboard().replace("\n"," ")
+            check = re.compile(citation_regexp).search(text)
+            if author and not check: #epic fail
+                return None
+
+            num += 1
+
+            print text
+
+            if not check:
+                author = text.replace(".","").replace(";","")
+                continue
+
+            match = check
+
+
+        lastname, initials = author_fxn(author)
+        options.author = lastname + "," + initials
+        match = match.groups()
+        jobj = pdfglobals.get_journal(match[journal])
+        if not jobj:
+            sys.stderr.write("%s is not a valid journal\n" % match[journal])
             return None
 
-        num += 1
+        options.journal = jobj.name
+        options.volume = match[volume].strip()
+        options.year = match[year].strip()
+        options.page = match[page].strip()
 
-        if not check:
-            author = text.replace(".","").replace(";","")
-            continue
-
-        match = check
-
-    lastname, initials = author_fxn(author)
-    options.author = lastname + "," + initials
-    match = match.groups()
-    jobj = pdfglobals.get_journal(match[journal])
-    if not jobj:
-        sys.stderr.write("%s is not a valid journal\n" % match[journal])
+        return options.journal
+    except:
         return None
-
-    options.journal = jobj.name
-    options.volume = match[volume].strip()
-    options.year = match[year].strip()
-    options.page = match[page].strip()
-
-    return options.journal
 
 def acs_author_fxn(author):
     lastname, initials = author.split(",")[:2]
     initials = initials.replace(" ","").replace(".","")
     return lastname, initials
 
+def aip_author_fxn(author):
+    initials = "".join(author.split()[:-1])
+    lastname = author.split()[-1]
+    return lastname, initials
+
 def acs(options):
     citation_regexp = '(.*?)(\d+).*?(\d+).*?(\d+)'
-    return parse_citation(options, acs_author_fxn, citation_regexp) 
+    return parse_citation(options, acs_author_fxn, citation_regexp)
+
+def aip(options):
+    citation_regexp = '(.*?)(\d+).*?(\d+).*?(\d+)'
+    return parse_citation(options, aip_author_fxn, citation_regexp, journal = 0, volume = 1, page = 2, year = 3) 
 
 
 #set the allowed command line options and user messages
@@ -106,7 +122,13 @@ if __name__ == "__main__":
     from papers.isi import WOKParser, WOKSearch
 
     if options.citation:
-        journal = acs(options)
+        #journal = acs(options)
+        journal = aip(options)
+
+        if not journal:
+            sys.exit("not valid!")
+
+
 
     print options.__dict__
     import os

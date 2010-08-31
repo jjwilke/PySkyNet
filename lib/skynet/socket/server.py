@@ -1,5 +1,5 @@
 from skynet.utils.utils import traceback, debugloc
-from skynet.socket.pysock import Communicator, SocketOpenError
+from skynet.socket.pysock import Communicator, SocketOpenError, SocketDie
 from pylatex.pybib import Bibliography
 import threading
 import sys
@@ -82,6 +82,8 @@ class Server:
                     return
 
                 ret = self.process(obj)
+            except SocketDie:
+                return
             except Exception, error:
                 sys.stderr.write("%s\n%s\n" % (traceback(error), error))
 

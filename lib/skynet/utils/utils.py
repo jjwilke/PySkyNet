@@ -8,6 +8,10 @@ import pickle
 import thread
 from globalvals import *
 
+def println(msg):
+    from pygui.utils import gtkprint
+    gtkprint(msg)
+
 def framestr():
     import inspect
     frame = inspect.currentframe().f_back

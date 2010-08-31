@@ -2,7 +2,7 @@ from papers.pdfget import ArticleParser, PDFArticle, Page, download_pdf
 from papers.index import Library
 from papers.archive import Archive, MasterArchive
 from papers.utils import Cleanup
-from skynet.utils.utils import save, load, clean_line, capitalize_word, traceback
+from skynet.utils.utils import save, load, clean_line, capitalize_word, traceback, println
 from webutils.htmlexceptions import HTMLException
 from webutils.htmlparser import URLLister
 from papers.utils import Cleanup
@@ -216,14 +216,14 @@ class WOKArticle(WOKObject):
         if local_match:
             download = download and not local_match.has_pdf() #set to download if we don't have pdf
             self.article = local_match
-            sys.stdout.write("Already have article %s in local archive\n" % name)
+            println("Already have article %s in local archive\n" % name)
 
         master_match = None
         if not local_match:
             artreq = ArchiveRequest(self.article)
             master_match = artreq.run() #query master
             if master_match:
-                sys.stdout.write("Already have article %s in master archive\n" % name)
+                println("Already have article %s in master archive\n" % name)
                 download = download and not master_match.has_pdf() #set to download if we don't have pdf
                 #self.article = master_match
         
@@ -233,7 +233,7 @@ class WOKArticle(WOKObject):
         if download:
             path = download_pdf(journal, volume=volume, page=page)
             if path:
-                sys.stdout.write(" -> downloaded %s\n" % path)
+                println(" -> downloaded %s\n" % path)
                 self.article.set_pdf(path)
 
         if keywords:
@@ -241,7 +241,7 @@ class WOKArticle(WOKObject):
         if notes:
             self.add_notes(notes)
 
-        sys.stdout.write("Completed storage of %s\n%s\n%s\n" % (name, keywords, notes))
+        println("Completed storage of %s\n%s\n%s\n" % (name, keywords, notes))
 
 class WOKArticleSearch:
 
@@ -300,7 +300,7 @@ class ISIServer(Server):
         ret = ISIVoid() #default nothing
         try:
             method = getattr(self, obj.method)
-            sys.stdout.write("Running %s\n" % obj.method)
+            println("Running %s\n" % obj.method)
             if obj.args:
                 ret = method(obj.args)
             else:
@@ -767,7 +767,7 @@ class SavedRecordParser:
                 if not self.master.has(self.article):
                     self.archive.test_and_add(self.article)
                 else:
-                    sys.stdout.write("%s exists in archive\n" % name)
+                    println("%s exists in archive\n" % name)
                     continue
             except Exception, error:
                 sys.stderr.write("ERROR: %s\n%s\n" % (error, block))
@@ -780,7 +780,7 @@ def walkISI(files, archive, notes):
     for file in files:
         text = open(file).read()
         parser.feed(text, notes)
-        sys.stdout.write("%d new articles\n" % len(parser.archive))
+        println("%d new articles\n" % len(parser.archive))
 
         for article in parser:
             journal = article.get_journal()
@@ -788,18 +788,18 @@ def walkISI(files, archive, notes):
             volume = article.get_volume()
             start = article.get_start_page() 
             name = "%s %d %s" % (abbrev, volume, start)
-            sys.stdout.write("Downloading %s" % name)
+            println("Downloading %s" % name)
 
             path = name + ".pdf"
             if os.path.isfile(path):
-                sys.stdout.write(" -> exists %s" % path)
+                println(" -> exists %s" % path)
                 article.set_pdf(path)
                 continue
 
             #check to see if we already have it
             path = download_pdf(ISIArticle.get_journal(journal), volume, 0, start) #don't require issue
             if path:
-                sys.stdout.write(" -> %s" % path)
+                println(" -> %s" % path)
                 article.set_pdf(path)
             else:
                 sys.stdout.write(" -> FAILED")

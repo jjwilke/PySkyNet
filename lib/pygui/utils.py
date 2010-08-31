@@ -44,34 +44,22 @@ def input(title = "query"):
 
 class gtkIO:
     
-    me = None
-    out = None
-    err = None
-
-    def redirect_io(cls):
-        if not cls.me:
-            cls.me = gtkout()
-
-        import sys
-        if not cls.err:
-            cls.err = sys.stderr
-        if not cls.out:
-            cls.out = sys.stdout
-
-        sys.stdout = cls.me
-        sys.stderr = cls.me
-
-    def restore_io(cls):
-        import sys
-        sys.stdout = cls.out
-        sys.stderr = cls.err
+    guiprint = False
 
     def println(cls, line):
-        out = gtkout()
-        out.write(line + "\n")
+        if cls.guiprint:
+            out = gtkout()
+            out.write(line)
+        else:
+            print line
 
-    restore_io = classmethod(restore_io)
+    def redirect_io(cls):
+        cls.guiprint = True
+
     redirect_io = classmethod(redirect_io)
     println = classmethod(println)
+
+def gtkprint(msg):
+    gtkIO.println(msg)
 
 

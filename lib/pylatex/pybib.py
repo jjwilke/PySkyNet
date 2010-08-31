@@ -145,8 +145,12 @@ class LatexFormat:
     }
 
     def format(cls, flag, text):
-        text = cls.REPLACE_MAP[flag].replace("#1", text)
-        return text
+        try:
+            text = cls.REPLACE_MAP[flag].replace("#1", text)
+            return text
+        except Exception, error:
+            print text.__class__
+            raise error
     format = classmethod(format)
 
 
@@ -517,7 +521,7 @@ class XMLRequest:
         u'\xf8' : r'{\o}',
         u'\xfc' : r'\"{u}',
         u'\xf3' : r'\`{o}',
-        u'\xfd' : r'\'{d}',
+        u'\xfd' : r'\'{y}',
         u'\u0107' :  r'\'{c}',
         u'\u010c' : r'\v{C}',
         u'\u010d' : r'\v{c}',
@@ -745,11 +749,15 @@ class RecordObject:
             return None
 
     def __getitem__(self, name, simple=False):
-        formatter = getattr(self, name)
-        if not formatter:
-            raise BibformatUnspecifiedError(name)
-        text = formatter.bibitem(self.entries[name], simple)
-        return text
+        try:
+            formatter = getattr(self, name)
+            if not formatter:
+                raise BibformatUnspecifiedError(name)
+            text = formatter.bibitem(self.entries[name], simple)
+            return text
+        except Exception, error:
+            print name
+            raise error
 
 class ComputerProgram(RecordObject):
 

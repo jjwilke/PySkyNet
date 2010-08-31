@@ -3,16 +3,22 @@ def set_nsf_format():
     from pylatex.pybib import JournalArticle, ComputerProgram, Book, set
 
     def journal_bibitem(r):
-        format = "``%s'', %s, %s %s, %s (%s)." % (r['title'], r['authors'], r['journal'], r['volume'], r['pages'], r['year'])
-        return format
+        try:
+            format = "%s. ``%s.'' %s %s, %s (%s)." % (r['authors'], r['title'], r['journal'], r['volume'], r['pages'], r['year'])
+            return format
+        except Exception, error:
+            print r['label']
+            import sys
+            sys.exit("failure")
 
     JournalArticle.bibitem = journal_bibitem
     set('authors', JournalArticle, delim = ',', lastname = False)
     set('volume', JournalArticle, style = 'bold')
-    set('pages', JournalArticle, lastpage = False) #no style modification
+    set('pages', JournalArticle, lastpage = True) #no style modification
     set('year', JournalArticle)
-    set('journal', JournalArticle)
+    set('journal', JournalArticle, style = 'italic')
     set('title', JournalArticle)
+    set('label', JournalArticle)
 
     def program_bibitem(r):
         format = "%s. %s." % (r['authors'], r['title'])

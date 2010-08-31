@@ -93,6 +93,7 @@ class Cleanup:
         "DIIS",
         "CCD",
         "CCSDT",
+        "IR",
         "CCSDT(Q)",
         "CISD",
         "CC2",
@@ -382,6 +383,8 @@ class JournalCleanup:
         "the",
         "&",
         "in",
+        "et",
+        "for",
     ]
 
     keep = [
@@ -390,6 +393,8 @@ class JournalCleanup:
 
     upper = [
         "theochem",
+        "usa",
+        "nmr",
     ]
 
     lower = [
@@ -401,6 +406,7 @@ class JournalCleanup:
 
     repl = {
         'ser-a' : 'Ser A',
+        'chemistry-a' : 'chemistry',
         '&' : '',
         'of america' : 'a',
     }
@@ -413,7 +419,12 @@ class JournalCleanup:
         "angewan" : "angew",
         "annual" : "ann",
         "biomol" : "biomol",
+        "biolo" : "biol",
         "biochem" : "biochem",
+        "biochim" : "biochim",
+        "biophys" : "biophys",
+        "biotechnol" : "biotechnol",
+        "bull" : "bull",
         "canad" : "can",
         "chem" : "chem",
         "chimica" : "chim",
@@ -422,10 +433,13 @@ class JournalCleanup:
         "commun" : "commun",
         "condensed" : "cond",
         "coord" : "coord",
+        "curr" : "curr",
         "czech" : "czech",
         "edition" : "ed",
         "edit" : "ed",
+        "educ" : "educ",
         "europ" : "eur",
+        "exp" : "exp",
         "inorg" : "inorg",
         "intern" : "int",
         "journal" : "j",
@@ -434,23 +448,40 @@ class JournalCleanup:
         "math" : "math",
         "matter" : "matt",
         "molec" : "mol",
+        "medic" : "med",
         "national" : "natl",
+        "natur" : "nat",
         "organic" : "org",
         "organomet" : "organomet",
         "phys" : "phys",
         "proc" : "proc",
+        "progress" : "prog",
+        "psychol" : "psychol",
         "rep" : "rep",
         "review" : "rev",
         "royal" : "r",
         "sci" : "sci",
         "society" : "soc",
+        "social" : "soc",
         "spectros" : "spectrosc",
+        "spectrom" : "spectrom",
         "states" : "s",
         "struct" : "struct",
         "theor" : "theor",
         "topic" : "top",
         "united" : "u",
         "zeitsch" : "zeit",
+    }
+
+    final_replace = {
+        "USA" : "U. S. A.",
+    }
+
+    verbatim = {
+        "Chemphyschem" : "ChemPhysChem",
+        "Chembiochem" : "ChemBioChem",
+        "Chem. A Eur. J." : "Chem. Eur. J.",
+        "THEOCHEM J. Mol. Struct." : "THEOCHEM",
     }
 
     abbrevs = abbrev_map.values()
@@ -491,6 +522,15 @@ class JournalCleanup:
         return word
     _add_period = classmethod(_add_period)
 
+    def final_process(cls, text):
+        for repl in cls.final_replace:
+            text = text.replace(repl, cls.final_replace[repl])
+
+        if text in cls.verbatim:
+            print text
+            return cls.verbatim[text]
+        return text
+    final_process = classmethod(final_process)
 
     def abbreviate(cls, journal):
         journal = journal.lower()
@@ -500,7 +540,7 @@ class JournalCleanup:
 
         if len(words) == 1: #don't abbreivate
             title = capitalize_word(words[0])
-            return title
+            return cls.final_process(title)
 
         str_arr = []
         for word in words:
@@ -509,8 +549,12 @@ class JournalCleanup:
 
             str_arr.append(cls._abbrev_word(word))
 
-        return " ".join(str_arr)
+        text = " ".join(str_arr)
+
+        return cls.final_process(text)
+
     abbreviate = classmethod(abbreviate)
+
 
 def get_keywords():
     import os

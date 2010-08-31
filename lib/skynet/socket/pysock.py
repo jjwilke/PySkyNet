@@ -1,5 +1,8 @@
+from skynet.utils.utils import traceback
+
 class SocketOpenError(Exception): pass
 class SocketConfirmError(Exception): pass
+class SocketDie(Exception): pass
 
 import sys
 
@@ -51,7 +54,6 @@ class Communicator(object):
             self.open()
        
         try:
-            """
             stride = Communicator.STRIDE
             num_messages = len(message) / stride + 1
             for i in xrange(num_messages):
@@ -63,14 +65,7 @@ class Communicator(object):
                     pass
                 else:
                     raise SocketConfirmError
-            """
-            self.socketObj.send(message)
-            msg = self.receive()
-            if msg: #okay, we heard back
-                pass
-            else:
-                raise SocketConfirmError
-        except (Exception, KeyboardInterrupt), error: #always cloes the connection
+        except Exception, error: #always cloes the connection
             self.close()
             raise error
 
@@ -97,18 +92,24 @@ class Communicator(object):
 
     def accept(self):
         print "accepting on", self.socketPort
-        connection, address = self.socketObj.accept()
+        message = ""
         try:
-            message = connection.recv(1000000)
-            connection.send(self.RECEIVED)
+            connection, address = self.socketObj.accept()
+            while True:
+                data = connection.recv(self.ONE_KB)
+                if not data:
+                    break
+                message += data
+                connection.send(self.RECEIVED)
             connection.close()
             print "received on", self.socketPort
             return message
-        except (Exception, KeyboardInterrupt), error: #always close the connection
+        except Exception, error: #always close the connection
+            sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             print "Cleaning up connection"
-            connection.close()
             self.close()
-            raise error
+            raise SocketDie
+
 
     def acceptObject(self):
         msg = self.accept()
@@ -126,7 +127,7 @@ class Communicator(object):
         try:
             msg = self.socketObj.recv(self.ONE_KB) 
             return msg
-        except (Exception, KeyboardInterrupt), error: #always close the connection
+        except Exception, error: #always close the connection
             print "Cleaning up connection"
             self.close()
             raise error
