@@ -306,7 +306,6 @@ class Journal:
             volume = volumes[num]
         else:
             volume = Volume(num)
-        print "Starting profile of %s on Volume %d" % (self.name, num)
 
         try:
             while num == x:

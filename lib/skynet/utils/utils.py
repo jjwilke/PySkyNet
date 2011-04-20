@@ -430,16 +430,17 @@ def getInputAndOutputFile(optionArray, defaultOutput = None):
         return (optionArray[:-1], inputFile, outputFile)        
 
 def getOutputMolecule(file, xyzOnly = False):
-    import parse, os.path
+    from chem.parse import getParser, getMolecule
+    import os.path
     
     parser = None
     if xyzOnly: 
-        parser = parse.getParser(file, keywords = {"COORDTYPE" : "XYZ"} )
+        parser = getParser(file, keywords = {"COORDTYPE" : "XYZ"} )
     else: 
-        parser = parse.getParser(file)
+        parser = getParser(file)
 
     if parser:
-        return parser.getMolecule(weakFind=True)
+        return getMolecule(weakFind=True)
 
 def getMolecule(file, xyzOnly = False):
     #try to get output file first
@@ -568,7 +569,9 @@ def load(filename):
         objToLoad = pickle.load(fileObj)
         fileObj.close()
         return objToLoad
-    except Exception:
+    except Exception, error:
+        print dir(error)
+        sys.stderr.write("%s\n%s\n" % (traceback(error), error))
         return None
 
 ## Takes a string representation of something and determines if it is an integer.

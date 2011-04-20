@@ -181,4 +181,3 @@ class PDFGetGlobals:
 if __name__ == "__main__":
     name = "Proceedings of the National Academy of Sciences of the United States of America"
     jobj = PDFGetGlobals.get_journal(name)
-    print jobj.__class__

@@ -3,7 +3,7 @@ import numpy
 import math
 import sys
 import re
-from utils.utils import *
+from skynet.utils.utils import *
 
 
 #The grid spacing near the classical turning point, should be a fine grid, smaller=more accurate

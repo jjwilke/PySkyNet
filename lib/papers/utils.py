@@ -527,7 +527,6 @@ class JournalCleanup:
             text = text.replace(repl, cls.final_replace[repl])
 
         if text in cls.verbatim:
-            print text
             return cls.verbatim[text]
         return text
     final_process = classmethod(final_process)
@@ -585,4 +584,4 @@ def get_keywords():
 
 if __name__ == "__main__":
     x = "What Is the Nature of Polyacetylene Neutral and Anionic Chains Hc2nh and Hc2nh- (n=6-12) That Have Recently Been Observed?"
-    print Cleanup.clean_title(x)
+    Cleanup.clean_title(x)

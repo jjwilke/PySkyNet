@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
 
     options=OptionSet()
-    optionList = OptionList(commandName="getisi",
+    optionList = OptionList(commandName="getrefs",
                             usageStructure=[ "[options]"],
                             optionsList=opts)
     options_given = readOptions(optionList, optionSet=options)
@@ -244,7 +244,7 @@ if __name__ == "__main__":
             except KeyboardInterrupt, error:
                 print traceback(error)
             parser.archive.commit()
-        elif option in ('', 'refs'): #single reference
+        elif option in ('', 'refs'): 
             parser = WOKParser(options.archive, journal=options.journal, author=options.author, year=options.year,
                                volume=options.volume, page=options.page, notes=options.notes, download=options.download,
                                keywords=options.keywords)

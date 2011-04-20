@@ -4,7 +4,8 @@ import sys
 import os.path
 import os
 import re
-from skynet.utils.utils import framestr
+from skynet.utils.utils import framestr, traceback
+from utils import unicode_to_latex
 
 def lower_case_xml_node(node, newnode, depth):
     for child in node.childNodes:
@@ -149,7 +150,6 @@ class LatexFormat:
             text = cls.REPLACE_MAP[flag].replace("#1", text)
             return text
         except Exception, error:
-            print text.__class__
             raise error
     format = classmethod(format)
 
@@ -170,6 +170,9 @@ class EntryFormat:
                 raise FormatOptionError('%s is not a valid option for %s' % (attr, self.__class__))
 
     def bibitem(self, obj, simple=False):
+        if simple:
+            return obj.text()
+
         #by default, simplify does nothing
         text = LatexFormat.format(self.style, obj.text())
         return text
@@ -184,6 +187,7 @@ class AuthorsFormat(EntryFormat):
     simplify_map = {
      r'\`{o}':'o',
      r'\"{a}':'a',
+     r'\~{A}':'A',
      r'\"{o}':'o',
      r'\"{u}':'u',
      r'\v{S}':'S',
@@ -280,16 +284,22 @@ class PagesFormat(EntryFormat):
     def bibitem(self, obj, simple=False):
         format = EntryFormat.bibitem(self, obj, simple)
         entries = re.split("[-]+", format)
+        if simple:
+            return entries[0]
+
         if self.lastpage and len(entries) > 1:
             return "%s--%s" % (entries[0], entries[1])
         else:
             return entries[0]
         
 
+class DoiFormat(EntryFormat): pass
 class YearFormat(EntryFormat): pass
 class VolumeFormat(EntryFormat): pass
 class TitleFormat(EntryFormat): pass
+class BooktitleFormat(EntryFormat): pass
 class LabelFormat(EntryFormat): pass
+class CitekeyFormat(EntryFormat): pass
 class UrlFormat(EntryFormat): pass
 class VersionFormat(EntryFormat): pass
 class PublisherFormat(EntryFormat): pass
@@ -345,7 +355,9 @@ class Entry:
     def matches(self, match):
         return self.raw_match(self.entry, match)
 
+class Doi(Entry): pass
 class Label(Entry): pass
+class CiteKey(Entry): pass
 class Edition(Entry): pass
 class Title(Entry): pass
 class Volume(Entry): pass
@@ -373,7 +385,8 @@ class Author:
                 entry = entry.replace(".","") #get rid of any periods. I'll put these in
                 #split on -
                 initial = "-".join(map(lambda x: "%s." % self.get_initial(x), entry.split("-")))
-                str_arr.append(initial)
+                if initial:
+                    str_arr.append(initial)
             self._initials = " ".join(str_arr)
 
             #fix capitalization
@@ -398,6 +411,9 @@ class Author:
             raise RecordEntryError("author", "%s is not a valid author entry" % author)
 
     def get_initial(self, name):
+        if not name:
+            return None
+
         if name[0] == "{":
             return name[:4].upper()
         else:
@@ -506,8 +522,10 @@ class AuthorList(RecordList):
 class XMLRequest:
 
     LOOKUP_TABLE = {
+        u'\xb0' : r'$\degree$',
         u'\xb7' : r'$\cdot$',
         u'\xd8' : r'{\O}',
+        u'\xc3' : r'\~{A}',
         u'\xcd' : r'\'{I}',
         u'\xdc' : r'\"{U}',
         u'\xd0' : 'D',
@@ -541,6 +559,8 @@ class XMLRequest:
         u'\u0338' : r'\\',
         u'\u0393' : r'$\Gamma$',
         u'\u0396' : r'$\Zeta$',
+        u'\u03b1' : r'$\alpha$',
+        u'\u03b2' : r'$\beta$',
         u'\u03b6' : r'$\zeta$',
         u'\u03c0' : r'$\pi$',
         u'\u03c9' : r'$\omega$',
@@ -554,7 +574,11 @@ class XMLRequest:
         u'\u2013' : r'-',
         u'\u2012' : r'-',
         u'\u2010' : r'-',
+        u'\u2190' : r'$\leftarrow$',
+        u'\u2191' : r'$\uparrow$',
         u'\u2192' : r'$\rightarrow$',
+        u'\u2193' : r'$\downarrow$',
+        u'\u2194' : r'$\leftrightarrow$',
         u'\u2212' : r'-',
         u'\ufb01' : "",
     }
@@ -604,8 +628,7 @@ class XMLRequest:
         try:
             text.encode()
         except UnicodeEncodeError, error:
-            print text.encode("utf-8")
-            print text[52:54].encode("utf-8")
+            sys.stderr.write("%s\n" % text.encode("utf-8"))
             raise error
 
         return text
@@ -646,6 +669,8 @@ class RecordObject:
     
     mandatoryfields = ['label']
     patchlist = {}
+    sort_criterion = None
+    reverse_sort = False
 
 
     def __str__(self):
@@ -654,6 +679,15 @@ class RecordObject:
             line = "%15s = %s" % ( '@%s' % entry, self.entries[entry])
             str_arr.append(line)
         return "\n".join(str_arr)
+
+    def __lt__(self, other):
+        if not self.sort_criterion:
+            return True
+
+        my_attr = self.getAttribute(self.sort_criterion)
+        other_attr = other.getAttribute(self.sort_criterion)
+
+        return my_attr < other_attr
 
     def setBibformat(cls, attrname, formatobj):
         try:
@@ -704,9 +738,12 @@ class RecordObject:
         return entry
 
     def getBibkey(self):
-        pages = self.getAttribute("pages")
-        year = self.getAttribute("year")
-        authors = self.getAttribute("authors")
+        pages = self.getAttribute("pages", simple = True)
+        year = self.getAttribute("year", simple = True)
+        authors = self.getAttribute("authors", simple = True)
+
+        if not pages:
+            return None
 
         firstpage = pages.split("-")[0].strip()
         firstauthor = AuthorsFormat.simplify_entry(authors.split(",")[0].split(".")[-1].strip().replace(" ", "").replace("-",""))
@@ -736,11 +773,17 @@ class RecordObject:
             return method()
 
         name = name.lower()
-        formatter = getattr(self, name)
-        if not formatter:
-            raise BibformatUnspecifiedError(name)
-        text = formatter.bibitem(self.entries[name], simple)
-        return text
+        try:
+            formatter = getattr(self, name)
+            if not formatter:
+                raise BibformatUnspecifiedError(name)
+            text = formatter.bibitem(self.entries[name], simple)
+            return text
+        except AttributeError:
+            return None
+
+    def addAttribute(self, key, value):
+        pass
 
     def get(self, attr):
         try:
@@ -756,7 +799,7 @@ class RecordObject:
             text = formatter.bibitem(self.entries[name], simple)
             return text
         except Exception, error:
-            print name
+            sys.stderr.write("error in getitem for %s\n" % name)
             raise error
 
 class ComputerProgram(RecordObject):
@@ -814,6 +857,7 @@ class Book(RecordObject):
 
     authors = None
     title = None
+    booktitle = None
     edition = None
     year = None
     pages = None
@@ -822,6 +866,7 @@ class Book(RecordObject):
     bibitem = None
     editors = None
     label = None
+    bibtype = "book"
 
     attrlist = [
         'title',
@@ -831,6 +876,7 @@ class Book(RecordObject):
         'year',
         'pages',
         'short-title',
+        'secondary-title',
         'accession_number',
         'edition',
         'publisher',
@@ -840,6 +886,7 @@ class Book(RecordObject):
 
     mapnames = {
         'short-title' : 'label',
+        'secondary-title' : 'booktitle',
         'accession_number' : 'label',
         'secondary-authors' : 'editors',
         'pub-location' : 'city',
@@ -855,12 +902,93 @@ class Book(RecordObject):
         "publisher" : "publisher",
         "city" : "address",
     }
-    bibtype = "book"
 
 
     CLASS_MAP = {
         'authors' : AuthorList,
         'title' : Title,
+        'booktitle' : Title,
+        'volume' : Volume,
+        'pages' : Pages,
+        'year' : Year,
+        'full-title' : FullJournalTitle,
+        'label' : Label,
+        'editors' : AuthorList,
+        'edition' : Edition,
+        'publisher' : Publisher,
+        'city' : City,
+    }
+
+    bibtype = "book"
+
+    def __init__(self, **kwargs):
+        self.entries = {}
+        for entry in kwargs:
+            try:
+                classtype = self.CLASS_MAP[entry]
+                classinst = classtype(kwargs[entry])
+                self.entries[entry] = classinst
+            except KeyError:
+                raise RecordClassError('%s does not have a class implemented' % entry)
+
+    def getBibkey(self):
+        return self.getAttribute("label")
+
+
+class BookSection(RecordObject):
+    authors = None
+    title = None
+    booktitle = None
+    edition = None
+    year = None
+    pages = None
+    city = None
+    publisher = None
+    bibitem = None
+    editors = None
+    label = None
+    bibtype = "booksection"
+
+    attrlist = [
+        'title',
+        ['authors', 'author'],
+        ['secondary-authors', 'author'],
+        'volume',
+        'year',
+        'pages',
+        'short-title',
+        'secondary-title',
+        'accession_number',
+        'edition',
+        'publisher',
+        'pub-location',
+        XMLRequest(topname = 'ref-type', attrname = 'name'),
+    ]
+
+    mapnames = {
+        'short-title' : 'label',
+        'secondary-title' : 'booktitle',
+        'accession_number' : 'label',
+        'secondary-authors' : 'editors',
+        'pub-location' : 'city',
+    }
+
+    patchlist = {
+    }
+
+    bibtex = {
+        "title" : "title",
+        "year" : "year",
+        "authors" : "author",
+        "publisher" : "publisher",
+        "city" : "address",
+    }
+
+
+    CLASS_MAP = {
+        'authors' : AuthorList,
+        'title' : Title,
+        'booktitle' : Title,
         'volume' : Volume,
         'pages' : Pages,
         'year' : Year,
@@ -897,6 +1025,7 @@ class JournalArticle(RecordObject):
     citekey = None
     label = None
     bibitem = None
+    doi = None
 
     mandatoryfields = []
 
@@ -913,6 +1042,7 @@ class JournalArticle(RecordObject):
         'accession_number',
         'abbr-1', #the abbreviated journal title
         'secondary_title',
+        'electronic_resource_number',
         XMLRequest(topname = 'ref-type', attrname = 'name'),
     ]
 
@@ -921,6 +1051,7 @@ class JournalArticle(RecordObject):
         'short-title' : 'label',
         'secondary_title' : 'journal',
         'accession_number' : 'label',
+        'electronic_resource_number' : 'doi'
     }
 
     #get attr key and write bibtex value
@@ -950,6 +1081,8 @@ class JournalArticle(RecordObject):
         'journal' : Journal,
         'full-title' : FullJournalTitle,
         'label' : Label,
+        'doi' : Doi,
+        'citekey' : CiteKey,
     }
     
     def __init__(self, **kwargs):
@@ -965,8 +1098,8 @@ class JournalArticle(RecordObject):
             except KeyError:
                 raise RecordClassError('%s does not have a class implemented' % key)
 
-    def citekey(self):
-        return self.citekey(self)
+    #def citekey(self):
+    #    return self.citekey(self)
 
     def get_summary(self):
         str_arr = []
@@ -992,8 +1125,8 @@ class Record(object):
         "0" : JournalArticle, #fuck papers, seriously
         "9" : ComputerProgram,
         "27" : ComputerProgram,
+        "5" : BookSection,
         "6" : Book,
-        "5" : Book,
         "Computer Program" : ComputerProgram,
     }
 
@@ -1008,7 +1141,6 @@ class Record(object):
             raise RecordAttributeError("no ref-type attribute for record:\n%s\n" % kwargs)
 
         classtype = cls.getClassType(type)
-
 
         newrecord = classtype(**kwargs)
         return newrecord
@@ -1057,7 +1189,9 @@ class Record(object):
             set('year', JournalArticle)
             set('journal', JournalArticle)
             set('label', JournalArticle)
+            set('citekey', JournalArticle)
             set('title', JournalArticle)
+            set('doi', JournalArticle)
 
             set('authors', ComputerProgram, delim = ',', lastname = false)
             set('year',    ComputerProgram)
@@ -1083,6 +1217,26 @@ class Record(object):
             set('city',   Book) #defaults are fine
             Book.bibitem = book_bibitem
 
+            def book_section_bibitem(r):
+                format = "%s, %s in %s" % (r['authors'], r['title'], r['booktitle'])
+
+                editors = r['editors']
+                if editors:
+                    format += " edited by %s." % editors
+
+                format += " (%s, %s, %s)." % (r['publisher'], r['city'], r['year'])
+                return format
+
+            set('authors', BookSection, delim = ',', lastname = false)
+            set('editors', BookSection, delim = ',', lastname = false)
+            set('year',    BookSection)
+            set('title',   BookSection) #defaults are fine
+            set('booktitle',   BookSection) #defaults are fine
+            set('label',   BookSection) #defaults are fine
+            set('publisher',   BookSection) #defaults are fine
+            set('city',   BookSection) #defaults are fine
+            BookSection.bibitem = book_section_bibitem
+
         cls.formatted = True
 
     setDefaults = classmethod(setDefaults)
@@ -1092,6 +1246,7 @@ class Record(object):
 class Bibliography:
     
     ENDNOTE_XML_LIB = os.environ["ENDNOTE_XML_LIB"]
+    
 
     def __init__(self):
         self.records = {}
@@ -1117,6 +1272,9 @@ class Bibliography:
             n += 1
         textstr =  "\n".join(str_arr)
         return textstr
+
+    def bibitem(self, label):
+        return "\\bibitem{%s}" % label
 
     def update(self, bib):
         for entry in bib:
@@ -1160,12 +1318,20 @@ class Bibliography:
 
     def write(self, file="bibliography.tex"):
         if not self.bibcites:
-            sys.stderr.write("Warning: no entries for bibliography.  Did you build the entry?")
+            sys.stderr.write("Warning: no entries for bibliography.  Did you build the entry?\n")
+
+        records = []
+        for entry in self.bibcites:
+            records.append((self.records[entry], entry))
+
+        if RecordObject.sort_criterion:
+            records.sort()
+            if RecordObject.reverse_sort:
+                records.reverse()
             
         str_arr = []
-        for entry in self.bibcites:
-            record = self.records[entry]
-            str_arr.append('\\bibitem{%s}%s\n' % (entry, record.bibitem()))
+        for record, label in records:
+            str_arr.append('%s%s\n' % (self.bibitem(label), record.bibitem()))
         fileobj = open(file, "w")
         fileobj.write("\n".join(str_arr))
         fileobj.close()
@@ -1173,12 +1339,37 @@ class Bibliography:
     def buildBibAll(self):
         self.bibcites = self.records.keys()
 
-    def buildBibliography(self, texfile):
-        auxfile = open(texfile + ".aux").read()
-        regexp = "\citation[{](.*?)[}]"
-        entries = re.compile(regexp).findall(auxfile)
+    def cleanTex(self, texfile):
+        text = open(texfile).read()
+        for entry in self.records:
+            rec = self.records[entry] 
+            citekey = rec.getAttribute("citekey")
+            label = rec.getAttribute("label")
+            if not label or not citekey:
+                continue
+            if label != citekey:
+                text = text.replace(label,citekey)
+        fileobj = open("new.tex","w")
+        fileobj.write(text)
+        fileobj.close()
+
+
+    def buildBibliography(self, file, sort_criterion = None):
+        entries = []
+        if file == "all":
+            entries = self.records.keys()
+
+        else:
+            filetext = open(file).read()
+            regexp = ""
+            if "aux" in file:
+                regexp = "\citation[{](.*?)[}]"
+            else:
+                regexp = "\cite[n]?[u]?[m]?[{](.*?)[}]"
+            entries = re.compile(regexp).findall(filetext)
         self.bibcites = []
         missing = []
+
         for entry in entries:
             citations = map(lambda x: x.strip(), entry.split(","))
             for cite in citations:
@@ -1189,6 +1380,7 @@ class Bibliography:
                     missing.append(cite)
                 else:
                     self.bibcites.append(cite)
+
 
         if missing: #some records are not in the bib file
             sys.stderr.write("Warning: the following records do not have bibliography entries.  I recommend running a full check to see if the entries are in the bibliography but just misformatted.\n%s\n" % "\n".join(missing))
@@ -1210,7 +1402,6 @@ class Bibliography:
         try:
             xmldoc = minidom.parse(bibfile)
         except BibPyError, error: #not a valid xmldoc
-            #print error
             return -1
 
         #lower case-ify the xml file
@@ -1220,27 +1411,23 @@ class Bibliography:
             sys.exit("%s\n%s bibfile failed" % (error, bibfile))
 
         xmlrecords = xmldoc.getElementsByTagName('record')
+
+
         for rec in xmlrecords:
             try:
                 self.addRecord(rec)
             except MissingDataError, error:
-                errormsgs = []
-                if not check:
-                    continue
-
-                for field in error:
-                    if not xargerrors or field in xargerrors: #this is a field we are trying to validate
-                        errormsgs.append("invalid field %s" % field)
-
-                if errormsgs:
-                    errormsgs.insert(0, error.getDescription())
-                    #sys.stderr.write("%s\n" % "\n".join(errormsgs))
+                pass
+                #for field in error:
+                #    sys.stderr.write("invalid field %s\n" % field)
+                #sys.stderr.write("%s\n" % error.getDescription())
             except RecordTypeError, error:
-                if check:
-                    sys.stderr.write("%s\n" % error)
+                sys.stderr.write("%s\n" % error)
+                #sys.stderr.write("%s\n" % unicode_to_latex(rec.toxml()))
             except DuplicateLabelError, error:
-                if check:
-                    sys.stderr.write("%s\n" % error)
+                sys.stderr.write("%s\n" % error)
+                #sys.stderr.write("%s\n" % unicode_to_latex(rec.toxml()))
+
 
     def clear(self):
         self.records = {}
@@ -1306,7 +1493,6 @@ class Bibliography:
                 errors.append(error.getField())
 
         
-
         for field in reftype.patchlist:
             if kwargs.has_key(field) and kwargs[field]: #we are either missing a field, or the field has no value
                 continue
@@ -1335,21 +1521,34 @@ class Bibliography:
         try:
             rec = Record(**kwargs)
             label = kwargs["label"]
+            citekey = rec.getBibkey()
             if not label:
-                label = rec.getBibkey()
-                rec.addAttribute("label", label)
+                label = citekey
+            if not citekey:
+                citekey = label
+            rec.addAttribute("label", label)
+            rec.addAttribute("citekey", citekey)
             if label in self.records:
-                raise DuplicateLabelError("duplicate label %s" % label)
-            self.records[label] = rec
+                raise DuplicateLabelError("duplicate label %s\n%s" % (label,kwargs))
             title = kwargs["title"]
+            if not citekey and not label:
+                sys.stderr.write("no citekey or label for %s\n" % kwargs)
+            elif rec.__class__ == JournalArticle and not re.compile("\d+").search(citekey):
+                sys.stderr.write("Journal article cite key %s does not contain numbers\n%s\n" % (kwargs, citekey))
+            else: #all good
+                self.records[citekey] = rec
         except RecordTypeError, error:
             sys.stderr.write("%s\nfor record\n%s\n" % (error, kwargs))
+        except BibformatUnspecifiedError, error:
+            sys.stderr.write("error building record for\n%s\n" % kwargs)
+            raise error
         except Exception, error:
-            sys.stderr.write("%s\n" % error)
+            #sys.stderr.write("%s\n" % error)
+            sys.stderr.write("%s\n" % traceback(error))
             raise error
 
-        if optional_errors:
-            raise MissingDataError(str(kwargs), *optional_errors)
+        #if optional_errors:
+        #    raise MissingDataError(str(kwargs), *optional_errors)
 
     def addEntry(self, reftype, attr, recnode, kwargs):
         req = self.getXMLRequest(attr)
@@ -1375,7 +1574,6 @@ if __name__ == "__main__":
     bib = Bibliography()
     #bib.buildRecords(sys.argv[1], check=True)
     bib.buildRecords(Bibliography.ENDNOTE_XML_LIB)
-    print bib.findEntry("ioc", "49", "7080")
 
 
 

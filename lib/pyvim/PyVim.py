@@ -9,46 +9,35 @@ class PyVimGlobals:
     col = 0
     is_init = False
 
+    std_stderr = None
+    std_stdout = None
+
     stderr = None
     stdout = None
 
 def disconnectErr():
-    if PyVimGlobals.stderr: #already disconnected
-        return
-
-    home = os.environ["HOME"]
-    errorfile = os.path.join(home, ".vimerr")
-    fileobj = open(errorfile, "a+")
-    PyVimGlobals.stderr = sys.stderr
-    sys.stderr = fileobj
+    if not PyVimGlobals.stderr: #already disconnected
+        home = os.environ["HOME"]
+        errorfile = os.path.join(home, ".vimerr")
+        fileobj = open(errorfile, "a+")
+        PyVimGlobals.stderr = fileobj
+        PyVimGlobals.std_stderr = sys.stderr
+    sys.stderr = PyVimGlobals.stderr
 
 def reconnectErr():
-    if not PyVimGlobals.stderr: #already connected
-        return
-
-    fileobj = sys.stderr
-    sys.stderr = PyVimGlobals.stderr
-    #fileobj.close()
-    PyVimGlobals.stderr = None
+    sys.stderr = PyVimGlobals.std_stderr
 
 def disconnectOut():
-    if PyVimGlobals.stdout: #already disconnected
-        return
-
-    home = os.environ["HOME"]
-    errorfile = os.path.join(home, ".vimout")
-    fileobj = open(errorfile, "a+")
-    PyVimGlobals.stdout = sys.stdout
-    sys.stdout = fileobj
+    if not PyVimGlobals.stdout: #already disconnected
+        home = os.environ["HOME"]
+        errorfile = os.path.join(home, ".vimout")
+        fileobj = open(errorfile, "a+")
+        PyVimGlobals.stdout = fileobj
+        PyVimGlobals.std_stdout = sys.stdout
+    sys.stdout = PyVimGlobals.stdout
 
 def reconnectOut():
-    if not PyVimGlobals.stdout: #already connected
-        return
-
-    fileobj = sys.stderr
-    sys.stdout = PyVimGlobals.stdout
-    #fileobj.close()
-    PyVimGlobals.stdout = None
+    sys.stdout = PyVimGlobals.std_stdout
 
 
 def display(msg):
@@ -81,15 +70,15 @@ def openReference():
     #gtkIO.redirect_io()
     os.system("echo vim >> ~/vim")
     #disconnect stderr and out
-    #disconnectErr()
-    #disconnectOut()
+    disconnectErr()
+    disconnectOut()
     os.system("echo vim >> ~/vim")
     cword = getCurrentWord()
     os.system("echo vim >> ~/vim")
     loadCitation(cword)
     os.system("echo vim >> ~/vim")
-    #reconnectErr()
-    #reconnectOut()
+    reconnectErr()
+    reconnectOut()
     
 def appendAtWord(word, *xargs):
     include = xargs

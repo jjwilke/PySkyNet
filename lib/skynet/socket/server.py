@@ -4,6 +4,7 @@ from pylatex.pybib import Bibliography
 import threading
 import sys
 import os
+import time
 
 class ServerRequest:
 
@@ -26,6 +27,7 @@ class ServerRequest:
         try:
             comm.open()
             answer.start()
+            time.sleep(1)
             comm.sendObject(obj)
         except SocketOpenError, error:
             sys.stderr.write("%d\n%s\n%s\n" % (self.request_port, traceback(error), error))

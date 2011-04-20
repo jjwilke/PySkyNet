@@ -50,10 +50,11 @@ class Communicator(object):
 
     def send(self, message):
         print "sending on", self.socketPort
-        if not self.socketOpen:
-            self.open()
        
         try:
+            if not self.socketOpen:
+                self.open()
+
             stride = Communicator.STRIDE
             num_messages = len(message) / stride + 1
             for i in xrange(num_messages):

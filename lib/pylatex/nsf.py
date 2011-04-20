@@ -7,7 +7,7 @@ def set_nsf_format():
             format = "%s. ``%s.'' %s %s, %s (%s)." % (r['authors'], r['title'], r['journal'], r['volume'], r['pages'], r['year'])
             return format
         except Exception, error:
-            print r['label']
+            sys.stderr.write("%s\n" % r['label'])
             import sys
             sys.exit("failure")
 

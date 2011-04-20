@@ -1,6 +1,8 @@
 
 def set_aip_format():
-    from pylatex.pybib import JournalArticle, ComputerProgram, Book, set
+    from pylatex.pybib import JournalArticle, ComputerProgram, Book, set, Record, BookSection
+
+    Record.setDefaults()
 
     #entry JCP guidelines
     def journal_bibitem(r):
@@ -56,6 +58,24 @@ def set_aip_format():
     set('publisher', Book) #defaults are fine
     set('city', Book) #defaults are fine
 
+    def book_section_bibitem(r):
+        format = "%s, `%s' in \\textit{%s}" % (r['authors'], r['title'], r['booktitle'])
+
+        editors = r['editors']
+        if editors:
+            format += " edited by %s." % editors
+
+        format += " (%s, %s, %s)." % (r['publisher'], r['city'], r['year'])
+        return format
+    BookSection.bibitem = book_section_bibitem
+    set('authors', BookSection, delim = ',', lastname = False)
+    set('editors', BookSection, delim = ',', lastname = False)
+    set('year',    BookSection)
+    set('title',   BookSection) #defaults are fine
+    set('booktitle',   BookSection) #defaults are fine
+    set('label',   BookSection) #defaults are fine
+    set('publisher',   BookSection) #defaults are fine
+    set('city',   BookSection) #defaults are fine
 
 
 

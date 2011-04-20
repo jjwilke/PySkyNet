@@ -153,12 +153,9 @@ class WOKObject: pass
 class WOKArticle(WOKObject):
     
     def __init__(self, archive, block):
-        print "init"
         self.archive = archive
         self.block = block
-        print "create article"
         self.article = self.archive.create_article()
-        print "build values"
         self.build_values()
 
     def get_papers_article(self):
@@ -436,7 +433,11 @@ class ISIServer(Server):
         return self.selenium.get_html_source()
 
     def get_text(self):
-        return self.selenium.get_body_text()
+        try:
+            return self.selenium.get_body_text()
+        except Exception, error:
+            sys.stderr.write("%s\n" % error)
+            return "nothing"
 
 
 class WOKField: 
@@ -545,9 +546,6 @@ class WOKParser(WOKObject, ServerRequest):
                     field = str(value)
 
                 if not field == match:
-                    print "Failure!"
-                    print field, field.__class__
-                    print match, match.__class__
                     foundmatch = False
                     break;
             
@@ -555,9 +553,7 @@ class WOKParser(WOKObject, ServerRequest):
                 return article
 
     def store_article(self):
-        print "storing article"
         block = self.run("get_text")
-        print "creating article"
         article = WOKArticle(self.archive, block) 
         if article:
             article.store(self.download, self.notes, self.keywords)
@@ -665,17 +661,16 @@ class WOKParser(WOKObject, ServerRequest):
                 self.process_article(link)
 
     def process_article(self, link):
-        id = re.compile("isickref[=]\d+").search(link).group()
-        self.run("go_to_list_entry", id)
-
         try:
+            id = re.compile("isickref[=]\d+").search(link).group()
+            self.run("go_to_list_entry", id)
             article = self.store_article()
+            self.run("go_back")
         except ISIError, error:
             sys.stderr.write("ERROR: %s\n%s\n" % (error, traceback(error)))
         except Exception, error:
             sys.stderr.write("ERROR: %s\n%s\n" % (error, traceback(error)))
 
-        self.run("go_back")
 
 class SavedRecordParser:
     
@@ -883,6 +878,5 @@ Sign In     My EndNote Web      My ResearcherID     My Citation Alerts      My S
     article = WOKArticle(archive, readable(block))
     article.store()
     #x = "Wang HY (Wang Hong-Yan), Li XB (Li Xi-Bo), Tang YJ (Tang Yong-Jian), King RB (King, R. Bruce), Schaefer HF (Schaefer, Henry F., III)"
-    #print get_authors(x, intra_delim=" ", inter_delim=",")
 
 

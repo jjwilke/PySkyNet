@@ -315,8 +315,6 @@ class Archive:
     
     def __init__(self, file):
         import os
-        print os.getcwd()
-        print "opening archive", file
         self.articles = []
 
         topdir = os.getcwd()
@@ -372,6 +370,7 @@ class Archive:
 
     def commit(self):
         path = os.path.join(self.folder, "Contents", "Info.xml")
+        sys.stdout.write("Committing archive to path %s\n", path)
         fileobj = codecs.open(path, "w", "utf-8")
         fileobj.write(self.toxml())
         fileobj.close()

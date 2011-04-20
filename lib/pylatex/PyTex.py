@@ -109,7 +109,6 @@ class CiteManager:
                 try:
                     newtable =  self.table.filter(filterstr)
                 except BadMatchAttribute, error:
-                    #print error
                     #build blank table
                     newtable = self.table.subset([]) #build null table
                 newfilter = TableFilter(newtable, filterstr)
@@ -154,7 +153,8 @@ class CiteManager:
             comm.close()
             sent = True
         except Exception, error:
-            print 'failed'
+            pass
+            #sys.stderr.write("%s\n" % 'failed')
 
 def walkForBibs(path, check=False, fields=[]):
 
@@ -251,7 +251,6 @@ class CiteThread(threading.Thread):
                 if objlist: #if we got a list of objects
                     self.citation.addReferences(objlist)
             except Exception, exc:
-                #print exc
                 pass
 
         self.server.close()
@@ -400,9 +399,39 @@ def makeBib(params):
         sys.exit("Please specify the tex file and bibfile")
 
     texfile = params[0]
-    if texfile.endswith(".tex"): texfile = texfile[:-4]
-    auxfile = texfile + ".aux"
-    if not os.path.isfile(auxfile):
+    auxfile = texfile
+    srcfile = texfile
+    if texfile == "all": #everything from the lib
+        pass
+    else:
+        if texfile.endswith(".tex"): 
+            texfile = texfile[:-4]
+        auxfile = texfile + ".aux"
+        srcfile = texfile + ".tex"
+
+    bibfile = params[1]
+    if bibfile.startswith("~"):
+        bibfile = os.path.expanduser('~') + bibfile[1:]
+    if not os.path.isfile(bibfile) and not os.path.isdir(bibfile):
+        sys.exit("%s is not a valid bib path" % bibfile)
+
+    bib = walkForBibs(bibfile)
+    if os.path.isfile(auxfile):
+        bib.buildBibliography(auxfile)
+    else:
+        bib.buildBibliography(srcfile)
+    bib.write()
+
+def cleanBib(params):
+    if len(params) != 2:
+        sys.exit("Please specify the tex file and bibfile")
+
+    texfile = params[0]
+    if texfile.endswith(".tex"):    
+        texfile = texfile[:-4]
+
+    srcfile = texfile + ".tex" 
+    if not os.path.isfile(srcfile):
         sys.exit("%s is not a valid tex root name" % texfile)
 
     bibfile = params[1]
@@ -412,8 +441,8 @@ def makeBib(params):
         sys.exit("%s is not a valid bib path" % bibfile)
 
     bib = walkForBibs(bibfile)
-    bib.buildBibliography(texfile)
-    bib.write()
+    bib.buildBibliography(srcfile)
+    bib.cleanTex(srcfile)
 
 def insertAlign():
     from pyvim.pyvim import insertLine
