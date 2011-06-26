@@ -1,14 +1,14 @@
 import pickle, sys, os, commands, re
-from RM import *
-from errors import *
+from skynet.utils.utils import *
+from skynet.errors import *
+from skynet.identity import *
 from molecules import *
-from identity import *
 from parse import *
 from data import *
 
-PY = os.environ["PY"] 
 PYTEMP = os.environ["PYTEMP"]
 PYBASIS = os.environ["PYBASIS"]
+PYCHEM = os.environ["PYCHEM"] 
 
 ## The search for a template file goes in the following order
 #                os.path.join(jobtype,reference,wfn),
@@ -807,7 +807,7 @@ class Computation(Molecule):
 
         for folder in folders_to_test:
             testname = folder.lower()
-            folderpath = os.path.join(os.environ["PY"],program.lower(),testname)
+            folderpath = os.path.join(os.environ["PYCHEM"],program.lower(),testname)
             template_file = os.path.join(folderpath, "template")
             if os.path.isfile(template_file):
                 return template_file

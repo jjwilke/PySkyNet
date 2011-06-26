@@ -448,8 +448,8 @@ def getMolecule(file, xyzOnly = False):
     if mol:
         return mol
     else: #maybe an input file
-        import input
-        return input.readInputFile(file)
+        import chem.input
+        return chem.input.readInputFile(file)
 
 def getComputationFromMolecule(mol, program, ZMatrix=None, keywords = {}, **kwargs):
     import input

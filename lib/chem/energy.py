@@ -1,3 +1,5 @@
+import sys
+
 class EnergySet:
     
     def __init__(self):
@@ -28,7 +30,12 @@ class EnergySet:
                 kwargs[entry] = [kwargs[entry]]
 
         entries = []
-        self._getMatch(self.energies, self.attrs[0], self.attrs[1:], entries, kwargs)
+        try:
+            self._getMatch(self.energies, self.attrs[0], self.attrs[1:], entries, kwargs)
+        except IndexError, error:
+            sys.stderr.write("Only have attrs %s\n" % self.attrs)
+            return newset
+            
 
         if len(entries) == 1:
             return entries[0]
@@ -50,7 +57,10 @@ class EnergySet:
                 continue
 
             if attrlist: #there are more to do
-                self._getMatch(map[attrval], attrlist[0], attrlist[1:], entries, kwargs)
+                try:
+                    self._getMatch(map[attrval], attrlist[0], attrlist[1:], entries, kwargs)
+                except KeyError:
+                    pass
             else:
                 try:
                     entries.append(map[attrval])

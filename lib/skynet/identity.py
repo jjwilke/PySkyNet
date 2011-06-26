@@ -16,7 +16,10 @@ class Identity(object):
             setattr(self, entry.lower(), kwargs[entry])
 
     def getAttribute(self, entry):
-        return getattr(self, entry.lower())
+        try:
+            return getattr(self, entry.lower())
+        except AttributeError, error:
+            return self.attributes[entry]
 
 class Savable(Identity):
 

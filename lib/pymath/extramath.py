@@ -210,11 +210,13 @@ def linearRegression(xArray, yArray, eqnArray, full=False):
         print "Sigma = %12.8f" % sigma        
         print "R^2 = %12.8f" % r2
         print "Individual Terms"
+        param_errors = []
         for i in range(0, len(regVals)):
             err = math.sqrt(XTX_inv[i][i])*sigma*1.119
             print "Parameter %s = %12.8f +/- %12.8f" % (paramList[i], regVals[i], err)
+            param_errors.append(err)
             
-        return regVals
+        return regVals, param_errors
     else:
         return regVals
 

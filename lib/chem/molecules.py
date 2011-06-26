@@ -2,6 +2,7 @@
 
 from skynet.utils.utils import *
 import numpy
+import chem.data
 import skynet.identity
 
 MOLECULE_ATTRIBUTES = {
@@ -309,7 +310,7 @@ def canonicalizeGeometryLabel(label):
         return straight
 
 ## This class encapsulates a molecule
-class Molecule(skynet.identity.Identity):
+class Molecule(chem.data.Item):
 
     discontinuity = -90
 
@@ -330,7 +331,7 @@ class Molecule(skynet.identity.Identity):
         else:
             self.atoms = getAtomListFromXYZ(atomList)
 
-        Item.__init__(self)
+        chem.data.Item.__init__(self)
         #check if state symmetry and molecule name should be given defaults
         title = molName
         if not molName: #no molname given
@@ -1478,6 +1479,7 @@ class Atom(skynet.identity.Identity):
     # @return The atomic symbol as a string
     def getSymbol(self, nice = False):
         symbol = self.getAttribute('atomicsymbol').upper()
+        return self.attributes['atomicsymbol']
         if nice:
             symbol = symbol[0] + symbol[1:].lower()
         return symbol
