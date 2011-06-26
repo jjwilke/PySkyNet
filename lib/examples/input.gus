@@ -1,0 +1,14 @@
+reference rhf
+basis cc-pvdz
+charge 0
+multiplicity 1
+wavefunction scf
+units angstrom
+printunits angstrom
+title water
+jobtype singlepoint
+xyz:
+O 0.0 0.0 0.3
+H 1.0 0.5 0.0
+H -1.0 0.5 0.0
+

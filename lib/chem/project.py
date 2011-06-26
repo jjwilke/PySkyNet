@@ -1,6 +1,6 @@
-from RM import *  
-from errors import *
-from identity import *
+from skynet.utils.utils import *  
+from skynet.errors import *
+from skynet.identity import *
 
 ERROR_WAIT = 1
 debug = getDebug()
