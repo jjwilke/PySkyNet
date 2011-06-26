@@ -522,7 +522,6 @@ class DataPoint(Item):
             factor = selfunits.consolidate()
             self.value *= factor
         except KeyError:
-            print self
             raise DataError("could not convert units")
 
     def __abs__(self):
@@ -914,9 +913,7 @@ class DataSet(Identity):
             if match:
                 newVal = point + match
                 newVals.append(newVal)
-            else:
-                print "no match for"
-                print point
+            else: pass
         newDataSet = DataSet(newVals)
         return newDataSet
 

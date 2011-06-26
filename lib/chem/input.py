@@ -156,7 +156,7 @@ class Keyword(object):
                 except TypeError:
                     raise KeywordError("type of value %s does not match type of %s" %  (value, self.__class__))
         except Exception, error:
-            print error
+            sys.stderr.write("%s\n" % error)
             raise KeywordError("%s %s" % (self.__class__, value))
 
     def getValue(self):
@@ -406,14 +406,17 @@ def readXYZ(geomLines, units):
     def processAtom(label, xyz, atomNumber=1):
         newLabel = canonicalizeAtomLabel(label)
         xyz = DataPoint(xyz, units=units)
-        newAtom = Atom(label, xyz, atomNumber)
+        newAtom = Atom(label, xyz, number=atomNumber)
         return newAtom
         
     regExp = r"([\da-zA-Z.]+)[\s,]+([-]?\d+[.]\d+)[\s,]+([-]?\d+[.]\d+)[\s,]+([-]?\d+[.]\d+)"
     atomNumber = 1
     atomList = []
     for line in geomLines:
-        label, x, y, z = re.compile(regExp).search(line).groups()
+        match = re.compile(regExp).search(line)
+        if not match:
+            raise Exception("Input line %s not formatted properly" % line)
+        label, x, y, z = match.groups()
         label = label.upper()
         coords = map(eval, [x,y,z])
         newAtom = processAtom(label, coords, atomNumber)
@@ -590,17 +593,17 @@ def readZMatrix(geometryLines, units):
     for name in unset_values:
         if not name in constants: variables[name] = None
 
-    import geometry
+    import chem.geometry
     if atomList:
-        zmatObject = geometry.ZMatrix(atomList, "angstrom", ZMatrix, variables, constants)
+        zmatObject = chem.geometry.ZMatrix(atomList, "angstrom", ZMatrix, variables, constants)
         #for now we set the units to angstroms... but that will probably be changed later
         return (atomList, zmatObject)
     else:
-        atoms, xyz = geometry.getXYZFromZMatrix(ZMatrix, variables, constants)
+        atoms, xyz = chem.geometry.getXYZFromZMatrix(ZMatrix, variables, constants)
         xyz = DataPoint(xyz, units=units)
-        import molecules
-        atomList = molecules.getAtomListFromXYZ(atoms, xyz)
-        zmatObject = geometry.ZMatrix(atomList, "angstrom", ZMatrix, variables, constants)
+        import chem.molecules
+        atomList = chem.molecules.getAtomListFromXYZ(atoms, xyz)
+        zmatObject = chem.geometry.ZMatrix(atomList, "angstrom", ZMatrix, variables, constants)
         return (atomList, zmatObject)
 
 def readOptions(fileText):

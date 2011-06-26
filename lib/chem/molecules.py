@@ -331,6 +331,8 @@ class Molecule(chem.data.Item):
         else:
             self.atoms = getAtomListFromXYZ(atomList)
 
+        print self.atoms
+
         chem.data.Item.__init__(self)
         #check if state symmetry and molecule name should be given defaults
         title = molName
@@ -355,6 +357,7 @@ class Molecule(chem.data.Item):
         self.intensities = []
         self.dipole = []
         self.energy = ener
+
 
     def __str__(self):
         desc = []
@@ -1146,13 +1149,13 @@ class Molecule(chem.data.Item):
     #  @param origin 
     def rotateAxes(self, xAxis, yAxis, zAxis):
         import numpy
-        import MatrixMath
+        import matrixmath
 
         from numpy import dot
         if abs( dot(xAxis, yAxis) ) > 1E-10 or abs( dot(xAxis, zAxis) ) > 1E-10 or abs( dot(zAxis, yAxis) ) > 1E-10:
             #first, we must perform a gram-schmidt to ensure that as closely as possible
             #the given basis resembles the old one, but ensure orthogonality
-            [xAxis, yAxis, zAxis] = MatrixMath.getGramSchmidtBasis(xAxis, yAxis, zAxis)
+            [xAxis, yAxis, zAxis] = matrixmath.getGramSchmidtBasis(xAxis, yAxis, zAxis)
         rotMatrix = self.getAxisRotationMatrix(xAxis, yAxis, zAxis)
 
         for atom in self.atoms:
@@ -1374,7 +1377,10 @@ class Atom(skynet.identity.Identity):
     # @param coords The xyz coordinates of the atom.  This should be a list of 3 floats
     # @param num The number of this atom in a z-mat
     def __init__(self, label, coordinates = [0,0,0], units="angstrom", number=1):        
-        self.coordinates = numpy.array(coordinates)
+        if isinstance(coordinates, chem.data.DataPoint):
+            self.coordinates = coordinates
+        else:
+            self.coordinates = chem.data.DataPoint(coordinates, units=units)
 
         skynet.identity.Identity.__init__(self)
 
@@ -1384,7 +1390,7 @@ class Atom(skynet.identity.Identity):
         self.info = ATOM_INFO[atomicSymbol]
         mass = self.info["ATOMIC WEIGHT"]
 
-        self.setAttributes(mass=mass,atomicSymbol=atomicSymbol,number=number)
+        self.setAttributes(mass=mass,atomicsymbol=atomicSymbol,number=number)
 
     ## Sends back a string representation, i.e. info description, of this class
     # @return A string name
@@ -1479,7 +1485,7 @@ class Atom(skynet.identity.Identity):
     # @return The atomic symbol as a string
     def getSymbol(self, nice = False):
         symbol = self.getAttribute('atomicsymbol').upper()
-        return self.attributes['atomicsymbol']
+        return self.getAttribute('atomicsymbol')
         if nice:
             symbol = symbol[0] + symbol[1:].lower()
         return symbol
@@ -1585,7 +1591,7 @@ class Atom(skynet.identity.Identity):
     ## Translate the coordinates by a given amount
     # @param translate A vector giving the x,y,z displacements
     def translate(self, amount):
-        if not isinstance(amount, DataPoint):
+        if not isinstance(amount, chem.data.DataPoint):
             amount = numpy.array(amount)
         self.coordinates = self.coordinates + amount
 

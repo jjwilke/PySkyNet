@@ -466,7 +466,9 @@ def getComputationFromMolecule(mol, program, ZMatrix=None, keywords = {}, **kwar
     return newComp
     
 def getComputation(file, xyzOnly=False, reorient=True, recenter=True, weakFind=False, **kwargs):
-    import parse, os.path, input
+    import chem.parse
+    import chem.input
+    import os.path
     try: #maybe a pickle
         obj = load(file)
         if isinstance(obj, input.Computation): 
@@ -475,9 +477,9 @@ def getComputation(file, xyzOnly=False, reorient=True, recenter=True, weakFind=F
         pass
 
     if xyzOnly: 
-        parser = parse.getParser(file, keywords = {"coordtype" : "xyz"} )
+        parser = chem.parse.getParser(file, keywords = {"coordtype" : "xyz"} )
     else: 
-        parser = parse.getParser(file)
+        parser = chem.parse.getParser(file)
 
 
     computation = None
@@ -486,7 +488,7 @@ def getComputation(file, xyzOnly=False, reorient=True, recenter=True, weakFind=F
     else:
         #oops, must be an input file
         try:
-            computation = input.readInputFile(file, reorient=reorient, recenter=recenter)
+            computation = chem.input.readInputFile(file, reorient=reorient, recenter=recenter)
         except Exception, error:
             import globalvals
             if globalvals.Debug.debug:
@@ -570,8 +572,6 @@ def load(filename):
         fileObj.close()
         return objToLoad
     except Exception, error:
-        print dir(error)
-        sys.stderr.write("%s\n%s\n" % (traceback(error), error))
         return None
 
 ## Takes a string representation of something and determines if it is an integer.
@@ -585,7 +585,7 @@ def isIntegerString(number):
         else:
             return False
     except (NameError, SyntaxError, TypeError):
-        return False
+         False
 
 def isInteger(number):
     try: return int(number) == number
