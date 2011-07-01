@@ -47,7 +47,7 @@ class Writer:
                 wfn = str(computation.getAttribute("wavefunction")).replace("(", "_").replace(")","")
                 jobtype = str(computation.getAttribute("jobtype"))
                 reference = str(computation.getAttribute("reference"))
-                raise GUSInputError("No template file for %s %s %s" % (wfn, jobtype, reference))
+                raise GUSInputError("No template file for %s %s %s for program %s" % (wfn, jobtype, reference, self.name))
             template_text = open(template_file).read()
 
         regExp = r"([$][A-Z0-9]+)[,;:\n\s})\"/>]"

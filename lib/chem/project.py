@@ -1,6 +1,7 @@
 from skynet.utils.utils import *  
 from skynet.errors import *
 from skynet.identity import *
+from skynet.socket.pysock import Communicator
 
 ERROR_WAIT = 1
 debug = getDebug()
@@ -67,9 +68,8 @@ class Project(Runnable, Savable):
         self.finishedTasks = []
         self.projectList = []
 
-        import remote
         self.hostname = ''
-        self.socketPort = 1#remote.getSocketPort()
+        self.socketPort = 1
 
     def finish(self):   
         import remote
@@ -88,7 +88,7 @@ class Project(Runnable, Savable):
         if self.parent:
             pass #the parent will save us
         else:
-            sys.stdout.write("Saving %s at %s for next %s\n" % (self.__class__, self.methodNode, self.nextMethod))
+            sys.stdout.write("Saving %s\n%s\n%s\n\n" % (self.__class__, self.methodNode, self.nextMethod))
             unsaved = {}
             for attr in self.unsavable:
                 if hasattr(self, attr):
@@ -246,10 +246,13 @@ class Project(Runnable, Savable):
             return
 
         #why don't I have a socket?
-        import remote
         if not hasattr(self, "socketPort") or not hasattr(self, "hostname"):
             sys.stdout.write("Getting default socket port and hostname\n")
-            self.socketPort = remote.getSocketPort()
+            self.listener = Communicator.getListener()
+            if not self.listener:
+                sys.stderr.write("Couldn't get socket for project")
+                sys.exit()
+            self.socketPort = self.listener.socketPort
             self.hostname = ''
 
         import machines
@@ -299,9 +302,8 @@ class Project(Runnable, Savable):
             sys.stdout.write("Waiting for %s\n" % task.getID())
 
 
-        import remote
         if not hasattr(self, "listener"): #make a new listener
-            self.listener = remote.Communicator(self.socketPort, self.hostname)
+            self.listener = Communicator(self.socketPort, self.hostname)
             self.listener.bind()
 
         sys.stdout.write("Listening on port %s with hostname %s\n" % (self.socketPort, self.hostname))
