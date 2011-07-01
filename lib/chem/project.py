@@ -88,7 +88,7 @@ class Project(Runnable, Savable):
         if self.parent:
             pass #the parent will save us
         else:
-            print "Saving", self.__class__, "at", self.methodNode, "for next", self.nextMethod
+            sys.stdout.write("Saving %s at %s for next %s\n" % (self.__class__, self.methodNode, self.nextMethod))
             unsaved = {}
             for attr in self.unsavable:
                 if hasattr(self, attr):
@@ -100,9 +100,7 @@ class Project(Runnable, Savable):
 
             test = load(self.id)
             if not test.methodNode == self.methodNode:
-                print "Save doesn't match current state"
-                print test.methodNode
-                print self.methodNode
+                sys.stderr.write("Save doesn't match current state\n%s\n%s\n" % (test.methodNode,self.methodNode))
                 sys.exit()
 
     def setParent(self, parent):
@@ -156,10 +154,10 @@ class Project(Runnable, Savable):
                 status = Runnable.run(self)
             except TaskError, error:
                 import time
-                print error
+                sys.stderr.write("%s\n" % error)
                 time.sleep(ERROR_WAIT) #wait a little bit... and then try again
             except RunError, error: #run errors should cause immediate exit, regardless of parentage
-                print error
+                sys.stderr.write("%s\n" % error)
                 self.save()
                 sys.exit()
             except (ProjectStop, ProjectSuspend): #calls for stop should happen immediately
@@ -167,11 +165,10 @@ class Project(Runnable, Savable):
                 sys.exit()
             except Advance, error:
                 num = error.getAdvancer()
-                print "Advancing %d steps" % num
+                sys.sdterr.write("Advancing %d steps\n" % num)
                 self.save()
             except AdvanceAndWait, error:
                 num = error.getAdvancer()
-                print num
                 for i in range(num):
                     self.methodNode = self.nextMethod
                     self.nextMethod = self.methodNode.getNext()
@@ -233,7 +230,7 @@ class Project(Runnable, Savable):
                 self.setMethod("finalize")
                 validResponse = True
             else:
-                print "Invalid input. Try again."
+                sys.stderr.write("Invalid input. Try again.\n")
 
     def runProjects(self):
         for proj in self.projectList:
@@ -251,7 +248,7 @@ class Project(Runnable, Savable):
         #why don't I have a socket?
         import remote
         if not hasattr(self, "socketPort") or not hasattr(self, "hostname"):
-            print "Getting default socket port and hostname"
+            sys.stdout.write("Getting default socket port and hostname\n")
             self.socketPort = remote.getSocketPort()
             self.hostname = ''
 
@@ -294,12 +291,12 @@ class Project(Runnable, Savable):
 
         import remote
         if self.parent: #this doesn't need to wait
-            print "not waiting since %s has a parent" % self.__class__
+            sys.stdout.write("not waiting since %s has a parent\n" % self.__class__)
             return
 
         tasksLeft = self.taskList[:]
         for task in self.taskList:
-            print "Waiting for %s" % task.getID()
+            sys.stdout.write("Waiting for %s\n" % task.getID())
 
 
         import remote
@@ -307,25 +304,24 @@ class Project(Runnable, Savable):
             self.listener = remote.Communicator(self.socketPort, self.hostname)
             self.listener.bind()
 
-        print "Listening on port", self.socketPort, "hostname", self.hostname
+        sys.stdout.write("Listening on port %s with hostname %s\n" % (self.socketPort, self.hostname))
         while tasksLeft:
-            print "Waiting for jobs to finish... %d left" % len(self.taskList)
+            sys.stdout.write("Waiting for jobs to finish... %d left\n" % len(self.taskList))
             jobList = self.listener.acceptObject()
             for job in jobList:
                 job.finalizeOutput()
                 for id in job.getTaskIDS():
-                    print "Received", id
+                    sys.stdout.write("Received %s\n" % id)
                     try:
                         taskNum, match = self.getMatchingTask(id, tasksLeft)
                         #match.finalize()
                         del tasksLeft[taskNum]
                     except GUSException, error:
-                        print "Machine reporting error"
-                        print traceback(error)
+                        sys.stderr.write("Machine reporting error\n%s\n",traceback(error))
                         pass #no reporting, for now
                     except ValueError, error:
-                        print traceback(error)
-                        print "task:\n%s\n was reported, but does not belong to this project" % task
+                        sys.stderr.write("%s\n" % traceback(error))
+                        sys.stderr.write("task:\n%s\n was reported, but does not belong to this project\n" % task)
 
     def getMatchingTask(self, id, taskList):
         for i in xrange(len(taskList)):
@@ -340,7 +336,7 @@ class Project(Runnable, Savable):
             try:
                 task.finalize()
             except Exception, error:
-                print error
+                sys.stderr.write("%s\n" % error)
                 sys.exit(task.getFolder())
                 
                 

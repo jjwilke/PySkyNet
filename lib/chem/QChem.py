@@ -37,13 +37,6 @@ class QChemParser(Parser):
     def _get_INITIAL_XYZ(self):
         return self._get_INPUT_XYZ()
         raise ProgrammingError("_getInitialXYZ not yet implemented")
-        geomregexp = "[$]end(.*?)Mol"
-        geomsection = re.compile(geomregexp, re.DOTALL | re.IGNORECASE).findall(self.fileText)[-1]
-        print geomsection
-        sys.exit()
-        molArea = self.getMoleculeSection()
-        print molArea
-        return self._getInitialXYZ()
 
     def _get_INPUT_XYZ(self):
         molArea = self.getMoleculeSection()

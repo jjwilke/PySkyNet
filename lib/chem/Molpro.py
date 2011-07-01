@@ -348,7 +348,7 @@ class MolproParser(Parser):
             return atomList, coordinates
 
         except (IndexError, AttributeError), error:
-            print error
+            sys.stderr.write("%s\n" % error)
             raise InfoNotFoundError("optimized XYZ")
 
     def cleanZMatrix(self, ZMatrix, variables, constants):
