@@ -1,7 +1,7 @@
-from identity import *
-from errors import *
-from project import *
-from data import *
+from skynet.identity import *
+from skynet.errors import *
+from chem.project import *
+from chem.data import *
 
 class EnergyTask(Identity):
     
@@ -179,11 +179,11 @@ class QuantumTask(Task, Runnable, Locatable):
 
         #if no machine param is given, just make it the opt queue
         if not machine:
-            import machines
-            self.machine = machines.getDefaultMachine()
+            import chem.machines
+            self.machine = chem.machines.getDefaultMachine()
         else:
-            import machines
-            self.machine = machines.getMachine(machine)
+            import chem.machines
+            self.machine = chem.machines.getMachine(machine)
 
         self.energies = None
         self.gradients = None
@@ -460,9 +460,10 @@ class SinglePoint(QuantumTask, EnergyTask):
 
     def __str__(self):
         str_array = [ QuantumTask.__str__(self) ]
-        for energy in self.energies:
-            type = energy.getAttribute('wavefunction')
-            str_array.append( "%s=%14.10f" % (type, energy) )
+        if self.energies:
+            for energy in self.energies:
+                type = energy.getAttribute('wavefunction')
+                str_array.append( "%s=%14.10f" % (type, energy) )
         return "\n".join(str_array)
 
     ## Gets all the energies associated with this single point calculation
