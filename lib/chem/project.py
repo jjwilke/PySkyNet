@@ -154,10 +154,10 @@ class Project(Runnable, Savable):
                 status = Runnable.run(self)
             except TaskError, error:
                 import time
-                sys.stderr.write("%s\n" % error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
                 time.sleep(ERROR_WAIT) #wait a little bit... and then try again
             except RunError, error: #run errors should cause immediate exit, regardless of parentage
-                sys.stderr.write("%s\n" % error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
                 self.save()
                 sys.exit()
             except (ProjectStop, ProjectSuspend): #calls for stop should happen immediately
@@ -338,7 +338,7 @@ class Project(Runnable, Savable):
             try:
                 task.finalize()
             except Exception, error:
-                sys.stderr.write("%s\n" % error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
                 sys.exit(task.getFolder())
                 
                 

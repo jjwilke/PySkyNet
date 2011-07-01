@@ -2,15 +2,55 @@
 import os.path
 import os
 import sys
+import re
+from skynet.utils.getoptions import InputOption, OptionList, readOptions, OptionSet 
 
 cmd = sys.argv[1]
 
-def run(args,dirname,names):
-    topdir, cmd = args
+def clean(args, dirname, names):
+    topdir, options = args
+    regexp = options.regexp
+    debug = options.debug
     os.chdir(dirname)
-    if "input.dat" in names and not "output.dat" in names:
-        os.system(cmd)
+    if "output.dat" in names:
+        text = open("output.dat").read()
+        match = re.compile(regexp).search(text)
+        if not match:
+            sys.stdout.write("rm output.dat : %s\n" % dirname)
+            if debug == 0:
+                os.system("rm output.dat")
     os.chdir(topdir)
 
-topdir = os.getcwd()
-os.path.walk(run,".",[topdir,cmd])
+def run(args, dirname, names):
+    topdir, options = args
+    cmd = options.cmd
+    debug = options.debug
+    os.chdir(dirname)
+    if "input.dat" in names and not "output.dat" in names:
+        sys.stdout.write("%s: %s\n" % (dirname, cmd))
+        if debug == 0:
+            os.system(cmd)
+    os.chdir(topdir)
+
+
+if __name__ == "__main__":
+    opts = [
+        InputOption(longOption='cmd', optionType='string', bind=True, default=""),
+        InputOption(longOption='regexp', optionType='string', bind=True, default=""),
+        InputOption(longOption='debug', optionType='int', bind=True, default=0),
+        InputOption(shortOption='r', longOption='run'),
+        InputOption(shortOption='c', longOption='clean'),
+        ]
+
+    options = OptionSet()
+    optionList = OptionList(commandName="getrefs",
+                            usageStructure=[ "[options]"],
+                            optionsList=opts)
+    options_given = readOptions(optionList, optionSet=options)
+
+    topdir = os.getcwd()
+    for option in options_given:
+        if option in ('r', 'run'):
+            os.path.walk(".",run,[topdir,options])
+        elif option in ('c', 'clean'):
+            os.path.walk(".",clean,[topdir,options])

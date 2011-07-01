@@ -347,7 +347,7 @@ class OptionList:
                 self.optionsList[longOption] = option
 
         #always add the debug flag
-        debug = InputOption(longOption='debug', valuesMandatory=True, optionType='int')
+        debug = InputOption(longOption='debug', valuesMandatory=True, optionType='int', bind=True)
         self.optionsList['debug'] = debug
 
 
