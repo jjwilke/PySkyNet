@@ -1,0 +1,16 @@
+#! /usr/bin/env python
+import os.path
+import os
+import sys
+
+cmd = sys.argv[1]
+
+def run(args,dirname,names):
+    topdir, cmd = args
+    os.chdir(dirname)
+    if "input.dat" in names and not "output.dat" in names:
+        os.system(cmd)
+    os.chdir(topdir)
+
+topdir = os.getcwd()
+os.path.walk(run,".",[topdir,cmd])
