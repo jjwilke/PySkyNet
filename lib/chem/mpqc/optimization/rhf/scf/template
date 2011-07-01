@@ -1,0 +1,52 @@
+% 30-0-0-120-240-0
+molecule<Molecule>: (
+  symmetry = auto
+  unit = $PRINTUNITS 
+  { atoms geometry } = {
+$GEOMETRY
+  }
+)
+
+basis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $BASIS
+)
+
+mpqc: (
+  checkpoint = no
+  savestate = no
+  restart = no
+  do_energy = yes
+  mole<CLHF>: (
+     coor = $:mpqc:coor
+     memory = $MEMORY
+     basis = $:basis
+     molecule = $:molecule
+     total_charge = $CHARGE
+     value_accuracy = $ENERGYCONVERGENCE
+     multiplicity = 1
+     guess_wavefunction<CLHF>: (
+         docc = $OCCUPATIONDOCC
+         molecule = $:molecule
+         total_charge = $CHARGE
+         multiplicity = 1
+         basis<GaussianBasisSet>: (
+         molecule = $:molecule
+         name = "STO-3G"
+         )
+    )
+    memory = $MEMORY
+  )
+  optimize = yes
+  % optimizer object for the molecular geometry
+  opt<QNewtonOpt>: (
+    max_iterations = 20
+    function = $:mpqc:mole
+    update<BFGSUpdate>: ()
+    convergence<MolEnergyConvergence>: (
+      cartesian = yes
+      energy = $:mpqc:mole
+    )
+  )
+)
+

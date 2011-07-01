@@ -1,0 +1,18 @@
+PSI:(
+       REFERENCE=$REFERENCE
+       LABEL = "$TITLE"
+       FREEZE_CORE = $CORE
+       WFN=$WAVEFUNCTION
+       BASIS=$BASIS
+       PUREAM=TRUE
+       DERTYPE=FIRST 
+       MAXITER=100
+       JOBTYPE=OPT
+       MEMORY = $MEMORY
+       CHARGE=$CHARGE
+       MULTP=$MULTIPLICITY
+       UNITS=$PRINTUNITS
+       $GEOMETRY
+)
+
+

@@ -1,0 +1,53 @@
+% 30-0-0-120-240-0
+molecule<Molecule>: (
+  symmetry = auto
+  unit = $PRINTUNITS 
+  { atoms geometry } = {
+$GEOMETRY
+  }
+)
+
+basis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $BASIS
+)
+
+abasis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $RIBASIS
+)
+
+integralcints<IntegralCints>:()
+
+mpqc: (
+  checkpoint = no
+  savestate = no
+  restart = no
+  do_energy = yes
+  mole<MBPT2_R12>: (
+    integrals = $:integralcints
+    stdapprox = "$R12EXCHANGE"
+    molecule = $:molecule
+    basis = $:basis
+    aux_basis = $:abasis
+    abs_method = cabs+
+    coor = $:coor
+    ebc = true
+    gbc = true
+    memory = $MEMORY
+    nfzc = $CORE
+    r12ints = posix
+    reference<HSOSHF>: (
+       docc = $OCCUPATIONDOCC
+       socc = $OCCUPATIONSOCC
+       value_accuracy = $ENERGYCONVERGENCE
+       integrals = $:integralcints
+       basis = $:basis
+       molecule = $:molecule
+       total_charge = $CHARGE
+       multiplicity = $MULTIPLICITY
+       memory = $MEMORY
+    )
+  )
+)
+

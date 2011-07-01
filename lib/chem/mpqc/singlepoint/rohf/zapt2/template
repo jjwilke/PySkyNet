@@ -1,0 +1,48 @@
+% 30-0-0-120-240-0
+molecule<Molecule>: (
+  symmetry = auto
+  unit = $PRINTUNITS 
+  { atoms geometry } = {
+$GEOMETRY
+  }
+)
+
+basis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $BASIS
+)
+
+mpqc: (
+  checkpoint = no
+  savestate = no
+  restart = no
+  do_energy = yes
+  mole<MBPT2>: (
+    molecule = $:molecule
+    basis = $:basis
+    coor = $..:coor
+    memory = $MEMORY
+    method = zapt 
+    nfzc = $CORE
+    reference<HSOSHF>: (
+       basis = $:basis
+       molecule = $:molecule
+       total_charge = $CHARGE
+       multiplicity = $MULTIPLICITY
+       value_accuracy = $ENERGYCONVERGENCE
+       guess_wavefunction<HSOSHF>: (
+           docc = $OCCUPATIONDOCC
+           socc = $OCCUPATIONSOCC
+           molecule = $:molecule
+           total_charge = $CHARGE
+           multiplicity = $MULTIPLICITY
+           basis<GaussianBasisSet>: (
+           molecule = $:molecule
+           name = "STO-3G"
+           )
+      )
+      memory = $MEMORY
+    )
+  )
+)
+

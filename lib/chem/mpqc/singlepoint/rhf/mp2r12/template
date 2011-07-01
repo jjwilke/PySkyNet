@@ -1,0 +1,54 @@
+% $TITLE
+molecule<Molecule>: (
+  symmetry = auto
+  unit = $PRINTUNITS 
+  { atoms geometry } = {
+$GEOMETRY
+  }
+)
+
+basis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $BASIS
+)
+
+abasis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $RIBASIS
+)
+
+integralcints<IntegralCints>:()
+
+mpqc: (
+  checkpoint = no
+  savestate = no
+  restart = no
+  do_energy = yes
+  mole<MBPT2_R12>: (
+    integrals = $:integralcints
+    stdapprox = "$R12EXCHANGE"
+    molecule = $:molecule
+    basis = $:basis
+    aux_basis = $:abasis
+    ansatz<LinearR12Ansatz>:(
+        diag = $DIAGONALR12
+        projector = $R12PROJECTOR
+        fixedcoeff = $FIXEDR12COEFFICIENTS
+    )
+    abs_method = cabs+
+    coor = $:coor
+    memory = $MEMORY
+    nfzc = $CORE
+    r12ints = posix
+    reference<CLHF>: (
+       integrals = $:integralcints
+       basis = $:basis
+       docc = $OCCUPATIONDOCC
+       molecule = $:molecule
+       total_charge = $CHARGE
+       multiplicity = 1
+       memory = $MEMORY
+    )
+  )
+)
+

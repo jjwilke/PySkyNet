@@ -1,0 +1,32 @@
+% 30-0-0-120-240-0
+molecule<Molecule>: (
+  symmetry = auto
+  unit = $PRINTUNITS 
+  { atoms geometry } = {
+$GEOMETRY
+  }
+)
+
+basis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $BASIS
+)
+
+mpqc: (
+  checkpoint = no
+  savestate = no
+  restart = no
+  do_energy = yes
+  mole<UKS>: (
+    molecule = $:molecule
+    basis = $:basis
+    coor = $..:coor
+    memory = $MEMORY
+    docc = $OCCUPATIONDOCC
+    socc = $OCCUPATIONSOCC
+    molecule = $:molecule
+    total_charge = $CHARGE
+    multiplicity = $MULTIPLICITY
+  )
+)
+

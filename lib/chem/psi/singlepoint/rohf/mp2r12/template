@@ -1,0 +1,23 @@
+PSI:(
+       REFERENCE=$REFERENCE
+       LABEL = "$TITLE"
+       FREEZE_CORE = $CORE
+       WFN=MP2R12
+       BASIS=$BASIS
+       PUREAM=TRUE
+       MAXITER=100
+       EXEC = (
+       "input"
+       "cints"
+       "cscf"
+       "cints --mp2r12" 
+       "psiclean" 
+       )
+       JOBTYPE=SP
+       MEMORY = $MEMORY
+       CHARGE=$CHARGE
+       MULTP=$MULTIPLICITY
+       UNITS=$PRINTUNITS
+       $GEOMETRY
+)
+

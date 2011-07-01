@@ -1,0 +1,63 @@
+% 30-0-0-120-240-0
+molecule<Molecule>: (
+  symmetry = auto
+  unit = $PRINTUNITS
+  { atoms geometry } = {
+$GEOMETRY
+  }
+)
+
+basis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $BASIS
+)
+
+abasis<GaussianBasisSet>:(
+ molecule = $:molecule
+ name = $RIBASIS
+)
+
+integralcints<IntegralCints>:()
+
+mpqc: (
+  checkpoint = no
+  savestate = no
+  restart = no
+  do_energy = yes
+  mole<ZAPT2F12>: (
+    molecule = $:molecule
+    basis = $:basis
+    aux_basis = $:abasis
+    approx = "c"
+    coor = $..:coor
+    memory = $MEMORY
+    corrfactor = f12
+    exp = $R12EXPONENT
+    nfzc = $CORE
+    integrals=$:integralcints
+    value_accuracy = $ENERGYCONVERGENCE
+    reference<$REFERENCE>: (
+       docc = $OCCUPATIONDOCC
+       socc = $OCCUPATIONSOCC
+       integrals=$:integralcints
+       basis = $:basis
+       molecule = $:molecule
+       total_charge = $CHARGE
+       multiplicity = $MULTIPLICITY
+       memory = $MEMORY
+       maxiter = 200
+       guess_wavefunction<$REFERENCE>: (
+           docc = $OCCUPATIONDOCC
+           socc = $OCCUPATIONSOCC
+           molecule = $:molecule
+           total_charge = $CHARGE
+           multiplicity = $MULTIPLICITY
+           basis<GaussianBasisSet>: (
+           molecule = $:molecule
+           name = "cc-pVDZ"
+           )
+       )
+    )
+  )
+)
+

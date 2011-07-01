@@ -1,0 +1,28 @@
+PSI:(
+       REFERENCE=UHF
+       PITZER=TRUE
+       LABEL = "$TITLE"
+       FREEZE_CORE = $CORE
+       WFN=CCSD_T
+       BASIS=$BASIS
+       PUREAM=TRUE
+       MAXITER=100
+       JOBTYPE=SP
+       DOCC=$OCCUPATIONDOCC
+       SOCC=$OCCUPATIONSOCC
+       CONVERGENCE=12
+       MEMORY = (800 MB)
+       EXEC = (
+       "transqt2"
+       "ccsort"
+       "ccenergy"
+       "zapt --dpdevals"
+       "cctriples"
+       "psiclean"
+       )
+       CHARGE=0
+       MULTP=$MULTIPLICITY
+       UNITS=$PRINTUNITS
+       $GEOMETRY
+)
+
