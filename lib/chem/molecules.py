@@ -632,11 +632,11 @@ class Molecule(chem.data.Item):
         for i in range(len(selfvals)):
             if not selfvals[i] == othervals[i]:
                 if printDetail:
-                    sys.stdout.write("%s is different from %s\n",  % (selfvals[i], othervals[i]))
+                    sys.stdout.write("%s is different from %s\n"  % (selfvals[i], othervals[i]))
                 same = False
             else:
                 if printDetail:
-                    sys.stdout.write("%s is the same as %s\n",  % (selfvals[i], othervals[i]))
+                    sys.stdout.write("%s is the same as %s\n"  % (selfvals[i], othervals[i]))
 
         return same
 

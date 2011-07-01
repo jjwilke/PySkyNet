@@ -395,7 +395,7 @@ class Aces(Writer):
             try: 
                 self.writeCustomBasis(basisObject, basisName, computation)
             except Exception, error:
-                sys.stderr.write("%s\n%s\n" % (traceback(error), error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
                 raise OSError
             return "SPECIAL" #in the actual basis set keyword, we should write special
 

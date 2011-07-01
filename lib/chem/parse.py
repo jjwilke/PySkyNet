@@ -487,7 +487,7 @@ class Parser(Item):
             atomList = getAtomListFromXYZ(atoms, xyz)
         except InfoNotFoundError, error:
             if globalvals.Debug.debug:
-                sys.stderr.write("%s\n%s\n", % traceback(error), error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             return None #absolutely necessary
 
         charge = 0
@@ -499,31 +499,31 @@ class Parser(Item):
         try: charge = self.get_keyword_CHARGE()
         except InfoNotFoundError, error: #depending on the 'strictness' we may return a none or just use a fill-in value
             if globalvals.Debug.debug:
-                sys.stderr.write("%s\n%s\n", % traceback(error), error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             if not weakFind: 
                 return None
         try: mult = self.get_keyword_MULTIPLICITY()
         except InfoNotFoundError, error: #depending on the 'strictness' we may return a none or just use a fill-in value
             if globalvals.Debug.debug:
-                sys.stderr.write("%s\n%s\n", % traceback(error), error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             if not weakFind: 
                 return None
         try: stateSymm = self.get_keyword_STATESYMMETRY()
         except InfoNotFoundError, error: #depending on the 'strictness' we may return a none or just use a fill-in value
             if globalvals.Debug.debug:
-                sys.stderr.write("%s\n%s\n", % traceback(error), error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             if not weakFind: 
                 return None
         try: title = self.get_keyword_TITLE()
         except InfoNotFoundError, error: #depending on the 'strictness' we may return a none or just use a fill-in value
             if globalvals.Debug.debug:
-                sys.stderr.write("%s\n%s\n", % traceback(error), error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             if not weakFind: 
                 return None
         try: energy = self.getEnergy()
         except InfoNotFoundError, error: #depending on the 'strictness' we may return a none or just use a fill-in value
             if globalvals.Debug.debug:
-                sys.stderr.write("%s\n%s\n", % traceback(error), error)
+                sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             if not weakFind: 
                 return None
 
@@ -606,7 +606,7 @@ class Parser(Item):
                 storedxyz = dp
             self.setAttribute("%s xyz" % xyzType.lower(), storedxyz)
         except AttributeError, error:
-            sys.stderr.write("%s\n%s\n", % traceback(error), error)
+            sys.stderr.write("%s\n%s\n" % (traceback(error), error))
             raise ProgrammingError("%s methodName not yet implemented for %s" % (methodName, self.__class__))
         except IndexError, error:
             raise InfoNotFoundError("xyz")
