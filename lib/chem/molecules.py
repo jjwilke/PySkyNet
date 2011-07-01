@@ -1004,7 +1004,7 @@ class Molecule(chem.data.Item):
             else:
                 currentAtom = atom.getXYZ().getValue(units)
                 coords.append(currentAtom)
-        newXYZ = DataPoint(numpy.array(coords), units=units)
+        newXYZ = chem.data.DataPoint(numpy.array(coords), units=units)
         return newXYZ
 
     def writeXYZFile(self, file):

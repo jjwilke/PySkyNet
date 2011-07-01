@@ -377,6 +377,9 @@ class MolproParser(Parser):
 
         return [ZMatrix, variables, constants]
 
+    def getForceConstants(self):
+        raise InfoNotFoundError
+
     def getNumDummyAtoms(self):
         inputArea = self.getInputArea()
         numDummy = 0

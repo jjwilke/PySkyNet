@@ -72,8 +72,6 @@ class Project(Runnable, Savable):
         self.socketPort = 1
 
     def finish(self):   
-        import remote
-        #remote.releaseSocketPort(self.socketPort)
         Runnable.finish(self)
 
     def addRunMethods(self):
@@ -183,7 +181,6 @@ class Project(Runnable, Savable):
                     sys.exit()
 
     def gatherTasks(self):
-        import machines
         machineTasks = {}
         machineMap = {}
         for task in self.taskList:
@@ -194,7 +191,6 @@ class Project(Runnable, Savable):
                 machineTasks[machinename] = []
             machineTasks[machinename].append(task)
 
-        import machines, jobs
         for machinename in machineMap:
             machine = machineMap[machinename]
             mach = machines.getMachine(machine)
