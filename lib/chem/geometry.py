@@ -597,14 +597,6 @@ class BondLength:
 
     def getBVectors(self):
         e12 = getUnitVector(self.atom2.getXYZ() - self.atom1.getXYZ())
-        """Comment out
-        print "B vectors for atom 1"
-        print -e12, "analytic"
-        print gradient(self.getValue, self.atom1), "numeric"
-        print "B vector for atom 2"
-        print e12, "analytic"
-        print gradient(self.getValue, self.atom2), "numeric"
-        """
         return -e12, e12
 
     def getAtomNumbers(self):
@@ -728,18 +720,6 @@ class BondAngle:
         st2 = (cosphi*e32 - e31)/(r32*sinphi)
         st3 = ((r31 - r32*cosphi) * e31 + (r32 - r31*cosphi) * e32)/r31/r32/sinphi
 
-        """ commented out
-        print "atom 1"
-        print st1, "analytic"
-        print gradient(self.getValue, self.atom1), "numeric"
-        print "atom 2"
-        print st3, "analytic"
-        print gradient(self.getValue, self.atom2), "numeric"
-        print "atom 3"
-        print st2, "analytic"
-        print gradient(self.getValue, self.atom3), "numeric"
-        """
-    
         #again... st3 referes to the middle atom in decius and cross equations
         return st1, st3, st2
 
@@ -819,21 +799,6 @@ class OutOfPlaneBend:
         st2 = (numpy.cross(e43, e41)/costheta/sinphi1 - ((tantheta/sin2phi1)*(e42 - cosphi1*e43)))/r42
         st3 = (numpy.cross(e41, e42)/costheta/sinphi1 - ((tantheta/sin2phi1)*(e43 - cosphi1*e42)))/r43
         st4 = -st1 - st2 - st3
-
-        """ 
-        print "atom 1"
-        print st1, "analytic"
-        print gradient(self.getValue, self.atom1), "numeric"
-        print "atom 2"
-        print st2, "analytic"
-        print gradient(self.getValue, self.atom2), "numeric"
-        print "atom 3"
-        print st3, "analytic"
-        print gradient(self.getValue, self.atom3), "numeric"
-        print "atom 4"
-        print st4, "analytic"
-        print gradient(self.getValue, self.atom4), "numeric"
-        """
 
         return st1, st2, st3, st4
 
@@ -953,21 +918,6 @@ class DihedralAngle:
         st4 = -numpy.cross(e43, e32)/r43/sin2phi3
 
         getVal = lambda: self.getValue(units="radian", onlyPositive=True)
-
-        """
-        print "atom 1"
-        print st1, "analytic"
-        print gradient(getVal, self.atom1), "numeric"
-        print "atom 2"
-        print st2, "analytic"
-        print gradient(getVal, self.atom2), "numeric"
-        print "atom 3"
-        print st3, "analytic"
-        print gradient(getVal, self.atom3), "numeric"
-        print "atom 4"
-        print st4, "analytic"
-        print gradient(getVal, self.atom4), "numeric"
-        """
 
         return st1, st2, st3, st4
         
@@ -1374,7 +1324,7 @@ def buildB(internalList, mol):
 def printInternals(internalList, mol):
     for internal in internalList:
         internal.setMolecule(mol)
-        print internal
+        sys.stdout.write("%s\n" % internal)
 
 def getNewMoleculeFromInternals(internalValues, internalList, mol, units="bohr"):
     allXYZ = []
@@ -1419,26 +1369,10 @@ def getNewMoleculeFromInternals(internalValues, internalList, mol, units="bohr")
             disp_vector = internal_bvec * scale_factor
             molcopy.displaceXYZ(disp_vector)
 
-        """ an experiment using singular value decomposition... that doesn't work
-        U, SVec, V = numpy.linalg.svd(Bmatrix)
-        VT = numpy.transpose(V)
-        nonSingValues = len(SVec)
-        Sigma = numpy.identity(nonSingValues)
-        for i in range(0, nonSingValues):
-            Sigma[i][i] = SVec[i]
-        projB = numpy.dot(U, Sigma)
-        rot_trans_xyz = numpy.dot(V, allXYZ)[-6:]
-        new_trans_xyz = numpy.dot(numpy.linalg.inv(projB), internalValues).tolist()
-        new_trans_xyz.extend(rot_trans_xyz)
-        allXYZ = numpy.dot(VT, new_trans_xyz)
-        mol.setXYZ(allXYZ)
-        print numpy.dot(Bmatrix, allXYZ)
-        """
-        
         num_cycles += 1
 
     if num_cycles >= max_cycles:
-        print "GEOMETRY NOT CONVERGED"
+        sys.stderr.write("GEOMETRY NOT CONVERGED\n")
     
     #set the internals back to the original molecule
     for internal in internalList:

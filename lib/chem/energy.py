@@ -197,8 +197,8 @@ def energyWalk(args, dirname, files):
         if obj.validDirectory(files):
             try:
                 e = obj.getEnergy(title)
-                print title, e
+                sys.stdout.write("%s %s\n" % (title, e))
                 eset.add(e)
             except Exception, error:
-                print dirname, error, traceback(error)
+                sys.stderr.write("%s\n%s\n%s\n" % (dirname, error, traceback(error))
     os.chdir(topdir)

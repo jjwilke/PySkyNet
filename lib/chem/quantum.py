@@ -69,8 +69,7 @@ class GradientTask(EnergyTask): #whatever you have gradients for, you also have 
         return self.gradients #try to return gradients
 
     def printGradients(self):
-        print "Gradients in %s" % self.gradients.getUnits()
-        print self.gradients
+        sys.stdout.write("Gradients in %s\n%s\n" % self.gradients.getUnits(), self.gradients)
 
     def addXML(self, node):
         EnergyTask.addXML(self, node)
@@ -428,7 +427,7 @@ class QuantumTask(Task, Runnable, Locatable):
         files_to_copy = self.computation.getFilesToCopy()
         for file in files_to_copy:
             copyLocation = os.path.join(self.folder, files_to_copy[file])
-            print "Copying %s to %s" % (file, copyLocation)
+            sys.stderr.write("Copying %s to %s\n" % (file, copyLocation))
             os.system("cp %s %s" % (file, copyLocation) )    
 
     def addXML(self, node):
@@ -513,8 +512,7 @@ class Gradient(QuantumTask, GradientTask):
         return self.gradients
 
     def printGradients(self):
-        print "Gradients"
-        print self.gradients
+        sys.stdout.write("Gradients in %s\n%s\n" % self.gradients.getUnits(), self.gradients)
 
     def finalize(self):
         QuantumTask.finalize(self)
@@ -814,7 +812,7 @@ class CompositeTask(MultiTask):
                 try:
                     newcomp.setAttribute(key, value)
                 except GUSInputError: #not a real keyword, just ignore
-                    print "Invalid molecule attribute %s. Skipping for now." % key
+                    sys.stderr.write("Invalid molecule attribute %s. Skipping for now.\n" % key)
 
 
             task = None
@@ -859,7 +857,7 @@ class CompositeTask(MultiTask):
             finalval = eval(numeqn)
             setattr(self, attr, finalval)
         except Exception, error:
-            print traceback(error)
+            sys.stderr.write("%s\n%s\n",traceback(error),error)
             pass #we don't have it
 
     def getEnergy(self):

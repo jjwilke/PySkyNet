@@ -383,16 +383,6 @@ class AcesParser(Parser):
 
     def _get_OPTIMIZED_Units(self):
         return "bohr"
-##         try:
-##             units = re.compile(r"""Parameter values are in(.*?)[\s\n]""").search(self.fileText).groups()[0]
-##             print units
-##             sys.exit()
-##             if units == "Angstroms":
-##                 return "ANGSTROM"
-##             else:
-##                 return "BOHR"
-##         except AttributeError:
-##             raise InfoNotFoundError("OPTIMIZATION", "Could not find any units for the optimization")
 
     def _get_OPT_XYZ(self):
         coordinates = []
@@ -579,20 +569,6 @@ class AcesParser(Parser):
         for xyzGrad in gradientList:
             atom, gradient = xyzGrad[0], map(eval, xyzGrad[1:])
             gradients.append(gradient)
-            """
-            if gradientmap.has_key(atom):
-                gradientmap[atom].append(gradient)
-            else:
-                gradientmap[atom] = [gradient]
-
-        for atom in self.getAtoms():
-            print atom
-            nextGrad = gradientmap[atom].pop(0)
-            gradients.append(nextGrad)
-
-        print gradients
-        sys.exit("aces getGradient")
-        """
 
         permMatrix = self._get_permutation_matrix()
         gradients = numpy.array(gradients)

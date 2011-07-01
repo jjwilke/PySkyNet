@@ -331,8 +331,6 @@ class Molecule(chem.data.Item):
         else:
             self.atoms = getAtomListFromXYZ(atomList)
 
-        print self.atoms
-
         chem.data.Item.__init__(self)
         #check if state symmetry and molecule name should be given defaults
         title = molName
@@ -634,11 +632,11 @@ class Molecule(chem.data.Item):
         for i in range(len(selfvals)):
             if not selfvals[i] == othervals[i]:
                 if printDetail:
-                    print selfvals[i], "is different from", othervals[i]
+                    sys.stdout.write("%s is different from %s\n",  % (selfvals[i], othervals[i]))
                 same = False
             else:
                 if printDetail:
-                    print selfvals[i], "is the same as", othervals[i]
+                    sys.stdout.write("%s is the same as %s\n",  % (selfvals[i], othervals[i]))
 
         return same
 

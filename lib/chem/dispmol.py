@@ -120,7 +120,7 @@ class DisplacementProject(Project):
             for failure in failedTasks:
                 message += "\n%s %s" % (failure, failedTasks[failure])
             #sendMail(recipient, message, subject)
-            print message
+            sys.stderr.write("%s\n" % message)
             #we are currently in the process of reading the displacement energies
             #however, since the tasks have failed, we will want to revert ourselves back to refinalize
             #all the tasks

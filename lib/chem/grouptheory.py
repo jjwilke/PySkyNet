@@ -380,16 +380,12 @@ def reduceOccupation(currentGroup, currentOccupation, newGroup, symmetryElements
         XY = X*Y
         XZ = X*Z
         YZ = Y*Z 
-        print element
-        print "X=", X, "Y=", Y, "Z=",Z
         for irrep in currentOccupation:
             symm_element = IRREP_SYMMETRY_ELEMENTS[currentGroup][irrep][0]
             character = eval(symm_element)
-            print irrep, symm_element, character
             if not char_table.has_key(irrep): char_table[irrep] = []
             char_table[irrep].append(character)
 
-    print char_table
         
     sys.exit()
 
