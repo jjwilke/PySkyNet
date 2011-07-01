@@ -418,7 +418,7 @@ def getPointGroupFromSymmetryElements(symmElements):
     return pg
 
 def getSymmetryElements(mol):
-    from Molecules import Atom
+    from chem.molecules import Atom
     testmol = mol.copy()
     testmol.recenter()
     testmol.reorient()

@@ -876,7 +876,7 @@ class Molecule(chem.data.Item):
     ##Gets the multiplicity of the molecule
     # @return An integer, the multiplicity
     def getMultiplicity(self):
-        return Item.getAttribute(self, 'multiplicity')
+        return skynet.identity.Identity.getAttribute(self,'multiplicity')
 
     def isOpenShell(self):
         if self.multiplicity == 1:

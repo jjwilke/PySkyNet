@@ -808,9 +808,10 @@ class Computation(Molecule):
             "", #maybe no specifics
             ]
 
+        pybase = os.environ["PYCHEM"]
         for folder in folders_to_test:
             testname = folder.lower()
-            folderpath = os.path.join(os.environ["PYCHEM"],program.lower(),testname)
+            folderpath = os.path.join(pybase, program.lower(),testname)
             template_file = os.path.join(folderpath, "template")
             if os.path.isfile(template_file):
                 return template_file
