@@ -1,0 +1,231 @@
+#! /usr/bin/env python
+
+from skynet.utils.utils import *
+import sys, os, os.path
+
+PYTEMP = os.environ["PYTEMP"]
+PYCHEM = os.environ["PYCHEM"]
+MOLECULE_FILE = os.path.join(PYTEMP, ".molecule")
+MOL_DIR = os.path.join(PYCHEM, "molecules")
+
+def getMolecule():
+    mol = load(MOLECULE_FILE)
+    return mol
+
+if __name__ == "__main__":
+    from skynet.utils.getoptions import *
+
+    #set the allowed command line options and user messages
+    options = [
+        InputOption(shortOption='s', longOption='save', optionType='file', valuesMandatory=True),
+        InputOption(shortOption='a', longOption='action', optionType='string', valuesMandatory=True),
+        InputOption(longOption='geom', optionType='string', listOfValues=True),
+        InputOption(shortOption='m', longOption='machine', optionType='string', valuesMandatory=True),
+        InputOption(shortOption='c', longOption='change', optionType='string', listOfValues=True, valuesMandatory=True),
+        InputOption(shortOption='g', longOption='get', optionType='string', listOfValues=False, valuesMandatory=True),
+        InputOption(longOption='linx', optionType='int', listOfValues=True, valuesMandatory=True),
+        InputOption(longOption='liny', optionType='int', listOfValues=True, valuesMandatory=True),
+        InputOption(longOption='angle', optionType='int', listOfValues=True, valuesMandatory=True),
+        InputOption(longOption='dih', optionType='int', listOfValues=True, valuesMandatory=True),
+        InputOption(longOption='oop', optionType='int', listOfValues=True, valuesMandatory=True),
+        InputOption(longOption='bond', optionType='int', listOfValues=True, valuesMandatory=True),
+        InputOption(longOption='conf', optionType='string'),
+        InputOption(shortOption='p', longOption='print'),
+        InputOption(shortOption='r', longOption='noreorient'),
+        InputOption(longOption='xyz'),
+        InputOption(longOption='gus'),
+        InputOption(longOption='xyzfile'),
+        InputOption(longOption='weak'),
+        InputOption(longOption='zpve'),
+        InputOption(longOption='rot'),
+        InputOption(longOption='dipole'),
+        InputOption(longOption='pdipole'),
+        InputOption(longOption='grad'),
+        InputOption(longOption='pmoments'),
+        InputOption(longOption='xyztable', optionType='string'),
+        InputOption(longOption='mathematica'),
+        InputOption(longOption='template', optionType='string', valuesMandatory=True),
+        ]
+    optionList = OptionList(commandName="clip",
+                            usageStructure=[ "[options]"],
+                            optionsList=options)
+
+    options_given = readOptions(optionList)
+   
+    #default options
+    xyzOnly = False
+    reorient = True
+    recenter = True
+    weakFind = False
+
+    for option in options_given:
+
+        if option in ('s', 'save'):
+            filename = optionList[option].getValue()
+            mol = getComputation(filename, xyzOnly, recenter, reorient, weakFind)
+            if mol: 
+                save(mol, MOLECULE_FILE)
+            else:
+                print "I don't think this is a valid file."
+                harikari()
+
+        elif option in ('', 'xyz'):
+            xyzOnly = True
+
+        elif option in ('', 'xyzfile'):
+            mol = load(MOLECULE_FILE)
+            print mol.getXYZFile()
+
+        elif option in ('', 'zpve'):
+            mol = load(MOLECULE_FILE) 
+            zpve = mol.getZPVE()
+            print zpve
+
+        elif option in ('', 'template'):
+            mol = load(MOLECULE_FILE) 
+            program = optionList[option].getValue()
+            template = mol.findTemplate(program)
+            if template:
+                text = open(template).read()
+                print text
+            else:
+                print "No template found"
+
+        elif option in ('', 'weak'):
+            weakFind = True
+
+        elif option in ('', 'xyztable'):
+            mol = load(MOLECULE_FILE) 
+            units = optionList[option].getValue()
+            if not units: units = "angstrom"
+            print mol.getXYZTable(units=units)
+
+        elif option in ('g', 'get'):
+            filename = optionList[option].getValue()
+            filepath = os.path.join(MOL_DIR, filename)
+            mol = getMolecule(filepath)
+            if recenter: mol.recenter()
+            if reorient: mol.reorient()
+            if mol: save(mol, MOLECULE_FILE)
+            else:
+                print "I don't think this is a valid file."
+                harikari()
+
+        elif option in ('r', 'noreorient'):
+            reorient = False
+            recenter = False
+            
+        elif option in ('c', 'change'):
+            attribute, value = optionList[option].getValues()
+            mol = load(MOLECULE_FILE) 
+            mol.setAttribute(attribute, value) #this may or may not be a string
+            save(mol, MOLECULE_FILE)
+
+        elif option in ('', 'conf'):
+            mol = load(MOLECULE_FILE) 
+            print mol.getConformerLabel()
+        
+        elif option in ('', 'geom'):
+            mol = load(MOLECULE_FILE)
+            units = optionList[option].getValue()
+            angleUnits = "degree"
+            bondUnits = "angstrom"
+            if units:
+                for entry in units:
+                    if 'rad' in entry.lower(): angleUnits = "radian"
+                    elif 'deg' in entry.lower(): angleUnits = "degree"
+                    elif 'ang' in entry.lower(): bondUnits = "angstrom"
+                    elif 'bohr' in entry.lower(): bondUnits = 'bohr'
+
+            print mol.getGeomDescription(units=bondUnits, angleUnits=angleUnits, bondPrecision=12, anglePrecision=12, dihPrecision=10)
+
+        elif option in ('', 'linx'):
+            mol = load(MOLECULE_FILE)
+            atoms = optionList[option].getValues()
+            print mol.getLinX(*atoms)
+
+        elif option in ('', 'liny'):
+            mol = load(MOLECULE_FILE)
+            atoms = optionList[option].getValues()
+            print mol.getLinY(*atoms)
+
+        elif option in ('', 'bond'):
+            mol = load(MOLECULE_FILE)
+            atoms = optionList[option].getValues()
+            print mol.getBondLength(*atoms)
+
+        elif option in ('', 'angle'):
+            mol = load(MOLECULE_FILE)
+            atoms = optionList[option].getValues()
+            print mol.getBondAngle(*atoms)
+
+        elif option in ('', 'dih'):
+            mol = load(MOLECULE_FILE)
+            atoms = optionList[option].getValues()
+            print mol.getDihedralAngle(*atoms)
+
+        elif option in ('', 'oop'):
+            mol = load(MOLECULE_FILE)
+            atoms = optionList[option].getValues()
+            print mol.getOutOfPlaneBend(*atoms)
+
+        elif option in ('a', 'action'):
+            action = optionList[option].getValue()
+            mol = load(MOLECULE_FILE)
+            command = "attr = mol.%s" % action
+            exec(command)
+            if attr: 
+                print attr #return a value
+            else:
+                save(mol, MOLECULE_FILE) #a modifying action
+
+        elif option in ('', 'mathematica'):
+            mol = load(MOLECULE_FILE)
+            print mol.getMathematicaXYZTable()
+
+        #get the clipboard from another machine
+        elif option in ('m', 'machine'):
+            import re
+            machine = optionList[option].getValue()
+            cmd = "ssh %s \"cat ~/.tcshrc\" " % machine 
+            pytemp = commands.getoutput(cmd)
+            pytemp = re.compile("PYTEMP\s+(.*?)\n").search(pytemp).groups()[0]
+            cmd = "scp jjwilke@%s:%s/.molecule %s/.molecule" % (machine, pytemp, PYTEMP)
+            print cmd
+            print commands.getoutput(cmd)
+
+        elif option in ('', 'rot'):
+            mol = load(MOLECULE_FILE)
+            print mol.getRotationalConstants()
+
+        elif option in ('', 'pmoments'):
+            mol = load(MOLECULE_FILE)
+            print mol.getPrincipalMoments()
+
+        elif option in ('p', 'print'):
+            mol = load(MOLECULE_FILE)
+            print mol
+
+        elif option in ('', 'dipole'):
+            mol = load(MOLECULE_FILE)
+            dipole = mol.getDipoleMoment()
+            if dipole:
+                print '%12.8f Debye' % dipole
+                print mol.getDipole()
+            else:
+                print "No dipole information"
+
+        elif option in ('', 'pdipole'):
+            mol = load(MOLECULE_FILE)
+            comps = mol.getPrincipalDipole()
+            print "Ua = %12.8f" % comps[0]
+            print "Ub = %12.8f" % comps[1]
+            print "Uc = %12.8f" % comps[2]
+
+        elif option in ('', 'gus'):
+            mol = load(MOLECULE_FILE)
+            print mol.makeGUSFile()
+
+        elif option in ('', 'grad'):
+            mol = load(MOLECULE_FILE)
+            print mol.getGradients()
