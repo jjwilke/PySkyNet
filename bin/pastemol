@@ -5,14 +5,13 @@ from chem.writer import MultiFile
 import sys
 import os
 import os.path
-import clipboard
 
 
 PYTEMP = os.environ["PYTEMP"]
-MOLECULE_FILE = clipboard.MOLECULE_FILE
+MOLECULE_FILE = os.path.join(PYTEMP, ".molecule")
 
 if __name__ == "__main__":
-    from getoptions import *
+    from skynet.utils.getoptions import *
 
     #set defaults
     program = None
@@ -27,7 +26,8 @@ if __name__ == "__main__":
 
     #create the OptionList object
     optionList = OptionList(commandName='paste', usageStructure=[ "[options]" ], optionsList=options )
-    options_given = readOptions(optionList)
+    options = OptionSet()
+    options_given = readOptions(optionList, optionSet = options)
 
     mol = load(MOLECULE_FILE)   
     for option in options_given:
@@ -54,9 +54,10 @@ if __name__ == "__main__":
 
         
     #now that all options have been set, print the input file
-    import input, writer
+    import chem.input
+    import chem.writer
     if program: 
-        progObj = input.getProgram(program)
+        progObj = chem.input.getProgram(program)
         mol.setProgram(progObj)
         save(mol, MOLECULE_FILE)
         inputFile = mol.makeFile()

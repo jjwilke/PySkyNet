@@ -445,7 +445,7 @@ class Aces(Writer):
         conv = computation.getAttribute("energyconvergence")
         if conv == "tight":
             key = "scf_conv=11"
-            wav = computation.getAttribute("wavefunction")
+            wav = str(computation.getAttribute("wavefunction")).lower()
             if "cc" in wav:
                 key += "\n       cc_conv=9"
             return key
