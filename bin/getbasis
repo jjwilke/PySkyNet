@@ -2,45 +2,57 @@
 
 from skynet.utils.utils import *
 import chem.basisset
-import sys, os, os.path
+import sys
+import os
+import os.path
 
+PYTEMP = os.environ["PYTEMP"]
+MOLECULE_FILE = os.path.join(PYTEMP, ".molecule")
+BASIS_FILE = os.path.join(PYTEMP, ".basis")
 PYBASIS = os.environ["PYBASIS"]
 
 if __name__ == "__main__":
-    from skynet.utils.getoptions import InputOption, OptionList, readOptions, OptionSet
+    from skynet.utils.getoptions import *
 
     #set the allowed command line options and user messages
-    opts = [
+    options = [
         InputOption(shortOption='e', longOption='emsl', optionType='string', valuesMandatory=True),
-        InputOption(shortOption='a', longOption='atoms', optionType='string', listOfValues=True, valuesMandatory=True, bind=True),
+        InputOption(shortOption='a', longOption='atoms', optionType='string', listOfValues=True, valuesMandatory=True),
         InputOption(shortOption='s', longOption='save', optionType='string', valuesMandatory=False),
         InputOption(longOption='setname', optionType='string', valuesMandatory=True),
         InputOption(shortOption='c', longOption='clip'),
+        InputOption(shortOption='v', longOption='verb'),
         InputOption(shortOption='u', longOption='uncontract'),
         InputOption(shortOption='p', longOption='print', optionType='string', valuesMandatory=False),
         InputOption(longOption='summary', valuesMandatory=False),
-        InputOption(longOption='verbatim', setbool = True),
         InputOption(longOption='pickle', optionType='string', valuesMandatory=True),
-        InputOption(shortOption='n', longOption='name', optionType='string', valuesMandatory=True, bind=True, default="custom"),
+        InputOption(shortOption='n', longOption='name', optionType='string', valuesMandatory=True),
         InputOption(shortOption='f', longOption='file', optionType='string', valuesMandatory=True),
         ]
-
-    options=OptionSet()
     optionList = OptionList(commandName="getbasis",
                             usageStructure=[ "[options]"],
-                            optionsList=opts)
+                            optionsList=options)
+    options = OptionSet()
     options_given = readOptions(optionList, optionSet=options)
-
+   
     #defaults
+    name = "CUSTOM"
     basis_object = None
+    atomList = []
     #usually, the basis set name is 'corrected' automatically
     #in some situations, this should not be done
     verbatim = False
     for option in options_given:
         if option in ('e', 'emsl'):
-            import webutils.fetcher
+            import fetcher
             basis = optionList[option].getValue()
-            basis_object = webutils.fetcher.getBasisSet(basis, options.atoms, options.verbatim)
+            basis_object = fetcher.getBasisSet(basis, atomList, verbatim)
+
+        elif option in ('v', 'verb'):
+            verbatim = True
+            
+        elif option in ('a', 'atoms'):
+            atomList = optionList[option].getValues()
 
         elif option in ('', 'summary'):
             print basis_object.basisDictionary.keys()
@@ -56,7 +68,7 @@ if __name__ == "__main__":
                 continue #we found one
 
             fileText = open(file).read()
-            basis_object = basisset.readGaussianBasis(fileText, options.atoms)
+            basis_object = basisset.readGaussianBasis(fileText, atomList)
             if basis_object:
                 continue #we found one
 
@@ -75,9 +87,15 @@ if __name__ == "__main__":
             else:
                 save(basis_object, BASIS_FILE)
 
+        elif option in ('n', 'name'):
+            name = optionList[option].getValue()
+
         elif option in ('', 'pickle'):
             pickle_file = optionList[option].getValue().lower()
-            basis_object = load( os.path.join(PYBASIS, pickle_file) )
+            path = os.path.join(PYBASIS, pickle_file)
+            if not os.path.isfile(path):
+                sys.stderr.write("basis file %s does not exist\n" % path)
+            basis_object = load(path)
             if not basis_object:
                 basis_object = load( os.path.join(PYBASIS, "%s.basis" % pickle_file) )
                 
@@ -85,16 +103,14 @@ if __name__ == "__main__":
         elif option in ('p', 'print'):
             program = optionList[option].getValue()
             if program: 
-                print basis_object.getBasisText(program=program, name=options.name, atomList=options.atoms)
+                print basis_object.getBasisText(program=program, name=name, atomList=atomList)
             else: 
                 print basis_object
 
         elif option in ('', 'setname'):
             name = optionList[option].getValue()
-            if program: 
-                print basis_object.getBasisText(program=program, name=name)
-            else: 
-                print basis_object
+            if program: print basis_object.getBasisText(program=program, name=name)
+            else: print basis_object
 
         elif option in ('u', 'uncontract'):
             basis_object = basis_object.decontract()
