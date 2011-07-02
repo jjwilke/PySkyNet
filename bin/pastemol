@@ -1,0 +1,79 @@
+#! /usr/bin/env python
+
+from skynet.utils.utils import *
+from chem.writer import MultiFile
+import sys
+import os
+import os.path
+import clipboard
+
+
+PYTEMP = os.environ["PYTEMP"]
+MOLECULE_FILE = clipboard.MOLECULE_FILE
+
+if __name__ == "__main__":
+    from getoptions import *
+
+    #set defaults
+    program = None
+
+    #set the allowed command line options
+    options = [
+        InputOption(shortOption='t', longOption='template', optionType='file', valuesMandatory=True),
+        InputOption(shortOption='p', longOption='program', optionType='string', valuesMandatory=True),
+        InputOption(longOption='pickle', optionType='string', valuesMandatory=False),
+        InputOption(shortOption='m', longOption='make'),
+        ]
+
+    #create the OptionList object
+    optionList = OptionList(commandName='paste', usageStructure=[ "[options]" ], optionsList=options )
+    options_given = readOptions(optionList)
+
+    mol = load(MOLECULE_FILE)   
+    for option in options_given:
+
+        if option in ('t', 'template'):
+            filename = optionList[option].getValue()
+            mol.setTemplate(filename)
+            save(mol, MOLECULE_FILE)
+
+        elif option in ('p', 'program'):
+            program = optionList[option].getValue().upper()
+
+        elif option in ('', 'pickle'):
+            file = optionList[option].getValue()
+            if file:
+                save(mol, file)
+            else:
+                import glob
+                i = 1
+                while os.path.isfile("mol_pickle%d" % i):
+                    i += 1
+                file = "mol_pickle%d" % i
+                save(mol, file)
+
+        
+    #now that all options have been set, print the input file
+    import input, writer
+    if program: 
+        progObj = input.getProgram(program)
+        mol.setProgram(progObj)
+        save(mol, MOLECULE_FILE)
+        inputFile = mol.makeFile()
+        if isinstance(inputFile, MultiFile):
+            aux_files = inputFile.getOtherFiles()
+            for file_name in aux_files:
+                file_obj = open(file_name, "w")
+                file_text = aux_files[file_name]
+                file_obj.write(file_text)
+                file_obj.close()
+            main_file = inputFile.getMainFile()
+            print main_file
+        else:
+            print inputFile
+        files_to_copy = mol.getFilesToCopy()
+        for loc in files_to_copy:
+            newloc = files_to_copy[loc]
+            os.system("cp %s %s" % (loc, newloc))
+    else:
+        print mol
