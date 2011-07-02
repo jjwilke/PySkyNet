@@ -50,7 +50,8 @@ if __name__ == "__main__":
                             usageStructure=[ "[options]"],
                             optionsList=options)
 
-    options_given = readOptions(optionList)
+    options = OptionSet();
+    options_given = readOptions(optionList, optionSet=options)
    
     #default options
     xyzOnly = False

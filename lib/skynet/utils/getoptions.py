@@ -293,7 +293,7 @@ class InputOption:
             return 
 
         if not optionSet: #null value
-            sys.exit("Trying to bind value to null object")
+            raise Exception("Trying to bind value to null object")
 
         if self.isList:
             setattr(optionSet, self.longOption, self.getValues())
@@ -347,7 +347,7 @@ class OptionList:
                 self.optionsList[longOption] = option
 
         #always add the debug flag
-        debug = InputOption(longOption='debug', valuesMandatory=True, optionType='int', bind=True)
+        debug = InputOption(longOption='debug', valuesMandatory=True, optionType='int', bind=True, default=0)
         self.optionsList['debug'] = debug
 
 
