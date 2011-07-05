@@ -7,7 +7,7 @@ from skynet.utils.utils import *
 import os, sys, re, pickle, commands, numpy
 
 
-ENERGY_LIST = [ "ccsdt(q)", "ccsdt", "ccsd(t)", "ccsd", "mp2", "scf", "b3lyp", "mp2r12" ]
+ENERGY_LIST = [ "ccsdt(q)", "ccsdt", "ccsd(t)", "ccsd", "mp2", "scf", "b3lyp", "mp2r12", "dcft" ]
 
 def getBestEnergyType(available_energies):
     #start from the best energy, and work your way through
@@ -366,13 +366,30 @@ class Parser(Item):
 
         return point
 
+    def getGradients(self):
+        #by default, not implemented
+        raise InfoNotFoundError
+
+    def getForceConstants(self):
+        #by default, not implemented
+        raise InfoNotFoundError
+
     def _fetchEnergy(self, type):
-        attrname = "Singlepoint%s" % type.upper().replace("(", "_").replace(")", "")
-        energyReObj = None
+        attrname = "get_energy_%s" % type.upper().replace("(", "_").replace(")", "")
+        energy = None
         try:
-            energyReObj = getattr(self, attrname)
-        except AttributeError:  
-            raise InfoNotFoundError("%s energy.  Not supported for this program" % type)
+            method = getattr(self, attrname)
+            return [ method() ]
+        except AttributeError, error:
+            pass
+
+        if energy == None:
+            attrname = "Singlepoint%s" % type.upper().replace("(", "_").replace(")", "")
+            energyReObj = None
+            try:
+                energyReObj = getattr(self, attrname)
+            except AttributeError:  
+                raise InfoNotFoundError("%s energy.  Not supported for this program" % type)
 
         energies = []
         reInstance = energyReObj()
@@ -397,6 +414,7 @@ class Parser(Item):
             'ccsd(t)' : ['scf', 'ccsd'],
             'scf' : ['scf'],
             'mp2' : ['scf'],
+            'dcft' : ['scf'],
             'mp2r12' : ['scf'],
             'ccsd' : ['scf', 'ccsd'],
             'ccsdt' : ['scf', 'ccsdt'],
@@ -621,6 +639,7 @@ def getParser(outputFile, keywords = {}):
     import Psi
     import QChem
     import MPQC
+    import YETI
     import Gaussian
     import MRCC
 
@@ -642,6 +661,7 @@ def getParser(outputFile, keywords = {}):
     psiCheck1 = re.compile("PSI3").search(fileText)
     psiCheck2 = re.compile("tstart called on").search(fileText)
     mpqcCheck = re.compile("MPQC: Massively Parallel Quantum Chemistry").search(fileText)
+    yetiCheck = re.compile("Running YETI").search(fileText)
     gaussianCheck = re.compile("Entering Gaussian System").search(fileText)
 
     parser = None
@@ -669,6 +689,8 @@ def getParser(outputFile, keywords = {}):
         parser = MPQC.MPQCParser
     elif gaussianCheck:
         parser = Gaussian.GaussianParser
+    elif yetiCheck:
+        parser = YETI.YETIParser
     else:
         return None #no parser
     

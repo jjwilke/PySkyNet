@@ -216,15 +216,16 @@ class QuantumTask(Task, Runnable, Locatable):
         energy = self.parser.getEnergy(self.computation.getAttribute("wavefunction"))
         self.computation.setEnergy(energy)
 
+
         newXYZ = self.parser.getXYZ("initial") #we must match the gradients to the initial orientation
         self.computation.setXYZ(newXYZ)
 
         try:
             self.energies = self.parser.getAllEnergies()
-        except InfoNotFoundError:
-            pass
-
-
+        except InfoNotFoundError, error:
+            sys.stderr.write("%s\n%s\n" % (traceback(error), error))
+            sys.exit("no energies found")
+        
         try:
             self.xyzgradients = self.parser.getGradients()
             self.xyzgradients.convertUnits('hartree/bohr')

@@ -370,7 +370,7 @@ class RIBASIS(Keyword): datatype = str ; import basisset ; classtype = basisset.
 class REFERENCE(Keyword): pass
 class WAVEFUNCTION(Keyword):
     allowedValues = [
-    "scf", "mp2", "mp2r12", "ccsd", "ccsd(t)", "ccsdt", "ccsdt(q)", "ccsdtq", "b3lyp", "zapt2r12",
+    "scf", "mp2", "mp2r12", "ccsd", "ccsd(t)", "ccsdt", "ccsdt(q)", "ccsdtq", "b3lyp", "zapt2r12", "dcft", "dcft-r12"
     ]
 class JOBTYPE(Keyword): 
     allowedValues = [
