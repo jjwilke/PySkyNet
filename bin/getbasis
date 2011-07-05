@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 continue #we found one
 
             fileText = open(file).read()
-            basis_object = basisset.readGaussianBasis(fileText, atomList)
+            basis_object = chem.basisset.readGaussianBasis(fileText, atomList)
             if basis_object:
                 continue #we found one
 

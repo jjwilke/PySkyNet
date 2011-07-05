@@ -60,7 +60,7 @@ BOND_THRESHOLDS = {
 def getBondThreshold(atom1, atom2, units):
     key = "%s-%s" % (atom1.getSymbol(), atom2.getSymbol())
     value_in_ang = BOND_THRESHOLDS[key]
-    return convertUnits(value_in_ang, "angstrom", units)
+    return chem.data.convertUnits(value_in_ang, "angstrom", units)
 
 ## Calculates the bond length between two atoms
 # @param atom1 An atom instance
@@ -151,7 +151,7 @@ def calcLinY(atom1, atom2, atom3, atom4):
     return numer/denom
 
 def calcOOPBend(atom1, atom2, atom3, atom4):
-    phi = convertUnits(calcBondAngle(atom2, atom4, atom3), "degree", "radian")
+    phi = chem.data.convertUnits(calcBondAngle(atom2, atom4, atom3), "degree", "radian")
     sinphi = numpy.sin(phi)
 
     e41 = getUnitVector(getBondVector(atom4, atom1))
@@ -168,7 +168,7 @@ def calcOOPBend(atom1, atom2, atom3, atom4):
 #  @param xyzArray
 #  @return A list of atom objects
 def getAtomListFromXYZ(atoms, xyz):
-    if not isinstance(xyz, DataPoint):
+    if not isinstance(xyz, chem.data.DataPoint):
         raise ProgrammingError("getAtomListFromXYZ requires a DataPoint object")
 
     number = 1
@@ -423,7 +423,7 @@ class Molecule(chem.data.Item):
                 [label1, label2] = map(getSymbol, [atom1, atom2])
                 bondLength = calcBondLength(atom1, atom2)
                 if self.getUnits() == "bohr":
-                    bondLength = convertUnits(bondLength, "bohr", "angstrom")
+                    bondLength = chem.data.convertUnits(bondLength, "bohr", "angstrom")
                 values.append(bondLength)
 
             if len(entry) == 3:
@@ -568,15 +568,15 @@ class Molecule(chem.data.Item):
 
         if includeBonds:
             for label, bondLength in bonds:
-                descriptions.append(label.ljust(12) + "\t" + bondString % convertUnits(bondLength, self.getUnits(), units))
+                descriptions.append(label.ljust(12) + "\t" + bondString % chem.data.convertUnits(bondLength, self.getUnits(), units))
                         
         if includeAngles:
             for label, bondAngle in angles:
-                descriptions.append(label.ljust(12) + "\t" + angleString % convertUnits(bondAngle, "DEGREE", angleUnits))
+                descriptions.append(label.ljust(12) + "\t" + angleString % chem.data.convertUnits(bondAngle, "DEGREE", angleUnits))
                             
         if includeDihedrals:
             for label, dihedral in dihedrals:
-                descriptions.append(label.ljust(12) + "\t" + dihString % convertUnits(dihedral, "DEGREE", angleUnits))
+                descriptions.append(label.ljust(12) + "\t" + dihString % chem.data.convertUnits(dihedral, "DEGREE", angleUnits))
 
         return "\n".join(descriptions)
 
@@ -595,8 +595,8 @@ class Molecule(chem.data.Item):
                 other_label, other_value = other_values[value_type][value_num]
                 if self_label == other_label:
                     if value_type == BOND:
-                        self_value = convertUnits(self_value, self.units, units)
-                        other_value = convertUnits(other_value, other.units, units)
+                        self_value = chem.data.convertUnits(self_value, self.units, units)
+                        other_value = chem.data.convertUnits(other_value, other.units, units)
                     diff = self_value - other_value  
                     difference_array.append( "%s %12.8f %12.8f %12.8f" % (self_label.ljust(12), self_value, other_value, diff) )
 
@@ -1065,7 +1065,7 @@ class Molecule(chem.data.Item):
                     if freq > 0:
                         ZPVEinCMx2 += freq
 
-        self.ZPVE = 0.5 * convertUnits(ZPVEinCMx2, "wavenumber", "kcal")
+        self.ZPVE = 0.5 * chem.data.convertUnits(ZPVEinCMx2, "wavenumber", "kcal")
         return self.ZPVE
             
     ## Recenters the molecule on the center of mass

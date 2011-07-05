@@ -592,7 +592,7 @@ class BondLength:
     #  @return A float, the bond length
     def getValue(self, units=None):
         if not units: units = self.units
-        value =  convertUnits(calcBondLength(self.atom1, self.atom2), self.units, units)
+        value =  chem.data.convertUnits(calcBondLength(self.atom1, self.atom2), self.units, units)
         return value
 
     def getBVectors(self):
